@@ -2,6 +2,17 @@
 # This script downloads a YouTube playlist and processes each video to be compatible with Kodi/Jellyfin.
 # Dependencies: jq, yt-dlp, ffmpeg, imagemagick
 
+# --- Initialize ---
+set -euo pipefail
+trap 'echo "Error at line $LINENO"; exit 1' ERR
+TEMP_DIR=$(mktemp -d)
+trap 'rm -rf "$TEMP_DIR"' EXIT
+
+# --- Sanitization Function ---
+sanitize_name() {
+  echo "$1" | sed -e 's/[\\/:"*?<>|]/_/g' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/\.$//'
+}
+
 # --- Check Dependencies ---
 YTDLP_CMD="./yt-dlp"  # Local yt-dlp executable
 for cmd in jq ffmpeg convert montage "$YTDLP_CMD"; do  # Added imagemagick tools
@@ -19,7 +30,7 @@ fi
 
 # Assign parameters
 PLAYLIST_URL="$1"
-TV_SHOW="$2"
+TV_SHOW=$(sanitize_name "$2")
 SEASON_NUM="$3"
 EPISODE_START="$4"
 EPISODE_START_INT=$((10#$EPISODE_START))
