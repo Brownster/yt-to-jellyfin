@@ -1,10 +1,10 @@
 #!/bin/bash
 # This script downloads a YouTube playlist and processes each video to be compatible with Kodi/Jellyfin.
-# Dependencies: jq, yt-dlp, ffmpeg
+# Dependencies: jq, yt-dlp, ffmpeg, imagemagick
 
 # --- Check Dependencies ---
 YTDLP_CMD="./yt-dlp"  # Local yt-dlp executable
-for cmd in jq ffmpeg "$YTDLP_CMD"; do
+for cmd in jq ffmpeg convert montage "$YTDLP_CMD"; do  # Added imagemagick tools
   if ! command -v "$cmd" &> /dev/null; then
     echo "Error: $cmd is required but not installed."
     exit 1
@@ -27,6 +27,52 @@ EPISODE_START_INT=$((10#$EPISODE_START))
 # --- Folder Setup ---
 FOLDER="${TV_SHOW}/Season ${SEASON_NUM}"
 mkdir -p "$FOLDER"
+
+# --- Artwork Generation Functions ---
+create_tv_show_artwork() {
+  # Create TV show folder if missing
+  mkdir -p "$TV_SHOW"
+
+  # Extract 3 random frames from the first episode (for poster)
+  first_episode=$(find "$FOLDER" -name "*S${SEASON_NUM}E*.mp4" | head -1)
+  if [ -z "$first_episode" ]; then
+    echo "No episodes found for artwork generation!" | tee -a "$LOG_FILE"
+    return
+  fi
+
+  # Generate poster (single frame + text overlay)
+  ffmpeg -i "$first_episode" -vf "select='not(mod(n,1000))',scale=640:360" -vframes 3 "$FOLDER/tmp_poster_frames_%03d.jpg"
+  convert "$FOLDER"/tmp_poster_frames_*.jpg -gravity Center -background Black -resize 1000x1500^ -extent 1000x1500 \
+    -pointsize 80 -fill white -gravity south -annotate +0+50 "$TV_SHOW" \
+    "${TV_SHOW}/poster.jpg"
+  rm "$FOLDER"/tmp_poster_frames_*.jpg
+
+  # Generate fan art (collage of frames from first 3 episodes)
+  collage_files=()
+  for episode in $(find "$FOLDER" -name "*S${SEASON_NUM}E*.mp4" | head -3); do
+    frame="${episode%.mp4}_collage_frame.jpg"
+    ffmpeg -i "$episode" -ss 00:01:00 -vframes 1 -y "$frame" 2>/dev/null
+    collage_files+=("$frame")
+  done
+
+  montage -geometry 600x338+10+10 -background black -tile 2x "${collage_files[@]}" "${TV_SHOW}/fanart.jpg"
+  rm "${collage_files[@]}"
+}
+
+create_season_artwork() {
+  # Generate season poster (collage + text)
+  mkdir -p tmp_season_frames
+  for episode in $(find "$FOLDER" -name "*S${SEASON_NUM}E*.mp4" | head -6); do
+    ffmpeg -i "$episode" -vf "thumbnail" -frames:v 1 "tmp_season_frames/$(basename "$episode").jpg"
+  done
+
+  montage -geometry 400x225+5+5 -background black -tile 3x2 tmp_season_frames/*.jpg - \
+  | convert - -resize 1000x1500 - \
+    -gravity south -background "#00000080" -splice 0x60 -pointsize 48 -fill white \
+    -annotate +0+20 "Season ${SEASON_NUM}" "${FOLDER}/season${SEASON_NUM}-poster.jpg"
+
+  rm -rf tmp_season_frames
+}
 
 # --- yt-dlp Configuration ---
 COOKIES_OPTION="--cookies-from-browser firefox"  # Uncomment if needed
@@ -63,7 +109,7 @@ for JSON_FILE in "$FOLDER"/*.info.json; do
 
     # Handle date formatting for macOS/Linux
     if [[ "$(uname)" == "Darwin" ]]; then
-      AIR_DATE=$(date -j -f "%Y%m%d" "$UPLOAD_DATE" "+%Y-%m-%d")
+      AIR_DATE=$(date -j -f "%Y%m%d" "$UPLOAD_DATE" "+%Y-%-m-%d")
     else
       AIR_DATE=$(date -d "$UPLOAD_DATE" +%Y-%m-%d)
     fi
@@ -124,5 +170,10 @@ for video in "$FOLDER"/*S${SEASON_NUM}E*.mp4; do
     fi
   fi
 done
+
+# --- Generate Artwork ---
+echo "Generating TV show artwork..." | tee -a "$LOG_FILE"
+create_tv_show_artwork
+create_season_artwork
 
 echo "Process completed!" | tee -a "$LOG_FILE"
