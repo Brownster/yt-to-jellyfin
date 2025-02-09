@@ -72,28 +72,6 @@ The script will:
     Generate an NFO file for each episode with the metadata Kodi/Jellyfin require.
     Convert the downloaded MP4 files to H.265 (overwriting the originals) for improved compression.
 
-Independent Conversion Command
-
-If you've already downloaded the playlist and just want to convert the MP4 files to H.265, run the following command from your repository root:
-
-for video in "Off The Hook/Season 01/"*S01E*.mp4; do
-  temp_file="${video%.mp4}.temp.mp4"
-  ffmpeg -i "$video" -c:v libx265 -preset medium -crf 28 -c:a copy "$temp_file" &&
-  mv "$temp_file" "$video" ||
-  { rm -f "$temp_file"; echo "Failed to convert: $video"; }
-done
-
-This command loops over all MP4 files in the Off The Hook/Season 01/ folder, converts them using ffmpeg, and replaces the originals with the H.265-encoded versions.
-Customization
-
-    Cookies Option:
-    If you require browser cookies for authentication, uncomment or adjust the COOKIES_OPTION variable in the script.
-
-    ffmpeg Settings:
-    Modify the ffmpeg parameters (-preset medium -crf 28) if you need different encoding settings.
-
-    Output Template:
-    Customize the OUTPUT_TEMPLATE in the script to change the naming format of downloaded files.
 
 Contributing
 
