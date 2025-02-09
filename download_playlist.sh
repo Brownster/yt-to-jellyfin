@@ -6,13 +6,15 @@
 #
 # Dependencies: jq, yt-dlp, ffmpeg, imagemagick (convert, montage)
 
-# --- Temporary Directory for Production Temporary Files ---
+# --- Initialize ---
+set -euo pipefail
+trap 'echo "Error at line $LINENO"; exit 1' ERR
 TEMP_DIR=$(mktemp -d)
 trap 'rm -rf "$TEMP_DIR"' EXIT
 
-# --- Filename Sanitization ---
+# --- Sanitization Function ---
 sanitize_name() {
-  echo "$1" | sed -e 's/[\\/:"*?<>|]/_/g' -e 's/^\.//'
+  echo "$1" | sed -e 's/[\\/:"*?<>|]/_/g' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/\.$//'
 }
 
 # --- Check Dependencies ---
