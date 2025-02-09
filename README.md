@@ -25,6 +25,7 @@ Dependencies
 
 Ensure you have the following installed before running the script:
 
+    https://github.com/yt-dlp/yt-dlp/releases
     yt-dlp (Place the executable in the same folder as the script or in your PATH)
     jq
     ffmpeg
