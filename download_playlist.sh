@@ -90,6 +90,7 @@ download_cmd=(
   -o "$OUTPUT_TEMPLATE"
   --write-info-json
   --restrict-filenames
+  --merge-output-format mp4
   "$PLAYLIST_URL"
 )
 
