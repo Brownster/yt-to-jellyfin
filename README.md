@@ -39,16 +39,16 @@ Installation
 
     Clone the Repository:
 
-git clone https://github.com/yourusername/yt-playlist-to-kodi.git
-cd yt-playlist-to-kodi
+git clone https://github.com/Brownster/yt-to-jellyfin.git
+cd yt-to-jellyfin
 
 Make the Script Executable:
 
     chmod +x download_playlist.sh
 
-    (Optional) Download yt-dlp Locally:
+    Download yt-dlp Locally:
 
-    If you prefer to use a local copy of yt-dlp, download the latest executable from the yt-dlp releases and place it in the project directory.
+    Download the latest executable from the yt-dlp releases and place it in the project directory.
 
 Usage
 
