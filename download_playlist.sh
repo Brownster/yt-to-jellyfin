@@ -157,19 +157,27 @@ rm -f "$FOLDER"/*.info.json
 # --- Convert to H.265 ---
 echo "Converting files to H.265..." | tee -a "$LOG_FILE"
 
-for video in "$FOLDER"/*S${SEASON_NUM}E*.mp4; do
+for video in "$FOLDER"/*S${SEASON_NUM}E*.webm; do
   if [ -f "$video" ]; then
-    temp_file="${video%.mp4}.temp.mp4"
-    ffmpeg -i "$video" -c:v libx265 -preset medium -crf 28 -tag:v hvc1 -c:a aac -b:a 128k "$temp_file" 2>&1 | tee -a "$LOG_FILE"
+    # Remove the .webm extension to create a base name
+    base="${video%.webm}"
+    temp_file="${base}.temp.mp4"
+    
+    ffmpeg -i "$video" \
+      -c:v libx265 -preset medium -crf 28 -tag:v hvc1 \
+      -c:a aac -b:a 128k \
+      "$temp_file" 2>&1 | tee -a "$LOG_FILE"
+    
     if [ $? -eq 0 ]; then
-      mv "$temp_file" "$video"
-      echo "Converted: $video" | tee -a "$LOG_FILE"
+      mv "$temp_file" "${base}.265.mp4"
+      echo "Converted: $video -> ${base}.265.mp4" | tee -a "$LOG_FILE"
     else
       rm -f "$temp_file"
       echo "Failed to convert: $video" | tee -a "$LOG_FILE"
     fi
   fi
 done
+
 
 # --- Generate Artwork ---
 echo "Generating TV show artwork..." | tee -a "$LOG_FILE"
