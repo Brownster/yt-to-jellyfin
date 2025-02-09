@@ -1,6 +1,6 @@
 YouTube Playlist to Kodi/Jellyfin Episodes
 
-A Bash script that downloads an entire YouTube playlist and postprocesses each video to work seamlessly as TV show episodes in Kodi or Jellyfin. This script downloads videos, generates matching NFO metadata files, renames episodes according to your season/episode numbering scheme, and finally converts the videos to H.265 for optimized playback.
+A Bash script that downloads an entire YouTube playlist and postprocesses each video to work as TV show episodes in Kodi or Jellyfin. This script downloads videos, generates matching NFO metadata files, renames episodes according to your season/episode numbering scheme, and finally converts the videos to H.265 for optimized playback.
 Features
 
     Automated Downloads:
