@@ -159,8 +159,7 @@ echo "Converting files to H.265..." | tee -a "$LOG_FILE"
 for video in "$FOLDER"/*S${SEASON_NUM}E*.mp4; do
   if [ -f "$video" ]; then
     temp_file="${video%.mp4}.temp.mp4"
-    ffmpeg -i "$video" -c:v libx265 -preset medium -crf 28 -c:a copy "$temp_file" 2>&1 | tee -a "$LOG_FILE"
-    
+    ffmpeg -i "$video" -c:v libx265 -preset medium -crf 28 -tag:v hvc1 -c:a aac -b:a 128k "$temp_file" 2>&1 | tee -a "$LOG_FILE"
     if [ $? -eq 0 ]; then
       mv "$temp_file" "$video"
       echo "Converted: $video" | tee -a "$LOG_FILE"
