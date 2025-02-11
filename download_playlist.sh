@@ -199,6 +199,18 @@ echo "Generating TV show artwork..." | tee -a "$LOG_FILE"
 create_tv_show_artwork
 create_season_artwork
 
+ --- Generate Season NFO ---
+ SEASON_NFO="${FOLDER}/season.nfo"
+ cat <<EOF > "$SEASON_NFO"
+ <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+ <season>
+   <seasonnumber>${SEASON_NUM}</seasonnumber>
+   <title>Season ${SEASON_NUM}</title>
+   <plot>Season ${SEASON_NUM} of ${TV_SHOW}</plot>
+ </season>
+ EOF
+ echo "Generated Season NFO: $SEASON_NFO" | tee -a "$LOG_FILE"
+
 # --- Generate TV Show NFO ---
 TV_SHOW_NFO="${TV_SHOW}/tvshow.nfo"
 cat <<EOF > "$TV_SHOW_NFO"
