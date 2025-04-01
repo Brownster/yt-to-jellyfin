@@ -315,8 +315,37 @@
                                         </div>
                                     </div>
                                     
+                                    <!-- Detailed status -->
+                                    <div class="alert alert-info mb-3">
+                                        <div class="d-flex align-items-center">
+                                            <div class="me-3">
+                                                <span id="detail-stage-icon" class="fs-4">
+                                                    <i class="bi bi-arrow-repeat"></i>
+                                                </span>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h6 class="mb-0"><span id="detail-stage-name">Processing</span></h6>
+                                                <div id="detail-status-text">Working on files...</div>
+                                                <div class="d-flex justify-content-between align-items-center mt-1">
+                                                    <div>
+                                                        <span id="detail-file-progress">0</span> / <span id="detail-file-total">0</span> files
+                                                    </div>
+                                                    <div id="detail-current-file"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Overall progress -->
+                                    <div class="mb-2">Overall progress:</div>
                                     <div class="progress mb-3">
-                                        <div id="detail-progress-bar" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                        <div id="detail-progress-bar" class="progress-bar" role="progressbar" style="width: 0%" aria-valuemin="0" aria-valuemax="100">0%</div>
+                                    </div>
+                                    
+                                    <!-- Stage progress -->
+                                    <div class="mb-2">Stage progress:</div>
+                                    <div class="progress mb-4">
+                                        <div id="detail-stage-progress-bar" class="progress-bar bg-info" role="progressbar" style="width: 0%" aria-valuemin="0" aria-valuemax="100">0%</div>
                                     </div>
                                     
                                     <h6>Log Messages:</h6>
@@ -393,10 +422,16 @@
                                 </div>
                                 
                                 <div class="row mb-3">
-                                    <div class="col-lg-12">
+                                    <div class="col-lg-6">
                                         <div class="form-check form-switch">
                                             <input class="form-check-input" type="checkbox" id="default_use_h265" name="default_use_h265" checked>
                                             <label class="form-check-label" for="default_use_h265">Convert to H.265 by default</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-6">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="clean_filenames" name="clean_filenames" checked>
+                                            <label class="form-check-label" for="clean_filenames">Clean filenames (spaces instead of underscores)</label>
                                         </div>
                                     </div>
                                 </div>
@@ -409,6 +444,45 @@
                                     <div class="col-lg-6">
                                         <label for="completed_jobs_limit" class="form-label">Number of completed jobs to keep</label>
                                         <input type="number" class="form-control" id="completed_jobs_limit" name="completed_jobs_limit" min="1" max="100" value="10">
+                                    </div>
+                                </div>
+                                
+                                <!-- Jellyfin Integration Settings -->
+                                <h6 class="mt-4 mb-3">Jellyfin Integration</h6>
+                                
+                                <div class="row mb-3">
+                                    <div class="col-lg-12">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="jellyfin_enabled" name="jellyfin_enabled">
+                                            <label class="form-check-label" for="jellyfin_enabled">Enable Jellyfin integration</label>
+                                        </div>
+                                        <div class="form-text">Copy processed files to Jellyfin TV folder structure</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row mb-3 jellyfin-settings">
+                                    <div class="col-lg-12">
+                                        <label for="jellyfin_tv_path" class="form-label">Jellyfin TV Library Path</label>
+                                        <input type="text" class="form-control" id="jellyfin_tv_path" name="jellyfin_tv_path" placeholder="/path/to/jellyfin/tv">
+                                        <div class="form-text">Full path to Jellyfin TV library folder</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row mb-3 jellyfin-settings">
+                                    <div class="col-lg-4">
+                                        <label for="jellyfin_host" class="form-label">Jellyfin Host</label>
+                                        <input type="text" class="form-control" id="jellyfin_host" name="jellyfin_host" placeholder="localhost">
+                                    </div>
+                                    <div class="col-lg-4">
+                                        <label for="jellyfin_port" class="form-label">Jellyfin Port</label>
+                                        <input type="text" class="form-control" id="jellyfin_port" name="jellyfin_port" value="8096">
+                                    </div>
+                                    <div class="col-lg-4">
+                                        <label for="jellyfin_api_key" class="form-label">API Key (Optional)</label>
+                                        <input type="text" class="form-control" id="jellyfin_api_key" name="jellyfin_api_key">
+                                    </div>
+                                    <div class="col-12 mt-1">
+                                        <div class="form-text">Optional: Provide Jellyfin server details to trigger library scan after file copy</div>
                                     </div>
                                 </div>
                                 

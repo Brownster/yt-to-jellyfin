@@ -113,7 +113,8 @@ main {
     color: white;
 }
 
-.badge-in_progress, .badge-downloading, .badge-converting, .badge-processing_metadata, .badge-generating_artwork, .badge-creating_nfo {
+.badge-in_progress, .badge-downloading, .badge-converting, .badge-processing_metadata, 
+.badge-generating_artwork, .badge-creating_nfo, .badge-copying_to_jellyfin {
     background-color: #4e73df;
     color: white;
 }

@@ -45,18 +45,57 @@ class DownloadJob:
         self.messages = []
         self.created_at = datetime.now()
         self.updated_at = datetime.now()
+        
+        # Detailed progress tracking
+        self.current_stage = "waiting"
+        self.stage_progress = 0
+        self.current_file = ""
+        self.total_files = 0
+        self.processed_files = 0
+        self.detailed_status = "Job queued"
     
-    def update(self, status=None, progress=None, message=None):
-        """Update job status information."""
+    def update(self, status=None, progress=None, message=None, stage=None, file_name=None, 
+               stage_progress=None, total_files=None, processed_files=None, detailed_status=None):
+        """Update job status information with detailed progress."""
         if status:
             self.status = status
         if progress is not None:
             self.progress = progress
+        if stage:
+            self.current_stage = stage
+        if file_name:
+            self.current_file = file_name
+        if stage_progress is not None:
+            self.stage_progress = stage_progress
+        if total_files is not None:
+            self.total_files = total_files
+        if processed_files is not None:
+            self.processed_files = processed_files
+        if detailed_status:
+            self.detailed_status = detailed_status
+            
+        # Add a message if provided
         if message:
+            # Add stage information to the message if applicable
+            if stage and not detailed_status:
+                stage_desc = {
+                    "waiting": "Waiting to start",
+                    "downloading": "Downloading videos",
+                    "processing_metadata": "Processing metadata",
+                    "converting": "Converting videos to H.265",
+                    "generating_artwork": "Generating artwork and thumbnails",
+                    "creating_nfo": "Creating NFO files",
+                    "completed": "Processing completed",
+                    "failed": "Processing failed"
+                }
+                prefix = f"[{stage_desc.get(stage, stage)}]"
+                message = f"{prefix} {message}"
+            
             self.messages.append({
                 "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "text": message
             })
+        
         self.updated_at = datetime.now()
     
     def to_dict(self):
@@ -71,7 +110,13 @@ class DownloadJob:
             "progress": self.progress,
             "messages": self.messages,
             "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-            "updated_at": self.updated_at.strftime("%Y-%m-%d %H:%M:%S")
+            "updated_at": self.updated_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "current_stage": self.current_stage,
+            "stage_progress": self.stage_progress,
+            "current_file": self.current_file,
+            "total_files": self.total_files,
+            "processed_files": self.processed_files,
+            "detailed_status": self.detailed_status
         }
 
 class YTToJellyfin:
@@ -115,6 +160,14 @@ class YTToJellyfin:
             'web_enabled': os.environ.get('WEB_ENABLED', 'true').lower() == 'true',
             'web_port': int(os.environ.get('WEB_PORT', '8000')),
             'web_host': os.environ.get('WEB_HOST', '0.0.0.0'),
+            # Jellyfin integration settings
+            'jellyfin_enabled': os.environ.get('JELLYFIN_ENABLED', 'false').lower() == 'true',
+            'jellyfin_tv_path': os.environ.get('JELLYFIN_TV_PATH', ''),
+            'jellyfin_host': os.environ.get('JELLYFIN_HOST', ''),
+            'jellyfin_port': os.environ.get('JELLYFIN_PORT', '8096'),
+            'jellyfin_api_key': os.environ.get('JELLYFIN_API_KEY', ''),
+            # Filename cleaning settings
+            'clean_filenames': os.environ.get('CLEAN_FILENAMES', 'true').lower() == 'true',
         }
         
         # Try to load from config file
@@ -136,6 +189,8 @@ class YTToJellyfin:
                                 config['use_h265'] = value
                             elif key == 'crf':
                                 config['crf'] = int(value)
+                            elif key == 'clean_filenames':
+                                config['clean_filenames'] = value
                     
                     # Handle top-level keys
                     if 'cookies_path' in file_config:
@@ -154,6 +209,20 @@ class YTToJellyfin:
                                 config['web_port'] = int(value)
                             elif key == 'host':
                                 config['web_host'] = value
+                    
+                    # Handle Jellyfin settings
+                    if 'jellyfin' in file_config and isinstance(file_config['jellyfin'], dict):
+                        for key, value in file_config['jellyfin'].items():
+                            if key == 'enabled':
+                                config['jellyfin_enabled'] = value
+                            elif key == 'tv_path':
+                                config['jellyfin_tv_path'] = value
+                            elif key == 'host':
+                                config['jellyfin_host'] = value
+                            elif key == 'port':
+                                config['jellyfin_port'] = str(value)
+                            elif key == 'api_key':
+                                config['jellyfin_api_key'] = value
             
             except (yaml.YAMLError, IOError) as e:
                 logger.error(f"Error loading config file: {e}")
@@ -197,6 +266,38 @@ class YTToJellyfin:
         """Sanitize file/directory names to be compatible with file systems."""
         # Replace illegal chars with underscore and trim whitespace
         return re.sub(r'[\\/:"*?<>|]', '_', name).strip()
+        
+    def clean_filename(self, name: str) -> str:
+        """Clean up filename for better readability.
+        Replaces underscores with spaces and fixes common formatting issues."""
+        # First, preserve episode identifier pattern (S01E01)
+        episode_pattern = r'(S\d+E\d+)'
+        episode_match = re.search(episode_pattern, name)
+        
+        if not episode_match:
+            # No episode pattern found, just replace underscores
+            return name.replace('_', ' ')
+        
+        # Split name by episode identifier
+        parts = re.split(episode_pattern, name, maxsplit=1)
+        
+        # Clean up the title part (before episode identifier)
+        if len(parts) >= 1 and parts[0]:
+            # Replace underscores with spaces
+            parts[0] = parts[0].replace('_', ' ')
+            # Fix spacing around dash
+            parts[0] = re.sub(r'\s*-\s*', ' - ', parts[0])
+            # Remove multiple spaces
+            parts[0] = re.sub(r'\s+', ' ', parts[0])
+            # Trim whitespace
+            parts[0] = parts[0].strip()
+        
+        # Reassemble the filename with the episode identifier
+        result = ""
+        for i, part in enumerate(parts):
+            result += part
+        
+        return result
     
     def create_folder_structure(self, show_name: str, season_num: str) -> str:
         """Create the folder structure for the TV show and season."""
@@ -237,9 +338,20 @@ class YTToJellyfin:
         
         job = self.jobs.get(job_id)
         if job:
-            job.update(status="downloading", message=f"Starting download of playlist: {playlist_url}")
+            job.update(
+                status="downloading", 
+                stage="downloading",
+                progress=0, 
+                stage_progress=0,
+                detailed_status="Starting download of playlist",
+                message=f"Starting download of playlist: {playlist_url}"
+            )
         
         logger.info(f"Starting download of playlist: {playlist_url}")
+        current_file = ""
+        total_files = 0
+        processed_files = 0
+        
         try:
             process = subprocess.Popen(
                 cmd, 
@@ -249,30 +361,86 @@ class YTToJellyfin:
             )
             
             for line in process.stdout:
-                logger.info(line.strip())
+                line = line.strip()
+                logger.info(line)
                 if job:
-                    # Extract progress percentage if possible
-                    if "%" in line:
+                    # Extract information about which file is being processed
+                    if "[download]" in line and "Destination:" in line:
+                        try:
+                            file_match = re.search(r'Destination:\s+(.+)', line)
+                            if file_match:
+                                current_file = os.path.basename(file_match.group(1))
+                                processed_files += 1
+                                job.update(
+                                    file_name=current_file,
+                                    processed_files=processed_files,
+                                    detailed_status=f"Downloading: {current_file}",
+                                    message=f"Downloading file: {current_file}"
+                                )
+                        except (ValueError, AttributeError) as e:
+                            logger.error(f"Error parsing destination: {e}")
+                            
+                    # Extract total files information
+                    elif "[download]" in line and "of" in line and "item" in line:
+                        try:
+                            total_match = re.search(r'of\s+(\d+)\s+item', line)
+                            if total_match:
+                                total_files = int(total_match.group(1))
+                                job.update(total_files=total_files)
+                        except (ValueError, AttributeError) as e:
+                            logger.error(f"Error parsing total files: {e}")
+                    
+                    # Extract progress percentage
+                    elif "%" in line:
                         try:
                             progress_str = re.search(r'(\d+\.\d+)%', line)
                             if progress_str:
-                                progress = float(progress_str.group(1))
-                                job.update(progress=progress, message=line.strip())
-                        except (ValueError, AttributeError):
-                            job.update(message=line.strip())
+                                file_progress = float(progress_str.group(1))
+                                # Overall progress is a combination of which file we're on and its progress
+                                if total_files > 0:
+                                    overall_progress = min(
+                                        99, 
+                                        ((processed_files - 1) / total_files * 100) + 
+                                        (file_progress / total_files)
+                                    )
+                                else:
+                                    overall_progress = file_progress
+                                
+                                job.update(
+                                    progress=overall_progress, 
+                                    stage_progress=file_progress,
+                                    message=line,
+                                    detailed_status=f"Downloading: {current_file} ({file_progress:.1f}%)"
+                                )
+                        except (ValueError, AttributeError) as e:
+                            logger.error(f"Error parsing progress: {e}")
+                            job.update(message=line)
                     else:
-                        job.update(message=line.strip())
+                        # For lines without progress info, just log the message
+                        job.update(message=line)
             
             process.wait()
             
             if process.returncode != 0:
                 if job:
-                    job.update(status="failed", message=f"Download failed with return code {process.returncode}")
+                    job.update(
+                        status="failed", 
+                        stage="failed",
+                        detailed_status="Download failed",
+                        message=f"Download failed with return code {process.returncode}"
+                    )
                 logger.error(f"Error downloading playlist, return code: {process.returncode}")
                 return False
             
             if job:
-                job.update(status="downloaded", progress=100, message="Download completed successfully")
+                job.update(
+                    status="downloaded", 
+                    stage="downloading",
+                    progress=100, 
+                    stage_progress=100,
+                    detailed_status="Download completed successfully",
+                    message="Download completed successfully"
+                )
             return True
             
         except subprocess.SubprocessError as e:
@@ -285,13 +453,23 @@ class YTToJellyfin:
         """Process metadata from downloaded videos and create NFO files."""
         job = self.jobs.get(job_id)
         if job:
-            job.update(status="processing_metadata", message="Processing metadata and creating NFO files")
+            job.update(
+                status="processing_metadata", 
+                stage="processing_metadata",
+                progress=0,
+                stage_progress=0,
+                detailed_status="Processing metadata from videos",
+                message="Processing metadata and creating NFO files"
+            )
         
         json_files = list(Path(folder).glob('*.info.json'))
         
         if not json_files:
             if job:
-                job.update(message="Warning: No JSON metadata files found")
+                job.update(
+                    message="Warning: No JSON metadata files found",
+                    detailed_status="No metadata files found"
+                )
             logger.warning("No JSON metadata files found")
             return
             
@@ -301,7 +479,14 @@ class YTToJellyfin:
             first_index = first_data.get('playlist_index', 1)
         
         episode_offset = episode_start - first_index
+        total_files = len(json_files)
         
+        if job:
+            job.update(
+                total_files=total_files,
+                detailed_status=f"Processing metadata for {total_files} videos"
+            )
+            
         for i, json_file in enumerate(json_files):
             with open(json_file, 'r') as f:
                 data = json.load(f)
@@ -327,12 +512,34 @@ class YTToJellyfin:
             # Create base filename for renaming
             base_file = str(json_file).replace('.info.json', '')
             new_base = re.sub(rf'(S{season_num}E)[0-9]+', f'\\1{new_ep_padded}', base_file)
+            file_name = os.path.basename(new_base)
+            
+            if job:
+                job.update(
+                    file_name=file_name,
+                    processed_files=i+1,
+                    detailed_status=f"Processing metadata: {file_name}",
+                    message=f"Processing metadata for {title}"
+                )
             
             # Rename video files
             for ext in ['mp4', 'mkv', 'webm']:
                 original = f"{base_file}.{ext}"
                 if os.path.exists(original):
-                    os.rename(original, f"{new_base}.{ext}")
+                    # Get the basename without extension
+                    basename = os.path.basename(new_base)
+                    
+                    # Check if filename cleaning is enabled
+                    if self.config.get('clean_filenames', True):
+                        # Clean the filename (replace underscores with spaces)
+                        basename = self.clean_filename(basename)
+                        
+                    # Create new path with the potentially cleaned filename
+                    new_file = os.path.join(os.path.dirname(new_base), f"{basename}.{ext}")
+                    
+                    os.rename(original, new_file)
+                    if job:
+                        job.update(message=f"Renamed file to {os.path.basename(new_file)}")
             
             # Create NFO file
             nfo_content = f"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -346,16 +553,34 @@ class YTToJellyfin:
   <showtitle>{show_name}</showtitle>
 </episodedetails>
 """
-            with open(f"{new_base}.nfo", 'w') as f:
+            # Get the basename without extension
+            basename = os.path.basename(new_base)
+            
+            # Check if filename cleaning is enabled
+            if self.config.get('clean_filenames', True):
+                # Clean the filename (replace underscores with spaces)
+                basename = self.clean_filename(basename)
+                
+            # Create NFO path with the potentially cleaned filename
+            nfo_file = os.path.join(os.path.dirname(new_base), f"{basename}.nfo")
+            
+            with open(nfo_file, 'w') as f:
                 f.write(nfo_content)
+                
+            if job:
+                job.update(message=f"Created NFO file for {title}")
             
             # Remove JSON file after processing
             os.remove(json_file)
             
             # Update job progress
-            if job and json_files:
-                progress = int((i + 1) / len(json_files) * 100)
-                job.update(progress=progress, message=f"Processed metadata for {title}")
+            if job and total_files:
+                progress = int((i + 1) / total_files * 100)
+                job.update(
+                    progress=progress, 
+                    stage_progress=progress,
+                    detailed_status=f"Processed {i+1} of {total_files} files"
+                )
     
     def convert_video_files(self, folder: str, season_num: str, job_id: str) -> None:
         """Convert video files to H.265 format for better compression."""
@@ -363,12 +588,22 @@ class YTToJellyfin:
             logger.info("H.265 conversion disabled, skipping")
             job = self.jobs.get(job_id)
             if job:
-                job.update(message="H.265 conversion disabled, skipping")
+                job.update(
+                    message="H.265 conversion disabled, skipping",
+                    detailed_status="H.265 conversion disabled"
+                )
             return
         
         job = self.jobs.get(job_id)
         if job:
-            job.update(status="converting", progress=0, message="Starting video conversion to H.265")
+            job.update(
+                status="converting", 
+                stage="converting",
+                progress=0, 
+                stage_progress=0,
+                detailed_status="Preparing video conversion to H.265",
+                message="Starting video conversion to H.265"
+            )
             
         video_files = []
         for ext in ['webm', 'mp4']:
@@ -377,10 +612,20 @@ class YTToJellyfin:
         total_files = len(video_files)
         if total_files == 0:
             if job:
-                job.update(message="No video files found for conversion")
+                job.update(
+                    message="No video files found for conversion",
+                    detailed_status="No video files to convert"
+                )
             return
         
+        if job:
+            job.update(
+                total_files=total_files,
+                detailed_status=f"Converting {total_files} video files to H.265"
+            )
+        
         for i, video in enumerate(video_files):
+            ext = str(video).rsplit('.', 1)[1].lower()
             if ext == 'mp4':
                 # Check if already H.265
                 probe_cmd = ['ffprobe', '-v', 'error', '-select_streams', 'v:0', 
@@ -391,7 +636,10 @@ class YTToJellyfin:
                 if codec in ['hevc', 'h265']:
                     logger.info(f"Skipping already H.265 encoded file: {video}")
                     if job:
-                        job.update(message=f"Skipping already H.265 encoded file: {os.path.basename(str(video))}")
+                        job.update(
+                            processed_files=i+1,
+                            message=f"Skipping already H.265 encoded file: {os.path.basename(str(video))}"
+                        )
                     continue
             
             base = str(video).rsplit('.', 1)[0]
@@ -406,7 +654,12 @@ class YTToJellyfin:
             
             filename = os.path.basename(str(video))
             if job:
-                job.update(message=f"Converting {filename} to H.265 ({i+1}/{total_files})")
+                job.update(
+                    file_name=filename,
+                    processed_files=i+1,
+                    detailed_status=f"Converting {filename} to H.265 (file {i+1}/{total_files})",
+                    message=f"Converting {filename} to H.265 ({i+1}/{total_files})"
+                )
             logger.info(f"Converting {video} to H.265")
             
             try:
@@ -418,6 +671,9 @@ class YTToJellyfin:
                 )
                 
                 for line in process.stdout:
+                    # Log ffmpeg output for debugging
+                    logger.debug(line.strip())
+                    
                     if job and "time=" in line:
                         # Extract progress from ffmpeg output
                         try:
@@ -442,8 +698,23 @@ class YTToJellyfin:
                                 
                                 if duration > 0:
                                     file_progress = min(100, int(seconds / duration * 100))
-                                    total_progress = min(100, int((i + file_progress/100) / total_files * 100))
-                                    job.update(progress=total_progress)
+                                    # Overall progress is a combination of completed files and current file progress
+                                    total_progress = min(
+                                        99, 
+                                        ((i) / total_files * 100) + 
+                                        (file_progress / total_files)
+                                    )
+                                    
+                                    # Update job with both file and overall progress
+                                    job.update(
+                                        progress=total_progress,
+                                        stage_progress=file_progress,
+                                        detailed_status=f"Converting {filename}: {file_progress}% (file {i+1}/{total_files})"
+                                    )
+                                    
+                                    # Add progress updates less frequently to avoid flooding the log
+                                    if file_progress % 20 == 0:
+                                        job.update(message=f"Converting {filename}: {file_progress}% complete")
                         except Exception as e:
                             logger.error(f"Error parsing progress: {e}")
                 
@@ -455,23 +726,37 @@ class YTToJellyfin:
                         os.remove(video)
                     logger.info(f"Converted: {video} → {base}.mp4")
                     if job:
-                        job.update(message=f"Successfully converted {filename} to H.265")
+                        job.update(
+                            message=f"Successfully converted {filename} to H.265",
+                            detailed_status=f"Converted {i+1}/{total_files} files"
+                        )
                 else:
                     logger.error(f"Failed to convert {video}, return code: {process.returncode}")
                     if job:
-                        job.update(message=f"Failed to convert {filename}, return code: {process.returncode}")
+                        job.update(
+                            message=f"Failed to convert {filename}, return code: {process.returncode}",
+                            detailed_status=f"Error converting {filename}"
+                        )
                     if os.path.exists(temp_file):
                         os.remove(temp_file)
                 
             except subprocess.SubprocessError as e:
                 logger.error(f"Failed to convert {video}: {e}")
                 if job:
-                    job.update(message=f"Failed to convert {filename}: {str(e)}")
+                    job.update(
+                        message=f"Failed to convert {filename}: {str(e)}",
+                        detailed_status=f"Error converting {filename}"
+                    )
                 if os.path.exists(temp_file):
                     os.remove(temp_file)
         
         if job:
-            job.update(progress=100, message="Video conversion completed")
+            job.update(
+                progress=100,
+                stage_progress=100,
+                detailed_status="Video conversion completed",
+                message="Video conversion completed"
+            )
     
     def generate_artwork(self, folder: str, show_name: str, season_num: str, job_id: str) -> None:
         """Generate thumbnails, TV show and season artwork."""
@@ -484,18 +769,30 @@ class YTToJellyfin:
         # Generate episode thumbnails
         videos = list(Path(folder).glob(f'*S{season_num}E*.mp4'))
         for i, video in enumerate(videos):
-            thumb = f"{str(video).rsplit('.', 1)[0]}-thumb.jpg"
+            # Get the video file path without extension
+            video_base = str(video).rsplit('.', 1)[0]
+            
+            # Get the basename without path
+            basename = os.path.basename(video_base)
+            
+            # Check if filename cleaning is enabled
+            if self.config.get('clean_filenames', True):
+                # Clean the filename (replace underscores with spaces)
+                basename = self.clean_filename(basename)
+                
+            # Create thumb path with the potentially cleaned filename
+            thumb_path = os.path.join(os.path.dirname(video_base), f"{basename}-thumb.jpg")
             
             try:
                 subprocess.run([
                     'ffmpeg', '-ss', '00:01:30', '-i', str(video),
-                    '-vframes', '1', '-q:v', '2', thumb
+                    '-vframes', '1', '-q:v', '2', thumb_path
                 ], check=True, capture_output=True)
-                logger.info(f"Generated thumbnail: {thumb}")
+                logger.info(f"Generated thumbnail: {thumb_path}")
                 
                 if job and videos:
                     progress = int((i + 1) / len(videos) * 30)  # Thumbnails are 30% of artwork work
-                    job.update(progress=progress, message=f"Generated thumbnail for {os.path.basename(str(video))}")
+                    job.update(progress=progress, message=f"Generated thumbnail for {basename}")
                     
             except subprocess.CalledProcessError:
                 logger.error(f"Failed to generate thumbnail for {video}")
@@ -614,6 +911,172 @@ class YTToJellyfin:
         if job:
             job.update(progress=100, message="Created NFO files")
     
+    def copy_to_jellyfin(self, show_name: str, season_num: str, job_id: str) -> None:
+        """Copy processed media files to Jellyfin TV folder."""
+        if not self.config.get('jellyfin_enabled', False):
+            logger.info("Jellyfin integration disabled, skipping file copy")
+            return
+            
+        jellyfin_tv_path = self.config.get('jellyfin_tv_path', '')
+        if not jellyfin_tv_path:
+            logger.error("Jellyfin TV path not configured, skipping file copy")
+            return
+            
+        job = self.jobs.get(job_id)
+        if job:
+            job.update(
+                status="copying_to_jellyfin",
+                stage="copying_to_jellyfin",
+                progress=95,
+                detailed_status="Copying files to Jellyfin TV folder",
+                message="Starting copy to Jellyfin TV folder"
+            )
+        
+        # Sanitize show name for folder path
+        sanitized_show = self.sanitize_name(show_name)
+        
+        # Source folder in our media directory
+        source_folder = Path(self.config['output_dir']) / sanitized_show / f"Season {season_num}"
+        
+        # Destination folder in Jellyfin TV directory
+        dest_show_folder = Path(jellyfin_tv_path) / sanitized_show
+        dest_season_folder = dest_show_folder / f"Season {season_num}"
+        
+        if not os.path.exists(dest_show_folder):
+            try:
+                os.makedirs(dest_show_folder, exist_ok=True)
+                logger.info(f"Created show folder at {dest_show_folder}")
+                if job:
+                    job.update(message=f"Created show folder at {dest_show_folder}")
+            except OSError as e:
+                logger.error(f"Failed to create Jellyfin show folder: {e}")
+                if job:
+                    job.update(message=f"Error: Failed to create Jellyfin show folder: {e}")
+                return
+        
+        if not os.path.exists(dest_season_folder):
+            try:
+                os.makedirs(dest_season_folder, exist_ok=True)
+                logger.info(f"Created season folder at {dest_season_folder}")
+                if job:
+                    job.update(message=f"Created season folder at {dest_season_folder}")
+            except OSError as e:
+                logger.error(f"Failed to create Jellyfin season folder: {e}")
+                if job:
+                    job.update(message=f"Error: Failed to create Jellyfin season folder: {e}")
+                return
+        
+        # Copy all media and metadata files
+        try:
+            # Get list of files to copy
+            media_files = list(source_folder.glob("*.mp4"))
+            nfo_files = list(source_folder.glob("*.nfo"))
+            jpg_files = list(source_folder.glob("*.jpg"))
+            all_files = media_files + nfo_files + jpg_files
+            
+            total_files = len(all_files)
+            if job:
+                job.update(
+                    total_files=total_files,
+                    processed_files=0,
+                    detailed_status=f"Copying {total_files} files to Jellyfin"
+                )
+            
+            # Copy each file
+            for i, file_path in enumerate(all_files):
+                dest_file = dest_season_folder / file_path.name
+                
+                # Skip if file already exists and is identical size
+                if os.path.exists(dest_file) and os.path.getsize(dest_file) == os.path.getsize(file_path):
+                    logger.info(f"Skipping {file_path.name} - already exists and same size")
+                    if job:
+                        job.update(
+                            processed_files=i+1,
+                            message=f"Skipped {file_path.name} - already exists"
+                        )
+                    continue
+                
+                # Copy the file
+                shutil.copy2(file_path, dest_file)
+                logger.info(f"Copied {file_path.name} to Jellyfin")
+                
+                if job:
+                    job.update(
+                        processed_files=i+1,
+                        file_name=file_path.name,
+                        stage_progress=int((i+1)/total_files*100),
+                        detailed_status=f"Copying: {file_path.name} ({i+1}/{total_files})",
+                        message=f"Copied {file_path.name} to Jellyfin TV folder"
+                    )
+            
+            # Also copy show-level files (tvshow.nfo, poster.jpg, fanart.jpg)
+            show_files = [
+                (Path(self.config['output_dir']) / sanitized_show / "tvshow.nfo", dest_show_folder / "tvshow.nfo"),
+                (Path(self.config['output_dir']) / sanitized_show / "poster.jpg", dest_show_folder / "poster.jpg"),
+                (Path(self.config['output_dir']) / sanitized_show / "fanart.jpg", dest_show_folder / "fanart.jpg")
+            ]
+            
+            for source, dest in show_files:
+                if source.exists():
+                    shutil.copy2(source, dest)
+                    logger.info(f"Copied show file {source.name} to Jellyfin")
+                    if job:
+                        job.update(message=f"Copied {source.name} to Jellyfin")
+            
+            if job:
+                job.update(
+                    progress=98,
+                    stage_progress=100,
+                    detailed_status="Copy to Jellyfin completed",
+                    message="Successfully copied all files to Jellyfin TV folder"
+                )
+                
+            # Trigger Jellyfin library scan (if API key provided)
+            if self.config.get('jellyfin_api_key') and self.config.get('jellyfin_host'):
+                self.trigger_jellyfin_scan(job_id)
+            
+        except (IOError, shutil.Error) as e:
+            logger.error(f"Error copying files to Jellyfin: {e}")
+            if job:
+                job.update(message=f"Error copying files to Jellyfin: {e}")
+    
+    def trigger_jellyfin_scan(self, job_id: str) -> None:
+        """Trigger a library scan in Jellyfin using the API."""
+        job = self.jobs.get(job_id)
+        if job:
+            job.update(
+                detailed_status="Triggering Jellyfin library scan",
+                message="Triggering Jellyfin library scan"
+            )
+            
+        api_key = self.config.get('jellyfin_api_key', '')
+        host = self.config.get('jellyfin_host', '')
+        port = self.config.get('jellyfin_port', '8096')
+        
+        if not api_key or not host:
+            logger.warning("Jellyfin API key or host not set, skipping library scan")
+            return
+            
+        url = f"http://{host}:{port}/Library/Refresh?api_key={api_key}"
+        
+        try:
+            import requests
+            response = requests.post(url, timeout=10)
+            
+            if response.status_code in (200, 204):
+                logger.info("Successfully triggered Jellyfin library scan")
+                if job:
+                    job.update(message="Successfully triggered Jellyfin library scan")
+            else:
+                logger.warning(f"Failed to trigger Jellyfin scan: {response.status_code} {response.text}")
+                if job:
+                    job.update(message=f"Failed to trigger Jellyfin scan: HTTP {response.status_code}")
+                    
+        except Exception as e:
+            logger.error(f"Error triggering Jellyfin scan: {e}")
+            if job:
+                job.update(message=f"Error triggering Jellyfin scan: {str(e)}")
+    
     def cleanup(self) -> None:
         """Clean up temporary files."""
         shutil.rmtree(self.temp_dir, ignore_errors=True)
@@ -649,6 +1112,10 @@ class YTToJellyfin:
             self.convert_video_files(folder, job.season_num, job_id)
             self.generate_artwork(folder, job.show_name, job.season_num, job_id)
             self.create_nfo_files(folder, job.show_name, job.season_num, job_id)
+            
+            # Copy to Jellyfin if enabled
+            if self.config.get('jellyfin_enabled', False) and self.config.get('jellyfin_tv_path'):
+                self.copy_to_jellyfin(job.show_name, job.season_num, job_id)
             
             job.update(status="completed", progress=100, message="Job completed successfully")
             logger.info(f"Job {job_id} completed successfully")
@@ -807,8 +1274,29 @@ def media():
 def config():
     """Get or update configuration."""
     if request.method == 'PUT':
-        # Update configuration - implement if needed
-        return jsonify({"error": "Not implemented"}), 501
+        # Get updated configuration from request
+        new_config = request.json
+        if new_config:
+            # Update allowed configuration settings
+            allowed_keys = [
+                'output_dir', 'quality', 'use_h265', 'crf', 'web_port', 
+                'completed_jobs_limit', 'jellyfin_enabled', 'jellyfin_tv_path',
+                'jellyfin_host', 'jellyfin_port', 'jellyfin_api_key'
+            ]
+            
+            # Update only allowed keys
+            for key in allowed_keys:
+                if key in new_config:
+                    if key in ['jellyfin_enabled', 'use_h265']:
+                        ytj.config[key] = new_config[key] is True
+                    elif key in ['crf', 'web_port', 'completed_jobs_limit']:
+                        ytj.config[key] = int(new_config[key])
+                    else:
+                        ytj.config[key] = new_config[key]
+            
+            return jsonify({"success": True, "message": "Configuration updated"})
+        
+        return jsonify({"error": "Invalid configuration data"}), 400
     else:
         # Get configuration
         safe_config = {k: v for k, v in ytj.config.items() if k not in ('cookies')}

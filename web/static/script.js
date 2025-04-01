@@ -93,6 +93,28 @@ document.addEventListener('DOMContentLoaded', function() {
     // Settings Form Submission
     const settingsForm = document.getElementById('settings-form');
     if (settingsForm) {
+        // Toggle Jellyfin settings visibility based on enabled state
+        const jellyfinEnabled = document.getElementById('jellyfin_enabled');
+        const jellyfinSettings = document.querySelectorAll('.jellyfin-settings');
+        
+        function toggleJellyfinSettings() {
+            const isEnabled = jellyfinEnabled.checked;
+            jellyfinSettings.forEach(el => {
+                if (isEnabled) {
+                    el.style.display = 'flex';
+                } else {
+                    el.style.display = 'none';
+                }
+            });
+        }
+        
+        // Set initial state
+        toggleJellyfinSettings();
+        
+        // Add event listener for toggle
+        jellyfinEnabled.addEventListener('change', toggleJellyfinSettings);
+        
+        // Form submission handler
         settingsForm.addEventListener('submit', function(e) {
             e.preventDefault();
             
@@ -101,9 +123,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 cookies_path: document.getElementById('cookies_path').value,
                 quality: document.getElementById('default_quality').value,
                 use_h265: document.getElementById('default_use_h265').checked,
+                clean_filenames: document.getElementById('clean_filenames').checked,
                 crf: document.getElementById('default_crf').value,
                 web_port: document.getElementById('web_port').value,
-                completed_jobs_limit: document.getElementById('completed_jobs_limit').value
+                completed_jobs_limit: document.getElementById('completed_jobs_limit').value,
+                // Jellyfin settings
+                jellyfin_enabled: document.getElementById('jellyfin_enabled').checked,
+                jellyfin_tv_path: document.getElementById('jellyfin_tv_path').value,
+                jellyfin_host: document.getElementById('jellyfin_host').value,
+                jellyfin_port: document.getElementById('jellyfin_port').value,
+                jellyfin_api_key: document.getElementById('jellyfin_api_key').value
             };
             
             // Send request to update settings
@@ -235,19 +264,46 @@ function updateJobsTable(jobs) {
         // Status badge
         const statusClass = getStatusBadgeClass(job.status);
         
+        // Additional status info
+        let statusInfo = '';
+        if (job.current_stage && job.current_stage !== job.status && job.current_stage !== 'waiting') {
+            statusInfo = `<br><small>${job.detailed_status || ''}</small>`;
+        }
+        
+        // Progress display
+        let progressDisplay = `
+            <div class="progress">
+                <div class="progress-bar" role="progressbar" style="width: ${job.progress}%" 
+                    aria-valuenow="${job.progress}" aria-valuemin="0" aria-valuemax="100">
+                    ${Math.round(job.progress)}%
+                </div>
+            </div>
+        `;
+        
+        // Add file progress display if available
+        if (job.total_files && job.total_files > 0) {
+            progressDisplay += `
+                <small class="d-block mt-1 text-muted">
+                    ${job.processed_files || 0} / ${job.total_files} files
+                </small>
+            `;
+        }
+        
+        // Add current file if available
+        if (job.current_file && job.status !== 'completed' && job.status !== 'failed') {
+            progressDisplay += `
+                <small class="d-block text-truncate" style="max-width: 200px;" title="${job.current_file}">
+                    ${job.current_file}
+                </small>
+            `;
+        }
+        
         row.innerHTML = `
             <td title="${job.job_id}">${shortId}...</td>
             <td>${job.show_name}</td>
             <td>${job.season_num}</td>
-            <td><span class="badge ${statusClass}">${job.status}</span></td>
-            <td>
-                <div class="progress">
-                    <div class="progress-bar" role="progressbar" style="width: ${job.progress}%" 
-                        aria-valuenow="${job.progress}" aria-valuemin="0" aria-valuemax="100">
-                        ${job.progress}%
-                    </div>
-                </div>
-            </td>
+            <td><span class="badge ${statusClass}">${job.status}</span>${statusInfo}</td>
+            <td>${progressDisplay}</td>
             <td>${formatDate(job.created_at)}</td>
             <td>
                 <button class="btn btn-sm btn-info view-job" data-job-id="${job.job_id}">
@@ -302,9 +358,74 @@ function updateJobDetailModal(job) {
     urlElem.textContent = job.playlist_url;
     urlElem.href = job.playlist_url;
     
-    const progressBar = document.getElementById('detail-progress-bar');
-    progressBar.style.width = `${job.progress}%`;
-    progressBar.textContent = `${job.progress}%`;
+    // Update detailed status elements
+    const stageIcons = {
+        'waiting': 'bi-hourglass',
+        'downloading': 'bi-cloud-download',
+        'processing_metadata': 'bi-file-earmark-text',
+        'converting': 'bi-film',
+        'generating_artwork': 'bi-images',
+        'creating_nfo': 'bi-filetype-xml',
+        'completed': 'bi-check-circle',
+        'failed': 'bi-exclamation-triangle'
+    };
+    
+    const stageNames = {
+        'waiting': 'Waiting',
+        'downloading': 'Downloading',
+        'processing_metadata': 'Processing Metadata',
+        'converting': 'Converting Video',
+        'generating_artwork': 'Generating Artwork',
+        'creating_nfo': 'Creating NFO Files',
+        'completed': 'Completed',
+        'failed': 'Failed'
+    };
+    
+    // Set stage icon
+    const stageIcon = document.getElementById('detail-stage-icon');
+    const iconClass = stageIcons[job.current_stage] || 'bi-arrow-repeat';
+    stageIcon.innerHTML = `<i class="bi ${iconClass}"></i>`;
+    
+    // Set stage name
+    const stageName = document.getElementById('detail-stage-name');
+    stageName.textContent = stageNames[job.current_stage] || 'Processing';
+    
+    // Set status text
+    const statusText = document.getElementById('detail-status-text');
+    statusText.textContent = job.detailed_status || 'Working on files...';
+    
+    // Set file progress
+    document.getElementById('detail-file-progress').textContent = job.processed_files || 0;
+    document.getElementById('detail-file-total').textContent = job.total_files || 0;
+    
+    // Set current file
+    document.getElementById('detail-current-file').textContent = job.current_file || '';
+    
+    // Update progress bars
+    const mainProgressBar = document.getElementById('detail-progress-bar');
+    mainProgressBar.style.width = `${job.progress}%`;
+    mainProgressBar.textContent = `${Math.round(job.progress)}%`;
+    
+    const stageProgressBar = document.getElementById('detail-stage-progress-bar');
+    stageProgressBar.style.width = `${job.stage_progress}%`;
+    stageProgressBar.textContent = `${Math.round(job.stage_progress)}%`;
+    
+    // Update alert color based on status
+    const alertElement = document.querySelector('.alert');
+    
+    // Remove existing status classes
+    alertElement.classList.remove('alert-info', 'alert-success', 'alert-warning', 'alert-danger');
+    
+    // Add appropriate class based on job status
+    if (job.status === 'completed') {
+        alertElement.classList.add('alert-success');
+    } else if (job.status === 'failed') {
+        alertElement.classList.add('alert-danger');
+    } else if (job.status === 'queued') {
+        alertElement.classList.add('alert-warning');
+    } else {
+        alertElement.classList.add('alert-info');
+    }
     
     // Update log messages
     const logContainer = document.getElementById('detail-log');
@@ -437,10 +558,25 @@ function loadSettings() {
             document.getElementById('output_dir').value = config.output_dir || '';
             document.getElementById('default_quality').value = config.quality || '1080';
             document.getElementById('default_use_h265').checked = config.use_h265 !== false;
+            document.getElementById('clean_filenames').checked = config.clean_filenames !== false;
             document.getElementById('default_crf').value = config.crf || 28;
             document.getElementById('default-crf-value').textContent = config.crf || 28;
             document.getElementById('web_port').value = config.web_port || 8000;
             document.getElementById('completed_jobs_limit').value = config.completed_jobs_limit || 10;
+            
+            // Jellyfin settings
+            const jellyfinEnabled = document.getElementById('jellyfin_enabled');
+            jellyfinEnabled.checked = config.jellyfin_enabled === true;
+            document.getElementById('jellyfin_tv_path').value = config.jellyfin_tv_path || '';
+            document.getElementById('jellyfin_host').value = config.jellyfin_host || '';
+            document.getElementById('jellyfin_port').value = config.jellyfin_port || '8096';
+            document.getElementById('jellyfin_api_key').value = config.jellyfin_api_key || '';
+            
+            // Trigger the toggle to show/hide Jellyfin settings
+            if (jellyfinEnabled) {
+                const event = new Event('change');
+                jellyfinEnabled.dispatchEvent(event);
+            }
         })
         .catch(error => {
             console.error('Error fetching config:', error);

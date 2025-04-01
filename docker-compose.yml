@@ -14,8 +14,15 @@ services:
       - VIDEO_QUALITY=1080
       - USE_H265=true
       - CRF=28
+      - CLEAN_FILENAMES=true
       - WEB_ENABLED=true
       - WEB_PORT=8000
       - WEB_HOST=0.0.0.0
+      # Jellyfin integration settings
+      - JELLYFIN_ENABLED=false
+      - JELLYFIN_TV_PATH=/path/to/jellyfin/tv
+      - JELLYFIN_HOST=localhost
+      - JELLYFIN_PORT=8096
+      - JELLYFIN_API_KEY=
     # Command to run only the web interface
     command: --web-only

@@ -10,6 +10,8 @@ A Python application that downloads YouTube playlists and processes them to work
 - **Episode Renumbering**: Set custom starting episode numbers for proper sequencing
 - **H.265 Conversion**: Convert videos to H.265 for better compression and playback performance
 - **Artwork Generation**: Auto-generate show posters, season artwork, and episode thumbnails
+- **Filename Cleaning**: Automatically replaces underscores with spaces in filenames for better readability
+- **Direct Jellyfin Integration**: Optional direct copy to Jellyfin TV library and library scan trigger
 - **Docker Support**: Run as a container in your arr stack or standalone
 - **Environment Configuration**: Easily customize behavior with environment variables
 - **Job Management**: Track download progress and manage multiple concurrent downloads
@@ -108,6 +110,7 @@ You can configure it by editing the `docker-compose.yml` file and the `config/co
 | VIDEO_QUALITY | Maximum video height (720, 1080, etc.) | 1080 |
 | USE_H265 | Enable H.265 conversion | true |
 | CRF | Compression quality (lower = better quality, larger files) | 28 |
+| CLEAN_FILENAMES | Replace underscores with spaces in filenames | true |
 | YTDLP_PATH | Path to yt-dlp executable | yt-dlp |
 | COOKIES_PATH | Path to cookies file (optional) | |
 | WEB_ENABLED | Enable the web interface | true |
@@ -115,8 +118,26 @@ You can configure it by editing the `docker-compose.yml` file and the `config/co
 | WEB_HOST | Host for the web interface (0.0.0.0 for all interfaces) | 0.0.0.0 |
 | COMPLETED_JOBS_LIMIT | Number of completed jobs to keep in history | 10 |
 | CONFIG_FILE | Path to configuration file | config/config.yml |
+| JELLYFIN_ENABLED | Enable direct Jellyfin integration | false |
+| JELLYFIN_TV_PATH | Path to Jellyfin TV library folder | |
+| JELLYFIN_HOST | Jellyfin server hostname/IP | |
+| JELLYFIN_PORT | Jellyfin server port | 8096 |
+| JELLYFIN_API_KEY | Jellyfin API key for triggering library scan (optional) | |
 
 ## Integrating with Jellyfin
+
+### Method 1: Direct Integration (Recommended)
+
+Enable the direct Jellyfin integration feature to automatically copy files to your Jellyfin library:
+
+1. In the web interface, go to "Settings" and enable "Jellyfin integration"
+2. Set the "Jellyfin TV Library Path" to the path of your Jellyfin TV library folder
+3. Optionally provide Jellyfin server details to trigger a library scan after copy
+4. Start a new download job and files will be automatically copied to your Jellyfin library
+
+### Method 2: Manual Integration
+
+If you prefer to manage the files manually:
 
 1. Make sure your videos are saved to a location Jellyfin can access
 2. In Jellyfin, add a new TV Shows library pointing to your output directory

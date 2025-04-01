@@ -6,6 +6,7 @@ media:
   quality: 1080  # Maximum video height
   use_h265: true
   crf: 28  # Lower = better quality but larger files
+  clean_filenames: true  # Replace underscores with spaces in filenames
 
 # Optional Settings
 cookies_path: /config/cookies.txt  # Optional cookies file for authenticated content
@@ -19,6 +20,14 @@ web:
 
 # Job Settings
 completed_jobs_limit: 10
+
+# Jellyfin Integration Settings
+jellyfin:
+  enabled: false
+  tv_path: /path/to/jellyfin/tv  # Full path to your Jellyfin TV folder
+  host: localhost
+  port: 8096
+  api_key: ""  # Optional: API key for triggering library scan
 
 # Default startup options - override with command parameters
 defaults:
