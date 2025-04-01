@@ -16,6 +16,8 @@ A Python application that downloads YouTube playlists and processes them to work
 - **Environment Configuration**: Easily customize behavior with environment variables
 - **Job Management**: Track download progress and manage multiple concurrent downloads
 
+![image](https://github.com/user-attachments/assets/ebaf7de6-0f40-42fa-93ee-eeabc10eeec4)
+
 ## Installation
 
 ### Option 1: Python (local)
