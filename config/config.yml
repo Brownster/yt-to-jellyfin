@@ -2,7 +2,7 @@
 
 # Media Settings
 media:
-  output_dir: /media
+  output_dir: ./media
   quality: 1080  # Maximum video height
   use_h265: true
   crf: 28  # Lower = better quality but larger files
