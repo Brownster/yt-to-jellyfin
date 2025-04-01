@@ -1,99 +1,187 @@
-YouTube Playlist to Kodi/Jellyfin Episodes
+# YouTube to Jellyfin
 
-A Bash script that leverages yt-dlp to download an entire YouTube playlist and then postprocesses each video to work as TV show episodes in Kodi or Jellyfin. This script downloads videos, generates matching NFO metadata files, renames episodes to kodi supported season/episode numbering scheme, creates tv show and season artwork, converts the videos to H.265 for optimized playback with reduced file size.
+A Python application that downloads YouTube playlists and processes them to work perfectly with Jellyfin/Kodi media servers. It downloads videos, generates matching NFO metadata files, renames episodes according to TV show conventions, creates artwork, and optionally converts videos to H.265 for optimized playback and reduced file size.
 
-Features
+## Features
 
-    Automated Downloads:
-    Download entire YouTube playlists with a single command using yt-dlp.
+- **Web Interface**: Modern web dashboard to manage downloads, view progress, and manage media
+- **Automated Downloads**: Download entire YouTube playlists with a single command using yt-dlp
+- **Proper Metadata**: Generate NFO files that Jellyfin uses to display episode details
+- **Episode Renumbering**: Set custom starting episode numbers for proper sequencing
+- **H.265 Conversion**: Convert videos to H.265 for better compression and playback performance
+- **Artwork Generation**: Auto-generate show posters, season artwork, and episode thumbnails
+- **Docker Support**: Run as a container in your arr stack or standalone
+- **Environment Configuration**: Easily customize behavior with environment variables
+- **Job Management**: Track download progress and manage multiple concurrent downloads
 
-    Metadata Extraction:
-    Extract episode titles, descriptions, and upload dates using jq from the downloaded JSON metadata.
+## Installation
 
-    NFO File Generation:
-    Create NFO files that Kodi and Jellyfin can use to display episode details (title, season, episode, plot, aired date, studio, and show title).
+### Option 1: Python (local)
 
-    Episode Renumbering:
-    Easily set a custom starting episode number so that your episodes are correctly sequenced.
+1. **Clone the repository**:
+   ```
+   git clone https://github.com/Brownster/yt-to-jellyfin.git
+   cd yt-to-jellyfin
+   ```
 
-    H.265 Conversion:
-    Batch convert your downloaded MP4 files to H.265 using ffmpeg for better compression and playback performance.
+2. **Install dependencies**:
+   ```
+   pip install -r requirements.txt
+   ```
 
-    Cross-Platform Compatibility:
-    Handles date formatting differences between macOS and Linux.
+3. **Install system dependencies**:
+   - yt-dlp: Download from https://github.com/yt-dlp/yt-dlp/releases
+   - ffmpeg
+   - ImageMagick (for convert and montage commands)
 
-Dependencies
+### Option 2: Docker
 
-Ensure you have the following installed before running the script:
+1. **Clone the repository**:
+   ```
+   git clone https://github.com/Brownster/yt-to-jellyfin.git
+   cd yt-to-jellyfin
+   ```
 
-    https://github.com/yt-dlp/yt-dlp/releases
-    yt-dlp (Place the executable in the same folder as the script or in your PATH)
-    jq
-    ffmpeg
+2. **Edit docker-compose.yml** to set your desired parameters
 
-You can verify your installations by running:
+3. **Run with Docker Compose**:
+   ```
+   docker-compose up -d
+   ```
 
-command -v ./yt-dlp
-command -v jq
-command -v ffmpeg
+## Usage
 
-Installation
+### Web Interface
 
-    Clone the Repository:
+The application includes a modern web interface to manage your downloads and media library. By default, it runs on port 8000.
 
-git clone https://github.com/Brownster/yt-to-jellyfin.git
-cd yt-to-jellyfin
+**Accessing the Web Interface**:
+- When running locally: http://localhost:8000
+- When running in Docker: http://localhost:8000 (or your server IP)
 
-Make the Script Executable:
+**Features**:
+- Dashboard with stats and recent activity
+- Add new YouTube playlist downloads
+- Track download progress and view logs
+- Browse your media library
+- Configure application settings
 
-    chmod +x download_playlist.sh
+### Python Application
 
-    Download yt-dlp Locally:
+```
+# Run the web interface only:
+python app.py --web-only
 
-    Download the latest executable from the yt-dlp releases and place it in the project directory.
+# Download a playlist via command line:
+python app.py <YouTube Playlist URL> <TV Show Name> <Season Number> <Episode Start Number> [options]
+```
 
-Usage
+**Example**:
+```
+python app.py "https://youtube.com/playlist?list=PLtUoAptE--3xzuDjW-7nwVbinG3GyY6JW" "Off The Hook" 01 01
+```
 
-Run the script with the following parameters:
+**Options**:
+- `--web-only`: Start only the web interface
+- `--output-dir`: Output directory (default: ./media)
+- `--quality`: Video quality height (default: 1080)
+- `--no-h265`: Disable H.265 conversion
+- `--crf`: CRF value for H.265 conversion (default: 28)
+- `--config`: Path to config file
 
-./download_playlist.sh <YouTube Playlist URL> <TV Show Name> <Season Number> <Episode Start Number>
+### Docker
 
-Example
+The Docker container will automatically start the web interface on port 8000. You can access it at http://localhost:8000.
 
-To download a playlist for the TV show "Off The Hook" (Season 01 starting at episode 01), run:
+To run:
+```
+docker-compose up -d
+```
 
-./download_playlist.sh "https://youtube.com/playlist?list=PLtUoAptE--3xzuDjW-7nwVbinG3GyY6JW&si=7EQ2A9WpbbVCnMrv" "Off The Hook" 01 01
+You can configure it by editing the `docker-compose.yml` file and the `config/config.yml` file.
 
-The script will:
+### Environment Variables
 
-    Download each video and corresponding metadata.
-    Rename the files to follow the naming pattern:
+| Variable | Description | Default |
+|----------|-------------|---------|
+| OUTPUT_DIR | Directory to store downloaded media | ./media |
+| VIDEO_QUALITY | Maximum video height (720, 1080, etc.) | 1080 |
+| USE_H265 | Enable H.265 conversion | true |
+| CRF | Compression quality (lower = better quality, larger files) | 28 |
+| YTDLP_PATH | Path to yt-dlp executable | yt-dlp |
+| COOKIES_PATH | Path to cookies file (optional) | |
+| WEB_ENABLED | Enable the web interface | true |
+| WEB_PORT | Port for the web interface | 8000 |
+| WEB_HOST | Host for the web interface (0.0.0.0 for all interfaces) | 0.0.0.0 |
+| COMPLETED_JOBS_LIMIT | Number of completed jobs to keep in history | 10 |
+| CONFIG_FILE | Path to configuration file | config/config.yml |
 
-    Off The Hook/Season 01/<video title> S01E<episode number>.<ext>
+## Integrating with Jellyfin
 
-    Generate an NFO file for each episode with the metadata Kodi/Jellyfin require.
-    Convert the downloaded MP4 files to H.265 (overwriting the originals) for improved compression.
+1. Make sure your videos are saved to a location Jellyfin can access
+2. In Jellyfin, add a new TV Shows library pointing to your output directory
+3. Set the metadata provider to "Local metadata only" to use the generated NFO files
+4. Scan the library, and your shows will appear with proper metadata and artwork
 
+## Testing
 
-Contributing
+The application includes a comprehensive test suite to verify functionality.
+
+### Running Tests
+
+Use the included test runner to execute tests:
+
+```bash
+# Run all tests
+python run_tests.py
+
+# Run specific test types
+python run_tests.py --type basic     # Basic functionality tests
+python run_tests.py --type api       # Web API endpoint tests
+python run_tests.py --type job       # Job management tests
+python run_tests.py --type integration # Integration tests
+python run_tests.py --type web       # Web UI tests (requires webdriver)
+```
+
+### Test Structure
+
+- `tests/test_basic.py` - Basic functionality tests
+- `tests/test_api.py` - Tests for REST API endpoints
+- `tests/test_job_management.py` - Tests for job management system
+- `tests/test_integration.py` - Integration tests for full workflow
+- `tests/web/test_frontend.py` - Web UI tests (requires Selenium webdriver)
+
+### Continuous Integration
+
+This project uses GitHub Actions for continuous integration:
+
+- **Run Tests**: Runs the test suite on every commit and pull request
+- **Docker Build**: Verifies that the Docker image builds and runs correctly when changes are made to Docker-related files
+
+The CI workflows ensure that:
+1. All tests pass on multiple Python versions
+2. The application builds and runs successfully in Docker
+3. Dependencies are automatically kept up-to-date with Dependabot
+
+## Contributing
 
 Contributions, issues, and feature requests are welcome! Feel free to check the issues page.
 
-    Fork the repository.
-    Create your feature branch: git checkout -b feature/my-new-feature
-    Commit your changes: git commit -am 'Add some feature'
-    Push to the branch: git push origin feature/my-new-feature
-    Open a pull request.
+1. Fork the repository
+2. Create your feature branch: `git checkout -b feature/my-new-feature`
+3. Commit your changes: `git commit -am 'Add some feature'`
+4. Push to the branch: `git push origin feature/my-new-feature`
+5. Open a pull request
 
-License
+When contributing, please ensure that new code is covered by tests.
 
-Distributed under the MIT License. See LICENSE for more information.
-Acknowledgements
+## License
 
-    yt-dlp for the awesome video downloading capabilities.
-    ffmpeg for video processing.
-    jq for easy JSON parsing.
-    Inspiration from numerous media center integration projects.
+Distributed under the MIT License. See `LICENSE` for more information.
 
-Happy Downloading and Enjoy Your Media!
-Feel free to open an issue or contact me for any questions.
+## Acknowledgements
+
+- yt-dlp for video downloading capabilities
+- ffmpeg for video processing
+- ImageMagick for artwork generation
+- Jellyfin/Kodi for the amazing media servers

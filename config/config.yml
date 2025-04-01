@@ -1,0 +1,27 @@
+# YT-to-Jellyfin Configuration
+
+# Media Settings
+media:
+  output_dir: /media
+  quality: 1080  # Maximum video height
+  use_h265: true
+  crf: 28  # Lower = better quality but larger files
+
+# Optional Settings
+cookies_path: /config/cookies.txt  # Optional cookies file for authenticated content
+
+# Web Interface Settings
+web:
+  enabled: true
+  port: 8000
+  host: 0.0.0.0  # 0.0.0.0 allows access from any IP
+
+# Job Settings
+completed_jobs_limit: 10
+
+# Default startup options - override with command parameters
+defaults:
+  playlist_url: ""
+  show_name: ""
+  season_num: "01"
+  episode_start: "01"

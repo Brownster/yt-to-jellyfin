@@ -1,0 +1,21 @@
+version: '3'
+
+services:
+  yt-to-jellyfin:
+    build: .
+    container_name: yt-to-jellyfin
+    volumes:
+      - ./media:/media
+      - ./config:/config
+    ports:
+      - "8000:8000"
+    environment:
+      - OUTPUT_DIR=/media
+      - VIDEO_QUALITY=1080
+      - USE_H265=true
+      - CRF=28
+      - WEB_ENABLED=true
+      - WEB_PORT=8000
+      - WEB_HOST=0.0.0.0
+    # Command to run only the web interface
+    command: --web-only
