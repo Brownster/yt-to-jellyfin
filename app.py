@@ -528,7 +528,8 @@ class YTToJellyfin:
             
             # Create base filename for renaming
             base_file = str(json_file).replace('.info.json', '')
-            new_base = re.sub(rf'(S{season_num}E)[0-9]+', f'\\1{new_ep_padded}', base_file)
+            # Use a lambda function for replacement to avoid issues with backslash handling
+            new_base = re.sub(rf'(S{season_num}E)[0-9]+', lambda m: f"{m.group(1)}{new_ep_padded}", base_file)
             file_name = os.path.basename(new_base)
             
             if job:
