@@ -304,10 +304,21 @@ class YTToJellyfin:
             # Trim whitespace
             parts[0] = parts[0].strip()
         
-        # Reassemble the filename with the episode identifier
+        # Reassemble the filename with the episode identifier, ensuring proper spacing
         result = ""
         for i, part in enumerate(parts):
-            result += part
+            if i > 0 and i % 2 == 1 and parts[i-1] and not parts[i-1].endswith(' '):
+                # This is an episode identifier (S01E01) and previous part doesn't end with space
+                result += " " + part
+            else:
+                result += part
+        
+        # Handle case where episode identifier is at start (unlikely but possible)
+        if result.startswith("S") and re.match(r'^S\d+E\d+', result) and len(parts) > 1:
+            # Add space after episode identifier if next part doesn't start with space
+            if not parts[1].startswith(' '):
+                episode_end = re.match(r'^S\d+E\d+', result).end()
+                result = result[:episode_end] + " " + result[episode_end:]
         
         return result
     
@@ -529,7 +540,8 @@ class YTToJellyfin:
             # Create base filename for renaming
             base_file = str(json_file).replace('.info.json', '')
             # Use a lambda function for replacement to avoid issues with backslash handling
-            new_base = re.sub(rf'(S{season_num}E)[0-9]+', lambda m: f"{m.group(1)}{new_ep_padded}", base_file)
+            # Match both with and without spaces before the season identifier
+            new_base = re.sub(rf'(\s?)?(S{season_num}E)[0-9]+', lambda m: f"{m.group(1) or ' '}{m.group(2)}{new_ep_padded}", base_file)
             file_name = os.path.basename(new_base)
             
             if job:
