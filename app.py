@@ -85,12 +85,31 @@ class YTToJellyfin:
     
     def _load_config(self) -> Dict:
         """Load configuration from environment variables or config file."""
+        # Check for a local yt-dlp in the same directory as the script
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        local_ytdlp = os.path.join(script_dir, 'yt-dlp')
+        if os.path.exists(local_ytdlp) and os.access(local_ytdlp, os.X_OK):
+            ytdlp_default = local_ytdlp
+        else:
+            # Look for specific yt-dlp paths
+            specific_paths = [
+                '/home/marc/Documents/yt-dlp/yt-dlp',  # Marc's path
+                '/usr/local/bin/yt-dlp',               # Common Linux path
+                '/usr/bin/yt-dlp'                      # Alternative Linux path
+            ]
+            for path in specific_paths:
+                if os.path.exists(path) and os.access(path, os.X_OK):
+                    ytdlp_default = path
+                    break
+            else:
+                ytdlp_default = 'yt-dlp'
+            
         config = {
             'output_dir': os.environ.get('OUTPUT_DIR', './media'),
             'quality': os.environ.get('VIDEO_QUALITY', '1080'),
             'use_h265': os.environ.get('USE_H265', 'true').lower() == 'true',
             'crf': int(os.environ.get('CRF', '28')),
-            'ytdlp_path': os.environ.get('YTDLP_PATH', 'yt-dlp'),
+            'ytdlp_path': os.environ.get('YTDLP_PATH', ytdlp_default),
             'cookies': os.environ.get('COOKIES_PATH', ''),
             'completed_jobs_limit': int(os.environ.get('COMPLETED_JOBS_LIMIT', '10')),
             'web_enabled': os.environ.get('WEB_ENABLED', 'true').lower() == 'true',
@@ -145,12 +164,29 @@ class YTToJellyfin:
     def check_dependencies(self) -> bool:
         """Check if all required dependencies are installed."""
         dependencies = ['ffmpeg', 'convert', 'montage']
-        if not self.config['ytdlp_path'].startswith('/'):
-            dependencies.append(self.config['ytdlp_path'])
+        
+        # Special handling for yt-dlp
+        ytdlp_path = self.config['ytdlp_path']
+        logger.info(f"Using yt-dlp path: {ytdlp_path}")
+        
+        # If full path is provided, check if file exists and is executable
+        if ytdlp_path.startswith('/'):
+            if not os.path.exists(ytdlp_path):
+                logger.error(f"yt-dlp not found at path: {ytdlp_path}")
+                return False
+            if not os.access(ytdlp_path, os.X_OK):
+                logger.error(f"yt-dlp is not executable: {ytdlp_path}")
+                return False
+            logger.info(f"Found yt-dlp at: {ytdlp_path}")
+        else:
+            # For non-absolute paths, add to dependencies to check in PATH
+            dependencies.append(ytdlp_path)
             
+        # Check other dependencies
         for cmd in dependencies:
             try:
-                subprocess.run(['which', cmd], check=True, capture_output=True)
+                result = subprocess.run(['which', cmd], check=True, capture_output=True, text=True)
+                logger.info(f"Found dependency {cmd} at: {result.stdout.strip()}")
             except subprocess.CalledProcessError:
                 logger.error(f"Required dependency not found: {cmd}")
                 return False
@@ -172,8 +208,19 @@ class YTToJellyfin:
         """Download a YouTube playlist using yt-dlp."""
         output_template = f"{folder}/%(title)s S{season_num}E%(playlist_index)02d.%(ext)s"
         
+        # Get the absolute path for yt-dlp
+        ytdlp_path = self.config['ytdlp_path']
+        if not os.path.isabs(ytdlp_path):
+            # Check if it's in the script directory
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            local_ytdlp = os.path.join(script_dir, ytdlp_path)
+            if os.path.exists(local_ytdlp) and os.access(local_ytdlp, os.X_OK):
+                ytdlp_path = local_ytdlp
+        
+        logger.info(f"Using yt-dlp from: {ytdlp_path}")
+        
         cmd = [
-            self.config['ytdlp_path'],
+            ytdlp_path,
             '--ignore-errors',
             '--no-warnings',
             f'-f bestvideo[height<={self.config["quality"]}]+bestaudio/best[height<={self.config["quality"]}]',

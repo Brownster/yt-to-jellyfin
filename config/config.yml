@@ -2,13 +2,14 @@
 
 # Media Settings
 media:
-  output_dir: /media
+  output_dir: ./media
   quality: 1080  # Maximum video height
   use_h265: true
   crf: 28  # Lower = better quality but larger files
 
 # Optional Settings
 cookies_path: /config/cookies.txt  # Optional cookies file for authenticated content
+ytdlp_path: /home/marc/Documents/yt-dlp/yt-dlp  # Path to your existing yt-dlp
 
 # Web Interface Settings
 web:
