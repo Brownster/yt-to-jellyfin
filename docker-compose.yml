@@ -24,5 +24,7 @@ services:
       - JELLYFIN_HOST=localhost
       - JELLYFIN_PORT=8096
       - JELLYFIN_API_KEY=
+      # Cookies settings - defaults to /config/cookies.txt inside container
+      - COOKIES_PATH=/config/cookies.txt
     # Command to run only the web interface
     command: --web-only

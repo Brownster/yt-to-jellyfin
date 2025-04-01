@@ -155,7 +155,7 @@ class YTToJellyfin:
             'use_h265': os.environ.get('USE_H265', 'true').lower() == 'true',
             'crf': int(os.environ.get('CRF', '28')),
             'ytdlp_path': os.environ.get('YTDLP_PATH', ytdlp_default),
-            'cookies': os.environ.get('COOKIES_PATH', ''),
+            'cookies': '',  # Will set this after checking if file exists
             'completed_jobs_limit': int(os.environ.get('COMPLETED_JOBS_LIMIT', '10')),
             'web_enabled': os.environ.get('WEB_ENABLED', 'true').lower() == 'true',
             'web_port': int(os.environ.get('WEB_PORT', '8000')),
@@ -169,6 +169,13 @@ class YTToJellyfin:
             # Filename cleaning settings
             'clean_filenames': os.environ.get('CLEAN_FILENAMES', 'true').lower() == 'true',
         }
+        
+        # Check if cookies file from environment variable exists
+        cookies_path = os.environ.get('COOKIES_PATH', '')
+        if cookies_path and os.path.exists(cookies_path):
+            config['cookies'] = cookies_path
+        elif cookies_path:
+            logger.warning(f"Cookies file not found at {cookies_path}, ignoring")
         
         # Try to load from config file
         config_file = os.environ.get('CONFIG_FILE', 'config/config.yml')
@@ -194,7 +201,12 @@ class YTToJellyfin:
                     
                     # Handle top-level keys
                     if 'cookies_path' in file_config:
-                        config['cookies'] = file_config['cookies_path']
+                        cookies_path = file_config['cookies_path']
+                        # Check if the cookies path exists
+                        if os.path.exists(cookies_path):
+                            config['cookies'] = cookies_path
+                        else:
+                            logger.warning(f"Cookies file not found at {cookies_path}, ignoring")
                     
                     # Handle defaults
                     if 'defaults' in file_config and isinstance(file_config['defaults'], dict):
@@ -330,11 +342,16 @@ class YTToJellyfin:
             '--restrict-filenames',
             '--merge-output-format', 'mp4',
             '--progress',
+            '--no-cookies-from-browser',  # Don't try to read cookies from browser
             playlist_url
         ]
         
-        if self.config['cookies']:
+        if self.config['cookies'] and os.path.exists(self.config['cookies']):
+            # Only use cookies file if it exists
             cmd.insert(1, f'--cookies={self.config["cookies"]}')
+        else:
+            # Add --no-cookies option to prevent trying to save cookies
+            cmd.insert(1, '--no-cookies')
         
         job = self.jobs.get(job_id)
         if job:
@@ -1281,25 +1298,48 @@ def config():
             allowed_keys = [
                 'output_dir', 'quality', 'use_h265', 'crf', 'web_port', 
                 'completed_jobs_limit', 'jellyfin_enabled', 'jellyfin_tv_path',
-                'jellyfin_host', 'jellyfin_port', 'jellyfin_api_key'
+                'jellyfin_host', 'jellyfin_port', 'jellyfin_api_key', 'clean_filenames'
             ]
             
             # Update only allowed keys
             for key in allowed_keys:
                 if key in new_config:
-                    if key in ['jellyfin_enabled', 'use_h265']:
+                    if key in ['jellyfin_enabled', 'use_h265', 'clean_filenames']:
                         ytj.config[key] = new_config[key] is True
                     elif key in ['crf', 'web_port', 'completed_jobs_limit']:
                         ytj.config[key] = int(new_config[key])
                     else:
                         ytj.config[key] = new_config[key]
+                        
+            # Special handling for cookies_path
+            if 'cookies_path' in new_config:
+                cookies_path = new_config['cookies_path']
+                # Store the path for display purposes
+                ytj.config['cookies_path'] = cookies_path
+                
+                # Check if the file exists and update cookies if it does
+                if os.path.exists(cookies_path):
+                    ytj.config['cookies'] = cookies_path
+                    logger.info(f"Updated cookies file path to: {cookies_path}")
+                else:
+                    # Clear cookies if path is invalid
+                    ytj.config['cookies'] = ''
+                    logger.warning(f"Cookies file not found at {cookies_path}, not using cookies")
             
             return jsonify({"success": True, "message": "Configuration updated"})
         
         return jsonify({"error": "Invalid configuration data"}), 400
     else:
         # Get configuration
-        safe_config = {k: v for k, v in ytj.config.items() if k not in ('cookies')}
+        safe_config = {k: v for k, v in ytj.config.items()}
+        # Add cookies path for rendering the UI
+        if 'cookies_path' not in safe_config and 'cookies' in safe_config:
+            safe_config['cookies_path'] = safe_config['cookies']
+        
+        # For security, don't expose actual cookie file content or path
+        if 'cookies' in safe_config:
+            del safe_config['cookies']
+            
         return jsonify(safe_config)
 
 def main():

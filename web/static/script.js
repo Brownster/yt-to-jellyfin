@@ -564,6 +564,32 @@ function loadSettings() {
             document.getElementById('web_port').value = config.web_port || 8000;
             document.getElementById('completed_jobs_limit').value = config.completed_jobs_limit || 10;
             
+            // Cookies file settings
+            const cookiesInput = document.getElementById('cookies_path');
+            cookiesInput.value = config.cookies_path || config.cookies || '';
+            
+            // Add indication if cookies file was specified but not found
+            const cookiesPathExists = !!config.cookies;
+            const cookiesPathSpecified = !!config.cookies_path;
+            
+            if (cookiesPathSpecified && !cookiesPathExists) {
+                cookiesInput.classList.add('is-invalid');
+                // Check if feedback element already exists
+                let feedbackEl = cookiesInput.parentNode.querySelector('.invalid-feedback');
+                if (!feedbackEl) {
+                    feedbackEl = document.createElement('div');
+                    feedbackEl.className = 'invalid-feedback';
+                    cookiesInput.parentNode.appendChild(feedbackEl);
+                }
+                feedbackEl.textContent = 'Cookies file not found at this location';
+            } else {
+                cookiesInput.classList.remove('is-invalid');
+                const feedbackEl = cookiesInput.parentNode.querySelector('.invalid-feedback');
+                if (feedbackEl) {
+                    feedbackEl.remove();
+                }
+            }
+            
             // Jellyfin settings
             const jellyfinEnabled = document.getElementById('jellyfin_enabled');
             jellyfinEnabled.checked = config.jellyfin_enabled === true;
