@@ -1,4 +1,4 @@
-FROM python:3.10-slim as builder
+FROM python:3.13-slim as builder
 
 WORKDIR /app
 
@@ -17,7 +17,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install --no-cache-dir flask gunicorn
 
-FROM python:3.10-slim
+FROM python:3.13-slim
 
 WORKDIR /app
 
