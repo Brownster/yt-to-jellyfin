@@ -1,3 +1,187 @@
-from app import app, ytj
+from flask import (
+    Flask,
+    render_template,
+    request,
+    jsonify,
+    redirect,
+    url_for,
+    abort,
+    send_from_directory,
+)
+import os
 
-__all__ = ["app", "ytj"]
+from .core import logger, YTToJellyfin
+# Create Flask application for web interface
+app = Flask(
+    __name__,
+    template_folder=os.path.join(os.path.dirname(__file__), "web/templates"),
+    static_folder=os.path.join(os.path.dirname(__file__), "web/static"),
+)
+
+ytj = YTToJellyfin()
+
+
+@app.route("/")
+def index():
+    """Main web interface page."""
+    return render_template("index.html", jobs=ytj.get_jobs(), media=ytj.list_media())
+
+
+@app.route("/jobs", methods=["GET", "POST"])
+def jobs():
+    """Handle job listing and creation."""
+    if request.method == "POST":
+        # Create new job
+        playlist_url = request.form.get("playlist_url")
+        show_name = request.form.get("show_name")
+        season_num = request.form.get("season_num")
+        episode_start = request.form.get("episode_start")
+        playlist_start = request.form.get("playlist_start")
+
+        if not playlist_url or not show_name or not season_num or not episode_start:
+            return jsonify({"error": "Missing required parameters"}), 400
+
+        playlist_start_int = int(playlist_start) if playlist_start else None
+        if playlist_start_int is not None:
+            job_id = ytj.create_job(
+                playlist_url, show_name, season_num, episode_start, playlist_start_int
+            )
+        else:
+            job_id = ytj.create_job(playlist_url, show_name, season_num, episode_start)
+        return jsonify({"job_id": job_id})
+    else:
+        # Get all jobs
+        return jsonify(ytj.get_jobs())
+
+
+@app.route("/jobs/<job_id>", methods=["GET", "DELETE"])
+def job_detail(job_id):
+    """Get or modify a specific job."""
+    if request.method == "DELETE":
+        if ytj.cancel_job(job_id):
+            return jsonify({"success": True})
+        return jsonify({"error": "Job not found"}), 404
+
+    job = ytj.get_job(job_id)
+    if job:
+        return jsonify(job)
+    return jsonify({"error": "Job not found"}), 404
+
+
+@app.route("/media", methods=["GET"])
+def media():
+    """List all media files."""
+    return jsonify(ytj.list_media())
+
+
+@app.route("/playlists", methods=["GET"])
+def playlists():
+    """Return registered playlists."""
+    return jsonify(ytj.list_playlists())
+
+
+@app.route("/playlist_info")
+def playlist_info():
+    url = request.args.get("url")
+    if not url:
+        return jsonify({"error": "Missing url"}), 400
+    return jsonify(ytj.get_playlist_videos(url))
+
+
+@app.route("/playlists/check", methods=["POST"])
+def playlists_check():
+    """Check all playlists for updates and return created job ids."""
+    jobs = ytj.check_playlist_updates()
+    return jsonify({"created_jobs": jobs})
+
+
+@app.route("/config", methods=["GET", "PUT"])
+def config():
+    """Get or update configuration."""
+    if request.method == "PUT":
+        # Get updated configuration from request
+        new_config = request.json
+        if new_config:
+            # Update allowed configuration settings
+            allowed_keys = [
+                "output_dir",
+                "quality",
+                "use_h265",
+                "crf",
+                "web_port",
+                "completed_jobs_limit",
+                "jellyfin_enabled",
+                "jellyfin_tv_path",
+                "jellyfin_host",
+                "jellyfin_port",
+                "jellyfin_api_key",
+                "clean_filenames",
+                "update_checker_enabled",
+                "update_checker_interval",
+            ]
+
+            should_restart_update = False
+            # Update only allowed keys
+            for key in allowed_keys:
+                if key in new_config:
+                    if key in [
+                        "jellyfin_enabled",
+                        "use_h265",
+                        "clean_filenames",
+                        "update_checker_enabled",
+                    ]:
+                        ytj.config[key] = new_config[key] is True
+                    elif key in [
+                        "crf",
+                        "web_port",
+                        "completed_jobs_limit",
+                        "update_checker_interval",
+                    ]:
+                        ytj.config[key] = int(new_config[key])
+                    else:
+                        ytj.config[key] = new_config[key]
+
+                    if key in ["update_checker_enabled", "update_checker_interval"]:
+                        should_restart_update = True
+
+            # Special handling for cookies_path
+            if "cookies_path" in new_config:
+                cookies_path = new_config["cookies_path"]
+                # Store the path for display purposes
+                ytj.config["cookies_path"] = cookies_path
+
+                # Check if the file exists and update cookies if it does
+                if os.path.exists(cookies_path):
+                    ytj.config["cookies"] = cookies_path
+                    logger.info(f"Updated cookies file path to: {cookies_path}")
+                else:
+                    # Clear cookies if path is invalid
+                    ytj.config["cookies"] = ""
+                    logger.warning(
+                        f"Cookies file not found at {cookies_path}, not using cookies"
+                    )
+
+            if should_restart_update:
+                if ytj.update_thread and ytj.update_thread.is_alive():
+                    ytj.update_thread = None
+                if ytj.config.get("update_checker_enabled"):
+                    ytj.start_update_checker()
+
+            return jsonify({"success": True, "message": "Configuration updated"})
+
+        return jsonify({"error": "Invalid configuration data"}), 400
+    else:
+        # Get configuration
+        safe_config = {k: v for k, v in ytj.config.items()}
+        # Add cookies path for rendering the UI
+        if "cookies_path" not in safe_config and "cookies" in safe_config:
+            safe_config["cookies_path"] = safe_config["cookies"]
+
+        # For security, don't expose actual cookie file content or path
+        if "cookies" in safe_config:
+            del safe_config["cookies"]
+
+        return jsonify(safe_config)
+
+
+__all__ = ['app', 'ytj']
