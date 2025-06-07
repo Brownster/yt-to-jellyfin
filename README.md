@@ -96,6 +96,22 @@ python app.py "https://youtube.com/playlist?list=PLtUoAptE--3xzuDjW-7nwVbinG3GyY
 - `--config`: Path to config file
 - `--check-updates`: Check saved playlists for new videos and queue jobs
 
+### Managing Playlists and Updates
+
+When you start a download job, the playlist information is saved to
+`config/playlists.json` and an archive file is created in
+`config/archives/`. These files record which videos have already been
+downloaded so subsequent runs only grab new content.
+
+To check all saved playlists for newly added videos you can:
+
+- Run `python app.py --check-updates` from the command line.
+- Open the **Playlists** page in the web interface and click **Check Updates**.
+
+Any new videos found will automatically create download jobs starting
+from the next episode number, keeping your library current without
+re-downloading existing files.
+
 ### Docker
 
 The Docker container will automatically start the web interface on port 8000. You can access it at http://localhost:8000.
