@@ -54,6 +54,8 @@ class DownloadJob:
         self.total_files = 0
         self.processed_files = 0
         self.detailed_status = "Job queued"
+        # Queue of files remaining to process
+        self.remaining_files: List[str] = []
 
     def update(self, status=None, progress=None, message=None, stage=None, file_name=None,
                stage_progress=None, total_files=None, processed_files=None, detailed_status=None):
@@ -133,7 +135,8 @@ class DownloadJob:
             "current_file": self.current_file,
             "total_files": self.total_files,
             "processed_files": self.processed_files,
-            "detailed_status": self.detailed_status
+            "detailed_status": self.detailed_status,
+            "remaining_files": self.remaining_files
         }
 
 class YTToJellyfin:
@@ -569,6 +572,8 @@ class YTToJellyfin:
                             if file_match:
                                 current_file = os.path.basename(file_match.group(1))
                                 processed_files += 1
+                                if job.remaining_files:
+                                    job.remaining_files.pop(0)
                                 job.update(
                                     file_name=current_file,
                                     processed_files=processed_files,
@@ -1340,6 +1345,21 @@ class YTToJellyfin:
         """
         job_id = str(uuid.uuid4())
         job = DownloadJob(job_id, playlist_url, show_name, season_num, episode_start, playlist_start)
+
+        # Preload queue of files based on playlist info
+        try:
+            ep_start_num = int(episode_start)
+        except ValueError:
+            ep_start_num = 1
+        try:
+            videos = self.get_playlist_videos(playlist_url)
+            start_idx = playlist_start or 1
+            for i, entry in enumerate(videos[start_idx-1:], start=ep_start_num):
+                job.remaining_files.append(
+                    f"{entry.get('title', 'Video')} S{season_num}E{str(i).zfill(2)}"
+                )
+        except Exception as e:
+            logger.error(f"Failed to fetch playlist queue: {e}")
 
         # Track playlist for incremental downloads when a playlist URL is provided
         if self._is_playlist_url(playlist_url):
