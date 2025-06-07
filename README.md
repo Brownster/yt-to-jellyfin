@@ -129,6 +129,25 @@ You can configure it by editing the `docker-compose.yml` file and the `config/co
 | JELLYFIN_PORT | Jellyfin server port | 8096 |
 | JELLYFIN_API_KEY | Jellyfin API key for triggering library scan (optional) | |
 
+### Using a Cookies File
+
+Some playlists or videos require authentication in order to download them.
+`yt-dlp` can use a cookies file exported from your browser to access
+private or age restricted content. The file should be in the standard
+`cookies.txt` format.
+
+1. Export your browser cookies using an extension such as **Get cookies.txt**
+   (Chrome) or **Cookie Quick Manager** (Firefox). Save the file as
+   `cookies.txt`.
+2. Set the `COOKIES_PATH` environment variable (or `cookies_path` in
+   `config.yml`) to the location of this file.
+3. When running in Docker, place `cookies.txt` inside the `config/`
+   folder so it is available at `/config/cookies.txt` inside the
+   container.
+
+With a valid cookies file in place, `yt-dlp` will authenticate your
+requests and successfully download restricted videos.
+
 ## Integrating with Jellyfin
 
 ### Method 1: Direct Integration (Recommended)
