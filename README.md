@@ -208,6 +208,19 @@ The CI workflows ensure that:
 2. The application builds and runs successfully in Docker
 3. Dependencies are automatically kept up-to-date with Dependabot
 
+### Automated Releases
+
+Pushing a tag that starts with `v` (for example `v1.2.3`) automatically
+creates a GitHub release. The release notes are generated from the commit
+history, so simply tag your commit and push the tag:
+
+```bash
+git tag v1.2.3
+git push origin v1.2.3
+```
+
+GitHub Actions will publish the release for you.
+
 ## Contributing
 
 Contributions, issues, and feature requests are welcome! Feel free to check the issues page.
