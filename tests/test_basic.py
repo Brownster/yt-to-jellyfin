@@ -48,9 +48,36 @@ class TestYTToJellyfin(unittest.TestCase):
             self.assertTrue(mock_mkdir.called)
             self.assertTrue("Test Show/Season 01" in folder)
     
-    def test_config_loading(self):
-        # Skip this test for now, will need to be revised
-        pass
+    @patch.object(YTToJellyfin, '_load_playlists', return_value={})
+    def test_config_loading(self, mock_load_playlists):
+        """Environment variables should override defaults."""
+        with tempfile.NamedTemporaryFile() as tmp_cookie:
+            env = {
+                'OUTPUT_DIR': '/env/media',
+                'VIDEO_QUALITY': '480',
+                'USE_H265': 'false',
+                'CRF': '23',
+                'YTDLP_PATH': '/usr/bin/ytdlp',
+                'COOKIES_PATH': tmp_cookie.name,
+                'WEB_ENABLED': 'false',
+                'WEB_PORT': '9001',
+                'WEB_HOST': 'localhost'
+            }
+            with patch.dict(os.environ, env, clear=True), \
+                 patch('os.path.exists', side_effect=lambda p: p in {tmp_cookie.name, '/usr/bin/ytdlp'}), \
+                 patch('os.access', return_value=True):
+                app = YTToJellyfin()
+        config = app.config
+
+        self.assertEqual(config['output_dir'], '/env/media')
+        self.assertEqual(config['quality'], '480')
+        self.assertFalse(config['use_h265'])
+        self.assertEqual(config['crf'], 23)
+        self.assertEqual(config['ytdlp_path'], '/usr/bin/ytdlp')
+        self.assertEqual(config['cookies'], tmp_cookie.name)
+        self.assertFalse(config['web_enabled'])
+        self.assertEqual(config['web_port'], 9001)
+        self.assertEqual(config['web_host'], 'localhost')
     
     @patch('os.path.exists')
     @patch('builtins.open', new_callable=unittest.mock.mock_open, read_data="""
