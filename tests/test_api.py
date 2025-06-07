@@ -145,5 +145,33 @@ class TestAPIEndpoints(unittest.TestCase):
         # Verify sensitive data is excluded
         self.assertNotIn('cookies', data)
 
+    @patch('app.ytj.get_playlist_videos')
+    def test_playlist_info_endpoint(self, mock_get):
+        mock_get.return_value = [{'index':1,'id':'abc','title':'Video'}]
+        response = self.client.get('/playlist_info?url=https://playlist')
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertEqual(len(data), 1)
+        mock_get.assert_called_once_with('https://playlist')
+
+    @patch('app.ytj.check_playlist_updates')
+    def test_playlists_check_endpoint(self, mock_check):
+        mock_check.return_value = ['job-1']
+        response = self.client.post('/playlists/check')
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertEqual(data['created_jobs'], ['job-1'])
+        mock_check.assert_called_once()
+
+    @patch('os.path.exists', return_value=True)
+    def test_config_put(self, mock_exists):
+        response = self.client.put('/config', json={'output_dir':'/new','cookies_path':'/cookies.txt','use_h265': False})
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertTrue(data['success'])
+        self.assertEqual(ytj.config['output_dir'], '/new')
+        self.assertFalse(ytj.config['use_h265'])
+        self.assertEqual(ytj.config['cookies'], '/cookies.txt')
+
 if __name__ == '__main__':
     unittest.main()
