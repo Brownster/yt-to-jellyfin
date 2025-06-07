@@ -99,7 +99,7 @@ class DownloadJob:
 
         self.updated_at = datetime.now()
 
-    def to_dict(self, include_messages: bool = True, message_limit: int | None = None):
+    def to_dict(self, include_messages: bool = True, message_limit: Optional[int] = None):
         """Convert job to dictionary for JSON response.
 
         Parameters
