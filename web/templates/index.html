@@ -35,6 +35,11 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link" href="#" data-section="playlists">
+                                <i class="bi bi-journal-text me-2"></i> Playlists
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link" href="#" data-section="media">
                                 <i class="bi bi-collection-play me-2"></i> Media Library
                             </a>
@@ -177,9 +182,31 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </section>
+                </div>
+            </div>
+        </section>
+
+        <!-- Playlists Section -->
+        <section id="playlists" class="content-section d-none">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">Playlists</h1>
+                <button class="btn btn-sm btn-outline-secondary" id="check-playlists">
+                    <i class="bi bi-arrow-clockwise"></i> Check Updates
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover" id="playlists-table">
+                    <thead>
+                        <tr>
+                            <th>Show</th>
+                            <th>Season</th>
+                            <th>Last Episode</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
                 
                 <!-- New Job Section -->
                 <section id="new-job" class="content-section d-none">
@@ -194,11 +221,15 @@
                         <div class="card-body">
                             <form id="new-job-form">
                                 <div class="row mb-3">
-                                    <div class="col-lg-12">
+                                    <div class="col-lg-10">
                                         <label for="playlist_url" class="form-label">YouTube Playlist URL <span class="text-danger">*</span></label>
                                         <input type="text" class="form-control" id="playlist_url" name="playlist_url" placeholder="https://youtube.com/playlist?list=..." required>
                                     </div>
+                                    <div class="col-lg-2 d-flex align-items-end">
+                                        <button type="button" class="btn btn-secondary w-100" id="select-start-btn">Choose Start Video</button>
+                                    </div>
                                 </div>
+                                <input type="hidden" id="playlist_start" name="playlist_start">
                                 
                                 <div class="row mb-3">
                                     <div class="col-lg-4">
@@ -253,7 +284,7 @@
                         </div>
                     </div>
                 </section>
-                
+
                 <!-- Jobs Section -->
                 <section id="jobs" class="content-section d-none">
                     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
@@ -360,7 +391,25 @@
                         </div>
                     </div>
                 </section>
-                
+
+                <!-- Playlist Start Modal -->
+                <div class="modal fade" id="playlistStartModal" tabindex="-1" aria-labelledby="playlistStartModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="playlistStartModalLabel">Select Starting Video</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div id="playlist-videos-container" style="max-height:400px; overflow-y:auto;"></div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-primary" id="confirm-start-video">Confirm</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Media Library Section -->
                 <section id="media" class="content-section d-none">
                     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">

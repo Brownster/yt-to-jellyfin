@@ -31,6 +31,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 loadJobs();
             } else if (sectionId === 'media') {
                 loadMedia();
+            } else if (sectionId === 'playlists') {
+                loadPlaylists();
             } else if (sectionId === 'settings') {
                 loadSettings();
             } else if (sectionId === 'dashboard') {
@@ -59,6 +61,43 @@ document.addEventListener('DOMContentLoaded', function() {
     // New Job Form Submission
     const newJobForm = document.getElementById('new-job-form');
     if (newJobForm) {
+        const selectStartBtn = document.getElementById('select-start-btn');
+        const playlistStartInput = document.getElementById('playlist_start');
+        if (selectStartBtn) {
+            selectStartBtn.addEventListener('click', function() {
+                const url = document.getElementById('playlist_url').value.trim();
+                if (!url) {
+                    showToast('Error', 'Please enter playlist URL first');
+                    return;
+                }
+                fetch(`/playlist_info?url=${encodeURIComponent(url)}`)
+                    .then(r => r.json())
+                    .then(videos => {
+                        const container = document.getElementById('playlist-videos-container');
+                        container.innerHTML = '';
+                        videos.forEach(v => {
+                            const div = document.createElement('div');
+                            div.className = 'form-check';
+                            div.innerHTML = `<input class="form-check-input" type="radio" name="startVideo" id="start-${v.index}" value="${v.index}"> <label class="form-check-label" for="start-${v.index}">${v.index}. ${v.title}</label>`;
+                            container.appendChild(div);
+                        });
+                        const modal = new bootstrap.Modal(document.getElementById('playlistStartModal'));
+                        modal.show();
+                    })
+                    .catch(() => showToast('Error', 'Failed to load playlist info'));
+            });
+
+            document.getElementById('confirm-start-video').addEventListener('click', function() {
+                const selected = document.querySelector('input[name="startVideo"]:checked');
+                if (selected) {
+                    playlistStartInput.value = selected.value;
+                }
+                const modalEl = document.getElementById('playlistStartModal');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                modal.hide();
+            });
+        }
+
         newJobForm.addEventListener('submit', function(e) {
             e.preventDefault();
             
@@ -67,6 +106,10 @@ document.addEventListener('DOMContentLoaded', function() {
             formData.append('show_name', document.getElementById('show_name').value);
             formData.append('season_num', document.getElementById('season_num').value);
             formData.append('episode_start', document.getElementById('episode_start').value);
+            const playlistStartVal = document.getElementById('playlist_start').value;
+            if (playlistStartVal) {
+                formData.append('playlist_start', playlistStartVal);
+            }
             
             // Send request to create job
             fetch('/jobs', {
@@ -165,6 +208,23 @@ document.addEventListener('DOMContentLoaded', function() {
             loadMedia();
         });
     }
+
+    const checkPlaylistsBtn = document.getElementById('check-playlists');
+    if (checkPlaylistsBtn) {
+        checkPlaylistsBtn.addEventListener('click', function() {
+            fetch('/playlists/check', {method: 'POST'})
+                .then(r => r.json())
+                .then(data => {
+                    if (data.created_jobs && data.created_jobs.length > 0) {
+                        showToast('Updates', `Created ${data.created_jobs.length} jobs`);
+                        loadJobs();
+                    } else {
+                        showToast('Info', 'No updates found');
+                    }
+                })
+                .catch(() => showToast('Error', 'Failed to check playlists'));
+        });
+    }
     
     // Load dashboard data by default
     loadDashboard();
@@ -173,6 +233,9 @@ document.addEventListener('DOMContentLoaded', function() {
     setInterval(function() {
         if (document.querySelector('#jobs:not(.d-none)') || document.querySelector('#dashboard:not(.d-none)')) {
             updateJobsData();
+        }
+        if (document.querySelector('#playlists:not(.d-none)')) {
+            loadPlaylists();
         }
     }, 5000);
 });
@@ -239,6 +302,29 @@ function updateJobsData() {
         .catch(error => {
             console.error('Error fetching jobs:', error);
         });
+}
+
+function loadPlaylists() {
+    fetch('/playlists')
+        .then(r => r.json())
+        .then(list => updatePlaylistsTable(list))
+        .catch(err => console.error('Error fetching playlists:', err));
+}
+
+function updatePlaylistsTable(data) {
+    const tbody = document.querySelector('#playlists-table tbody');
+    tbody.innerHTML = '';
+    if (data.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = '<td colspan="3" class="text-center">No playlists</td>';
+        tbody.appendChild(row);
+        return;
+    }
+    data.forEach(p => {
+        const row = document.createElement('tr');
+        row.innerHTML = `<td>${p.show_name}</td><td>${p.season_num}</td><td>${p.last_episode}</td>`;
+        tbody.appendChild(row);
+    });
 }
 
 function updateJobsTable(jobs) {

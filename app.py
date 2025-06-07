@@ -34,12 +34,13 @@ logger = logging.getLogger('yt-to-jellyfin')
 class DownloadJob:
     """Class to track the status of a download job."""
 
-    def __init__(self, job_id, playlist_url, show_name, season_num, episode_start):
+    def __init__(self, job_id, playlist_url, show_name, season_num, episode_start, playlist_start=None):
         self.job_id = job_id
         self.playlist_url = playlist_url
         self.show_name = show_name
         self.season_num = season_num
         self.episode_start = episode_start
+        self.playlist_start = playlist_start
         self.status = "queued"
         self.progress = 0
         self.messages = []
@@ -106,6 +107,7 @@ class DownloadJob:
             "show_name": self.show_name,
             "season_num": self.season_num,
             "episode_start": self.episode_start,
+            "playlist_start": self.playlist_start,
             "status": self.status,
             "progress": self.progress,
             "messages": self.messages,
@@ -280,10 +282,14 @@ class YTToJellyfin:
 
     def sanitize_name(self, name: str) -> str:
         """Sanitize file/directory names to be compatible with file systems."""
-        # Trim whitespace and replace spaces and illegal characters with underscores
+        # Trim surrounding whitespace
         name = name.strip()
-        sanitized = re.sub(r'[\\/:"*?<>|]', '_', name)
-        sanitized = sanitized.replace(' ', '_')
+        # Replace underscores with spaces for readability
+        name = name.replace('_', ' ')
+        # Remove characters that are invalid on most file systems
+        sanitized = re.sub(r'[\\/:"*?<>|]', '', name)
+        # Collapse multiple spaces into a single space
+        sanitized = re.sub(r'\s+', ' ', sanitized)
         return sanitized
 
     def clean_filename(self, name: str) -> str:
@@ -418,7 +424,7 @@ class YTToJellyfin:
                 info['url'],
                 info['show_name'],
                 info['season_num'],
-                str(start).zfill(2),
+                str(start).zfill(2)
             )
             created_jobs.append(job_id)
 
@@ -430,7 +436,7 @@ class YTToJellyfin:
         folder.mkdir(parents=True, exist_ok=True)
         return str(folder)
 
-    def download_playlist(self, playlist_url: str, folder: str, season_num: str, job_id: str) -> bool:
+    def download_playlist(self, playlist_url: str, folder: str, season_num: str, job_id: str, playlist_start: Optional[int] = None) -> bool:
         """Download a YouTube playlist using yt-dlp."""
         output_template = f"{folder}/%(title)s S{season_num}E%(playlist_index)02d.%(ext)s"
 
@@ -464,8 +470,10 @@ class YTToJellyfin:
         os.makedirs(os.path.dirname(archive_file), exist_ok=True)
         cmd.extend(['--download-archive', archive_file])
 
-        # If no archive exists yet, skip already downloaded episodes by index
-        if not os.path.exists(archive_file):
+        # Determine playlist starting position
+        if playlist_start:
+            cmd.extend(['--playlist-start', str(playlist_start)])
+        elif not os.path.exists(archive_file):
             existing_max = self._get_existing_max_index(folder, season_num)
             if existing_max:
                 cmd.extend(['--playlist-start', str(existing_max + 1)])
@@ -1248,7 +1256,11 @@ class YTToJellyfin:
             folder = self.create_folder_structure(job.show_name, job.season_num)
             job.update(message=f"Created folder structure: {folder}")
 
-            if not self.download_playlist(job.playlist_url, folder, job.season_num, job_id):
+            if job.playlist_start is not None:
+                dl_success = self.download_playlist(job.playlist_url, folder, job.season_num, job_id, job.playlist_start)
+            else:
+                dl_success = self.download_playlist(job.playlist_url, folder, job.season_num, job_id)
+            if not dl_success:
                 job.update(status="failed", message="Download failed")
                 return
 
@@ -1268,7 +1280,7 @@ class YTToJellyfin:
             logger.exception(f"Error processing job {job_id}: {e}")
             job.update(status="failed", message=f"Error: {str(e)}")
 
-    def create_job(self, playlist_url: str, show_name: str, season_num: str, episode_start: str, *, start_thread: bool = True) -> str:
+    def create_job(self, playlist_url: str, show_name: str, season_num: str, episode_start: str, playlist_start: Optional[int] = None, *, start_thread: bool = True) -> str:
         """Create a new download job and return the job ID.
 
         Parameters
@@ -1278,7 +1290,7 @@ class YTToJellyfin:
             False to avoid running jobs concurrently.
         """
         job_id = str(uuid.uuid4())
-        job = DownloadJob(job_id, playlist_url, show_name, season_num, episode_start)
+        job = DownloadJob(job_id, playlist_url, show_name, season_num, episode_start, playlist_start)
 
         # Track playlist for incremental downloads
         self._register_playlist(playlist_url, show_name, season_num)
@@ -1358,6 +1370,49 @@ class YTToJellyfin:
 
         return media
 
+    def list_playlists(self) -> List[Dict]:
+        """Return information about registered playlists."""
+        playlists = []
+        for pid, info in self.playlists.items():
+            archive = info.get('archive', self._get_archive_file(info['url']))
+            last_downloaded = 0
+            if os.path.exists(archive):
+                with open(archive, 'r') as f:
+                    last_downloaded = sum(1 for _ in f)
+
+            folder = Path(self.config['output_dir']) / self.sanitize_name(info['show_name']) / f"Season {info['season_num']}"
+            last_episode = self._get_existing_max_index(str(folder), info['season_num'])
+
+            playlists.append({
+                'id': pid,
+                'url': info['url'],
+                'show_name': info['show_name'],
+                'season_num': info['season_num'],
+                'last_episode': last_episode,
+                'downloaded_videos': last_downloaded
+            })
+
+        return playlists
+
+    def get_playlist_videos(self, url: str) -> List[Dict]:
+        """Return list of videos in a playlist using yt-dlp."""
+        try:
+            result = subprocess.run(
+                [self.config['ytdlp_path'], '--flat-playlist', '--dump-single-json', url],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            data = json.loads(result.stdout)
+            entries = data.get('entries', [])
+            videos = []
+            for idx, entry in enumerate(entries, start=1):
+                videos.append({'index': idx, 'id': entry.get('id'), 'title': entry.get('title')})
+            return videos
+        except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
+            logger.error(f"Failed to fetch playlist info: {e}")
+            return []
+
     def process(self, playlist_url: str, show_name: str, season_num: str, episode_start: int) -> bool:
         """Process the entire workflow from download to final media preparation."""
         try:
@@ -1402,11 +1457,16 @@ def jobs():
         show_name = request.form.get('show_name')
         season_num = request.form.get('season_num')
         episode_start = request.form.get('episode_start')
+        playlist_start = request.form.get('playlist_start')
 
         if not playlist_url or not show_name or not season_num or not episode_start:
             return jsonify({"error": "Missing required parameters"}), 400
 
-        job_id = ytj.create_job(playlist_url, show_name, season_num, episode_start)
+        playlist_start_int = int(playlist_start) if playlist_start else None
+        if playlist_start_int is not None:
+            job_id = ytj.create_job(playlist_url, show_name, season_num, episode_start, playlist_start_int)
+        else:
+            job_id = ytj.create_job(playlist_url, show_name, season_num, episode_start)
         return jsonify({"job_id": job_id})
     else:
         # Get all jobs
@@ -1424,6 +1484,24 @@ def job_detail(job_id):
 def media():
     """List all media files."""
     return jsonify(ytj.list_media())
+
+@app.route('/playlists', methods=['GET'])
+def playlists():
+    """Return registered playlists."""
+    return jsonify(ytj.list_playlists())
+
+@app.route('/playlist_info')
+def playlist_info():
+    url = request.args.get('url')
+    if not url:
+        return jsonify({'error': 'Missing url'}), 400
+    return jsonify(ytj.get_playlist_videos(url))
+
+@app.route('/playlists/check', methods=['POST'])
+def playlists_check():
+    """Check all playlists for updates and return created job ids."""
+    jobs = ytj.check_playlist_updates()
+    return jsonify({'created_jobs': jobs})
 
 @app.route('/config', methods=['GET', 'PUT'])
 def config():

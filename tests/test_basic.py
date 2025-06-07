@@ -26,7 +26,7 @@ class TestYTToJellyfin(unittest.TestCase):
     
     def test_sanitize_name(self):
         # Test sanitization function
-        self.assertEqual(self.app.sanitize_name('Test/Name:*?'), 'Test_Name___')
+        self.assertEqual(self.app.sanitize_name('Test/Name:*?'), 'TestName')
         self.assertEqual(self.app.sanitize_name('  Spaces  '), 'Spaces')
     
     @patch('subprocess.run')
@@ -46,7 +46,7 @@ class TestYTToJellyfin(unittest.TestCase):
         with patch('pathlib.Path.mkdir') as mock_mkdir:
             folder = self.app.create_folder_structure("Test Show", "01")
             self.assertTrue(mock_mkdir.called)
-            self.assertTrue("Test_Show/Season 01" in folder)
+            self.assertTrue("Test Show/Season 01" in folder)
     
     def test_config_loading(self):
         # Skip this test for now, will need to be revised
