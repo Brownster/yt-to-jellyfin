@@ -93,8 +93,9 @@ class TestJobManagement(unittest.TestCase):
         self.assertEqual(job_dict["progress"], 30)
         self.assertEqual(len(job_dict["messages"]), 1)
     
+    @patch.object(YTToJellyfin, '_register_playlist')
     @patch('threading.Thread')
-    def test_create_job(self, mock_thread):
+    def test_create_job(self, mock_thread, mock_register):
         """Test job creation in the app"""
         job_id = self.app.create_job(
             "https://youtube.com/playlist?list=TEST",
@@ -109,7 +110,26 @@ class TestJobManagement(unittest.TestCase):
         self.assertEqual(job.playlist_url, "https://youtube.com/playlist?list=TEST")
         self.assertEqual(job.show_name, "Test Show")
         
-        # Verify thread was started to process the job
+        # Verify playlist was registered and thread started
+        mock_register.assert_called_once_with(
+            "https://youtube.com/playlist?list=TEST", "Test Show", "01"
+        )
+        mock_thread.assert_called_once()
+        mock_thread.return_value.start.assert_called_once()
+
+    @patch.object(YTToJellyfin, '_register_playlist')
+    @patch('threading.Thread')
+    def test_create_job_single_video_not_registered(self, mock_thread, mock_register):
+        """Single video URLs should not register playlists"""
+        job_id = self.app.create_job(
+            "https://youtube.com/watch?v=abc123",
+            "Video Show",
+            "01",
+            "01"
+        )
+
+        self.assertIn(job_id, self.app.jobs)
+        mock_register.assert_not_called()
         mock_thread.assert_called_once()
         mock_thread.return_value.start.assert_called_once()
     
