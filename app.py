@@ -148,6 +148,9 @@ class YTToJellyfin:
         # Playlist tracking
         self.playlists_file = os.path.join('config', 'playlists.json')
         self.playlists = self._load_playlists()
+        self.update_thread: Optional[threading.Thread] = None
+        if self.config.get('update_checker_enabled'):
+            self.start_update_checker()
 
     def _load_config(self) -> Dict:
         """Load configuration from environment variables or config file."""
@@ -181,6 +184,9 @@ class YTToJellyfin:
             'web_enabled': os.environ.get('WEB_ENABLED', 'true').lower() == 'true',
             'web_port': int(os.environ.get('WEB_PORT', '8000')),
             'web_host': os.environ.get('WEB_HOST', '0.0.0.0'),
+            # Automatic playlist update checking
+            'update_checker_enabled': os.environ.get('UPDATE_CHECKER_ENABLED', 'false').lower() == 'true',
+            'update_checker_interval': int(os.environ.get('UPDATE_CHECKER_INTERVAL', '60')),
             # Jellyfin integration settings
             'jellyfin_enabled': os.environ.get('JELLYFIN_ENABLED', 'false').lower() == 'true',
             'jellyfin_tv_path': os.environ.get('JELLYFIN_TV_PATH', ''),
@@ -256,6 +262,14 @@ class YTToJellyfin:
                                 config['jellyfin_port'] = str(value)
                             elif key == 'api_key':
                                 config['jellyfin_api_key'] = value
+
+                    # Handle playlist update checker settings
+                    if 'update_checker' in file_config and isinstance(file_config['update_checker'], dict):
+                        uc = file_config['update_checker']
+                        if 'enabled' in uc:
+                            config['update_checker_enabled'] = uc['enabled']
+                        if 'interval_minutes' in uc:
+                            config['update_checker_interval'] = int(uc['interval_minutes'])
 
             except (yaml.YAMLError, IOError) as e:
                 logger.error(f"Error loading config file: {e}")
@@ -448,6 +462,22 @@ class YTToJellyfin:
             created_jobs.append(job_id)
 
         return created_jobs
+
+    def start_update_checker(self) -> None:
+        """Start a thread that periodically checks playlists."""
+
+        def _run() -> None:
+            interval = self.config.get('update_checker_interval', 60)
+            while True:
+                try:
+                    if self.playlists:
+                        self.check_playlist_updates()
+                except Exception as e:  # pragma: no cover
+                    logger.error(f"Automatic update check failed: {e}")
+                time.sleep(max(1, interval) * 60)
+
+        self.update_thread = threading.Thread(target=_run, daemon=True)
+        self.update_thread.start()
 
     def create_folder_structure(self, show_name: str, season_num: str) -> str:
         """Create the folder structure for the TV show and season."""
@@ -1535,18 +1565,23 @@ def config():
             allowed_keys = [
                 'output_dir', 'quality', 'use_h265', 'crf', 'web_port',
                 'completed_jobs_limit', 'jellyfin_enabled', 'jellyfin_tv_path',
-                'jellyfin_host', 'jellyfin_port', 'jellyfin_api_key', 'clean_filenames'
+                'jellyfin_host', 'jellyfin_port', 'jellyfin_api_key', 'clean_filenames',
+                'update_checker_enabled', 'update_checker_interval'
             ]
 
+            should_restart_update = False
             # Update only allowed keys
             for key in allowed_keys:
                 if key in new_config:
-                    if key in ['jellyfin_enabled', 'use_h265', 'clean_filenames']:
+                    if key in ['jellyfin_enabled', 'use_h265', 'clean_filenames', 'update_checker_enabled']:
                         ytj.config[key] = new_config[key] is True
-                    elif key in ['crf', 'web_port', 'completed_jobs_limit']:
+                    elif key in ['crf', 'web_port', 'completed_jobs_limit', 'update_checker_interval']:
                         ytj.config[key] = int(new_config[key])
                     else:
                         ytj.config[key] = new_config[key]
+
+                    if key in ['update_checker_enabled', 'update_checker_interval']:
+                        should_restart_update = True
 
             # Special handling for cookies_path
             if 'cookies_path' in new_config:
@@ -1562,6 +1597,12 @@ def config():
                     # Clear cookies if path is invalid
                     ytj.config['cookies'] = ''
                     logger.warning(f"Cookies file not found at {cookies_path}, not using cookies")
+
+            if should_restart_update:
+                if ytj.update_thread and ytj.update_thread.is_alive():
+                    ytj.update_thread = None
+                if ytj.config.get('update_checker_enabled'):
+                    ytj.start_update_checker()
 
             return jsonify({"success": True, "message": "Configuration updated"})
 

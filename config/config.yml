@@ -21,6 +21,11 @@ web:
 # Job Settings
 completed_jobs_limit: 10
 
+# Playlist Update Checker
+update_checker:
+  enabled: false
+  interval_minutes: 60
+
 # Jellyfin Integration Settings
 jellyfin:
   enabled: false
