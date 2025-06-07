@@ -3,6 +3,7 @@ import sys
 import unittest
 import tempfile
 import shutil
+import json
 from unittest.mock import patch, MagicMock, call
 
 # Add parent directory to path to import app.py
@@ -195,7 +196,8 @@ class TestJobManagement(unittest.TestCase):
     def test_process_metadata(self, mock_rename, mock_remove, mock_open, mock_json_load, mock_exists):
         """Test metadata processing"""
         # Setup mocks
-        mock_exists.return_value = True
+        # Only mp4 and json files should be considered existing
+        mock_exists.side_effect = lambda p: p.endswith('.mp4') or p.endswith('.info.json')
         mock_json_load.side_effect = [
             # First JSON file (to get first index)
             {'playlist_index': 1},
@@ -256,6 +258,61 @@ class TestJobManagement(unittest.TestCase):
         self.assertEqual(len(jobs), 2)
         self.assertTrue(any(j["job_id"] == "job1" for j in jobs))
         self.assertTrue(any(j["job_id"] == "job2" for j in jobs))
+
+    @patch('subprocess.run')
+    def test_check_playlist_updates_creates_job(self, mock_run):
+        """Ensure a new job is created when playlist has new items."""
+        # Setup playlist info
+        archive = os.path.join(self.temp_dir, 'TEST.txt')
+        with open(archive, 'w') as f:
+            f.write('oldid\n')
+
+        self.app.playlists = {
+            'TEST': {
+                'url': 'https://youtube.com/playlist?list=TEST',
+                'show_name': 'Test Show',
+                'season_num': '01',
+                'archive': archive,
+            }
+        }
+        self.app.config['ytdlp_path'] = 'yt-dlp'
+
+        # yt-dlp returns a playlist with one old id and one new id
+        mock_run.return_value = MagicMock(
+            stdout=json.dumps({'entries': [{'id': 'oldid'}, {'id': 'newid'}]}),
+            returncode=0,
+        )
+
+        with patch.object(self.app, 'create_job', return_value='job-1') as mock_create:
+            jobs = self.app.check_playlist_updates()
+            mock_create.assert_called_once_with(
+                'https://youtube.com/playlist?list=TEST', 'Test Show', '01', '01'
+            )
+            self.assertEqual(jobs, ['job-1'])
+
+    @patch('subprocess.run')
+    def test_check_playlist_updates_no_new_videos(self, mock_run):
+        """No job should be created when there are no new videos."""
+        archive = os.path.join(self.temp_dir, 'TEST.txt')
+        with open(archive, 'w') as f:
+            f.write('id1\n')
+
+        self.app.playlists = {
+            'TEST': {
+                'url': 'https://youtube.com/playlist?list=TEST',
+                'show_name': 'Test Show',
+                'season_num': '01',
+                'archive': archive,
+            }
+        }
+        mock_run.return_value = MagicMock(
+            stdout=json.dumps({'entries': [{'id': 'id1'}]}), returncode=0
+        )
+
+        with patch.object(self.app, 'create_job') as mock_create:
+            jobs = self.app.check_playlist_updates()
+            mock_create.assert_not_called()
+            self.assertEqual(jobs, [])
 
 if __name__ == '__main__':
     unittest.main()

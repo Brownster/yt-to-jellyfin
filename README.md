@@ -6,6 +6,8 @@ A Python application that downloads YouTube playlists and processes them to work
 
 - **Web Interface**: Modern web dashboard to manage downloads, view progress, and manage media
 - **Automated Downloads**: Download entire YouTube playlists with a single command using yt-dlp
+- **Incremental Updates**: Remembers downloaded videos and only grabs new items when a playlist grows
+- **Playlist Update Checker**: Automatically queue jobs when your saved playlists get new videos
 - **Proper Metadata**: Generate NFO files that Jellyfin uses to display episode details
 - **Episode Renumbering**: Set custom starting episode numbers for proper sequencing
 - **H.265 Conversion**: Convert videos to H.265 for better compression and playback performance
@@ -92,6 +94,7 @@ python app.py "https://youtube.com/playlist?list=PLtUoAptE--3xzuDjW-7nwVbinG3GyY
 - `--no-h265`: Disable H.265 conversion
 - `--crf`: CRF value for H.265 conversion (default: 28)
 - `--config`: Path to config file
+- `--check-updates`: Check saved playlists for new videos and queue jobs
 
 ### Docker
 
