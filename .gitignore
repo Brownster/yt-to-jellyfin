@@ -36,6 +36,7 @@ media/
 *.log
 cookies.txt
 config/*.txt
+.coverage
 
 # Docker
 .dockerignore
