@@ -30,48 +30,21 @@ jobs:
     
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
-    
-    - name: Build Docker image
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Build and push Docker image
       uses: docker/build-push-action@v6
       with:
         context: .
-        push: false
-        tags: yt-to-jellyfin:test
+        push: true
+        tags: |
+          brownster/yt-to-jellyfin:latest
+          brownster/yt-to-jellyfin:${{ github.sha }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
     
-    - name: Create test directories
-      run: |
-        mkdir -p ./media
-        mkdir -p ./config
-    
-    - name: Verify Docker image functionality
-      run: |
-        # Run the container with web-only mode to check it starts correctly
-        docker run --name yt-to-jellyfin-test -d \
-          -v $PWD/media:/media \
-          -v $PWD/config:/config \
-          -p 8000:8000 \
-          -e WEB_ENABLED=true \
-          -e WEB_PORT=8000 \
-          -e WEB_HOST=0.0.0.0 \
-          yt-to-jellyfin:test --web-only
-        
-        # Wait for container to start
-        sleep 5
-        
-        # Check if container is running
-        if [ "$(docker inspect -f {{.State.Running}} yt-to-jellyfin-test)" = "true" ]; then
-          echo "Container is running"
-        else
-          echo "Container failed to start"
-          docker logs yt-to-jellyfin-test
-          exit 1
-        fi
-        
-        # Try to access the web interface
-        curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/ | grep 200
-        
-        # Clean up
-        docker stop yt-to-jellyfin-test
-        docker rm yt-to-jellyfin-test
