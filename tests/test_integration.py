@@ -65,7 +65,8 @@ class TestIntegration(unittest.TestCase):
             "https://youtube.com/playlist?list=TEST",
             "Test Show",
             "01",
-            "01"
+            "01",
+            start_thread=False
         )
         
         # Process the job
@@ -87,7 +88,7 @@ class TestIntegration(unittest.TestCase):
         mock_process_metadata.assert_called_once()
         mock_convert.assert_called_once()
         mock_generate_artwork.assert_called_once()
-        mock_create_nfo_files.assert_called_once()
+        mock_create_nfo.assert_called_once()
     
     @patch('app.YTToJellyfin.download_playlist')
     def test_workflow_with_download_failure(self, mock_download):
@@ -100,7 +101,8 @@ class TestIntegration(unittest.TestCase):
             "https://youtube.com/playlist?list=TEST",
             "Test Show",
             "01",
-            "01"
+            "01",
+            start_thread=False
         )
         
         # Process the job
@@ -122,7 +124,8 @@ class TestIntegration(unittest.TestCase):
             "https://youtube.com/playlist?list=TEST",
             "Test Show",
             "01",
-            "01"
+            "01",
+            start_thread=False
         )
         
         # Process the job
@@ -140,7 +143,8 @@ class TestIntegration(unittest.TestCase):
             "https://youtube.com/playlist?list=TEST",
             "Test Show",
             "01",
-            "invalid"  # Non-numeric value
+            "invalid",  # Non-numeric value
+            start_thread=False
         )
         
         # Process the job
