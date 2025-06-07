@@ -1,4 +1,4 @@
-// YT-to-Jellyfin Frontend Script
+// Tubarr Frontend Script
 
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize Bootstrap components

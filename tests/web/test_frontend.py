@@ -138,7 +138,7 @@ class TestFrontend(unittest.TestCase):
         self.driver.get("http://localhost:5000/")
         
         # Check page title
-        self.assertEqual(self.driver.title, "YT-to-Jellyfin")
+        self.assertEqual(self.driver.title, "Tubarr")
         
         # Check dashboard elements
         self.assertTrue(self.driver.find_element(By.ID, "dashboard").is_displayed())

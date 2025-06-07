@@ -1,6 +1,5 @@
-# YouTube to Jellyfin
-
-A Python application that downloads YouTube playlists and processes them to work perfectly with Jellyfin/Kodi media servers. It downloads videos, generates matching NFO metadata files, renames episodes according to TV show conventions, creates artwork, and optionally converts videos to H.265 for optimized playback and reduced file size.
+# Tubarr
+Tubarr is a Python application that downloads YouTube playlists and processes them to work perfectly with Jellyfin/Kodi media servers. It downloads videos, generates matching NFO metadata files, renames episodes according to TV show conventions, creates artwork, and optionally converts videos to H.265 for optimized playback and reduced file size.
 
 ## Features
 
@@ -60,7 +59,7 @@ A Python application that downloads YouTube playlists and processes them to work
 
 ### Web Interface
 
-The application includes a modern web interface to manage your downloads and media library. By default, it runs on port 8000.
+Tubarr includes a modern web interface to manage your downloads and media library. By default, it runs on port 8000.
 
 **Accessing the Web Interface**:
 - When running locally: http://localhost:8000
@@ -187,7 +186,7 @@ If you prefer to manage the files manually:
 
 ## Testing
 
-The application includes a comprehensive test suite to verify functionality.
+Tubarr includes a comprehensive test suite to verify functionality.
 
 ### Running Tests
 
@@ -222,7 +221,7 @@ This project uses GitHub Actions for continuous integration:
 
 The CI workflows ensure that:
 1. All tests pass on multiple Python versions
-2. The application builds and runs successfully in Docker
+2. Tubarr builds and runs successfully in Docker
 3. Dependencies are automatically kept up-to-date with Dependabot
 
 ### Automated Releases
