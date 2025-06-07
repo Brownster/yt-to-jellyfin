@@ -398,6 +398,17 @@ function updateJobsTable(jobs) {
                 </small>
             `;
         }
+
+        // Show remaining queue if available
+        if (job.remaining_files && job.remaining_files.length > 0 && job.status !== 'completed' && job.status !== 'failed') {
+            const preview = job.remaining_files.slice(0, 3).join(', ');
+            const title = job.remaining_files.join(', ');
+            progressDisplay += `
+                <small class="d-block text-muted text-truncate" style="max-width: 200px;" title="${title}">
+                    Next: ${preview}${job.remaining_files.length > 3 ? '...' : ''}
+                </small>
+            `;
+        }
         
         row.innerHTML = `
             <td title="${job.job_id}">${shortId}...</td>
@@ -501,6 +512,14 @@ function updateJobDetailModal(job) {
     
     // Set current file
     document.getElementById('detail-current-file').textContent = job.current_file || '';
+
+    // Show remaining queue
+    const queueEl = document.getElementById('detail-queue');
+    if (job.remaining_files && job.remaining_files.length > 0) {
+        queueEl.textContent = 'Next: ' + job.remaining_files.join(', ');
+    } else {
+        queueEl.textContent = '';
+    }
     
     // Update progress bars
     const mainProgressBar = document.getElementById('detail-progress-bar');
