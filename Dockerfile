@@ -32,7 +32,9 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 
 # Copy yt-dlp and Python packages from builder
 COPY --from=builder /usr/local/bin/yt-dlp /usr/local/bin/yt-dlp
-COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
+# Copy installed Python packages from the builder stage. This path must match
+# the Python version used in the base image (3.13).
+COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
 
 # Copy application code
 COPY app.py .
