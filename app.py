@@ -127,6 +127,10 @@ class YTToJellyfin:
         self.config = self._load_config()
         self.jobs = {}  # Track active and completed jobs
         self.job_lock = threading.Lock()
+
+        # Playlist tracking
+        self.playlists_file = os.path.join('config', 'playlists.json')
+        self.playlists = self._load_playlists()
     
     def _load_config(self) -> Dict:
         """Load configuration from environment variables or config file."""
@@ -322,8 +326,103 @@ class YTToJellyfin:
             if not parts[1].startswith(' '):
                 episode_end = re.match(r'^S\d+E\d+', result).end()
                 result = result[:episode_end] + " " + result[episode_end:]
-        
+
         return result
+
+    def _load_playlists(self) -> Dict[str, Dict[str, str]]:
+        """Load stored playlist information from disk."""
+        if os.path.exists(self.playlists_file):
+            try:
+                with open(self.playlists_file, 'r') as f:
+                    return json.load(f)
+            except (IOError, json.JSONDecodeError):
+                logger.warning("Failed to load playlists file, starting fresh")
+        return {}
+
+    def _save_playlists(self) -> None:
+        """Persist playlist information to disk."""
+        os.makedirs(os.path.dirname(self.playlists_file), exist_ok=True)
+        with open(self.playlists_file, 'w') as f:
+            json.dump(self.playlists, f, indent=2)
+
+    def _get_playlist_id(self, url: str) -> str:
+        """Extract playlist ID from URL."""
+        match = re.search(r'list=([^&]+)', url)
+        if match:
+            return match.group(1)
+        return re.sub(r'\W+', '', url)
+
+    def _get_archive_file(self, url: str) -> str:
+        """Get the archive file path for a playlist."""
+        pid = self._get_playlist_id(url)
+        return os.path.join('config', 'archives', f'{pid}.txt')
+
+    def _register_playlist(self, url: str, show_name: str, season_num: str) -> None:
+        """Register playlist metadata for incremental downloads."""
+        pid = self._get_playlist_id(url)
+        if pid not in self.playlists:
+            self.playlists[pid] = {
+                'url': url,
+                'show_name': show_name,
+                'season_num': season_num,
+                'archive': self._get_archive_file(url)
+            }
+            self._save_playlists()
+
+    def _get_existing_max_index(self, folder: str, season_num: str) -> int:
+        """Return the highest episode index already present in folder."""
+        pattern = re.compile(rf'S{season_num}E(\d+)')
+        max_idx = 0
+        for file in Path(folder).glob(f'*S{season_num}E*.mp4'):
+            match = pattern.search(file.name)
+            if match:
+                max_idx = max(max_idx, int(match.group(1)))
+        return max_idx
+
+    def check_playlist_updates(self) -> List[str]:
+        """Check registered playlists for new videos and create jobs."""
+        created_jobs = []
+        for pid, info in self.playlists.items():
+            archive = info.get('archive', self._get_archive_file(info['url']))
+            try:
+                result = subprocess.run(
+                    [
+                        self.config['ytdlp_path'],
+                        '--flat-playlist',
+                        '--dump-single-json',
+                        info['url'],
+                    ],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+                data = json.loads(result.stdout)
+            except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
+                logger.error(f"Failed to check playlist {info['url']}: {e}")
+                continue
+
+            ids = [e.get('id') for e in data.get('entries', []) if e.get('id')]
+            archived = set()
+            if os.path.exists(archive):
+                with open(archive, 'r') as f:
+                    archived = {line.strip() for line in f if line.strip()}
+
+            new_ids = [vid for vid in ids if vid not in archived]
+            if not new_ids:
+                logger.info(f"No updates found for playlist {info['url']}")
+                continue
+
+            folder = self.create_folder_structure(info['show_name'], info['season_num'])
+            start = self._get_existing_max_index(folder, info['season_num']) + 1
+            job_id = self.create_job(
+                info['url'],
+                info['show_name'],
+                info['season_num'],
+                str(start).zfill(2),
+            )
+            created_jobs.append(job_id)
+
+        return created_jobs
     
     def create_folder_structure(self, show_name: str, season_num: str) -> str:
         """Create the folder structure for the TV show and season."""
@@ -359,6 +458,17 @@ class YTToJellyfin:
             '--no-cookies-from-browser',  # Don't try to read cookies from browser
             playlist_url
         ]
+
+        # Use download archive to avoid re-downloading existing videos
+        archive_file = self._get_archive_file(playlist_url)
+        os.makedirs(os.path.dirname(archive_file), exist_ok=True)
+        cmd.extend(['--download-archive', archive_file])
+
+        # If no archive exists yet, skip already downloaded episodes by index
+        if not os.path.exists(archive_file):
+            existing_max = self._get_existing_max_index(folder, season_num)
+            if existing_max:
+                cmd.extend(['--playlist-start', str(existing_max + 1)])
         
         if self.config['cookies'] and os.path.exists(self.config['cookies']):
             # Only use cookies file if it exists
@@ -1169,6 +1279,9 @@ class YTToJellyfin:
         """
         job_id = str(uuid.uuid4())
         job = DownloadJob(job_id, playlist_url, show_name, season_num, episode_start)
+
+        # Track playlist for incremental downloads
+        self._register_playlist(playlist_url, show_name, season_num)
         
         with self.job_lock:
             self.jobs[job_id] = job
@@ -1380,6 +1493,8 @@ def main():
     parser.add_argument('--no-h265', action='store_true', help='Disable H.265 conversion')
     parser.add_argument('--crf', type=int, help='CRF value for H.265 conversion')
     parser.add_argument('--config', help='Path to config file')
+    parser.add_argument('--check-updates', action='store_true',
+                        help='Check registered playlists for new videos')
     
     # Normal commandline usage still supported as before
     parser.add_argument('url_pos', nargs='?', help='YouTube playlist URL (positional)')
@@ -1400,6 +1515,10 @@ def main():
         os.environ['CRF'] = str(args.crf)
     if args.config:
         os.environ['CONFIG_FILE'] = args.config
+
+    if args.check_updates:
+        ytj.check_playlist_updates()
+        return 0
     
     # Web-only mode
     if args.web_only or ytj.config.get('web_enabled', True):

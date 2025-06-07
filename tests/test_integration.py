@@ -40,13 +40,16 @@ class TestIntegration(unittest.TestCase):
         # Clean up temp directory
         shutil.rmtree(self.temp_dir, ignore_errors=True)
     
+    @patch('threading.Thread')
+    @patch('app.YTToJellyfin.check_dependencies', return_value=True)
     @patch('app.YTToJellyfin.download_playlist')
     @patch('app.YTToJellyfin.process_metadata')
     @patch('app.YTToJellyfin.convert_video_files')
     @patch('app.YTToJellyfin.generate_artwork')
     @patch('app.YTToJellyfin.create_nfo_files')
-    def test_full_workflow(self, mock_create_nfo, mock_generate_artwork, 
-                           mock_convert, mock_process_metadata, mock_download):
+    def test_full_workflow(self, mock_create_nfo, mock_generate_artwork,
+                           mock_convert, mock_process_metadata, mock_download,
+                           mock_check, mock_thread):
         """Test the full workflow from job creation to completion"""
         # Setup mocks
         mock_download.return_value = True
@@ -80,7 +83,7 @@ class TestIntegration(unittest.TestCase):
         # Check that all functions were called with correct parameters
         mock_download.assert_called_once_with(
             "https://youtube.com/playlist?list=TEST",
-            os.path.join(self.output_dir, 'Test_Show', 'Season 01'),
+            os.path.join(self.output_dir, 'Test Show', 'Season 01'),
             "01",
             job_id
         )
@@ -90,8 +93,10 @@ class TestIntegration(unittest.TestCase):
         mock_generate_artwork.assert_called_once()
         mock_create_nfo.assert_called_once()
     
+    @patch('threading.Thread')
+    @patch('app.YTToJellyfin.check_dependencies', return_value=True)
     @patch('app.YTToJellyfin.download_playlist')
-    def test_workflow_with_download_failure(self, mock_download):
+    def test_workflow_with_download_failure(self, mock_download, mock_check, mock_thread):
         """Test the workflow when download fails"""
         # Setup mock to simulate download failure
         mock_download.return_value = False
@@ -136,7 +141,10 @@ class TestIntegration(unittest.TestCase):
         self.assertEqual(job.status, "failed")
         self.assertIn("Missing dependencies", job.messages[-1]["text"])
     
-    def test_invalid_episode_start(self):
+    @patch('app.YTToJellyfin.download_playlist', return_value=True)
+    @patch('threading.Thread')
+    @patch('app.YTToJellyfin.check_dependencies', return_value=True)
+    def test_invalid_episode_start(self, mock_check, mock_thread, mock_download):
         """Test the workflow when episode_start is invalid"""
         # Create a job with invalid episode_start
         job_id = self.app.create_job(
