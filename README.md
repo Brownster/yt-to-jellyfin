@@ -8,6 +8,7 @@ A Python application that downloads YouTube playlists and processes them to work
 - **Automated Downloads**: Download entire YouTube playlists with a single command using yt-dlp
 - **Incremental Updates**: Remembers downloaded videos and only grabs new items when a playlist grows
 - **Playlist Update Checker**: Automatically queue jobs when your saved playlists get new videos
+- **Single Video Downloads**: Individual videos are not tracked in the playlist list
 - **Proper Metadata**: Generate NFO files that Jellyfin uses to display episode details
 - **Episode Renumbering**: Set custom starting episode numbers for proper sequencing
 - **H.265 Conversion**: Convert videos to H.265 for better compression and playback performance

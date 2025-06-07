@@ -378,6 +378,10 @@ class YTToJellyfin:
         pid = self._get_playlist_id(url)
         return os.path.join('config', 'archives', f'{pid}.txt')
 
+    def _is_playlist_url(self, url: str) -> bool:
+        """Return True if the URL looks like a playlist."""
+        return 'list=' in url or '/playlist' in url
+
     def _register_playlist(self, url: str, show_name: str, season_num: str) -> None:
         """Register playlist metadata for incremental downloads."""
         pid = self._get_playlist_id(url)
@@ -1307,8 +1311,9 @@ class YTToJellyfin:
         job_id = str(uuid.uuid4())
         job = DownloadJob(job_id, playlist_url, show_name, season_num, episode_start, playlist_start)
 
-        # Track playlist for incremental downloads
-        self._register_playlist(playlist_url, show_name, season_num)
+        # Track playlist for incremental downloads when a playlist URL is provided
+        if self._is_playlist_url(playlist_url):
+            self._register_playlist(playlist_url, show_name, season_num)
 
         with self.job_lock:
             self.jobs[job_id] = job
