@@ -99,8 +99,23 @@ class DownloadJob:
 
         self.updated_at = datetime.now()
 
-    def to_dict(self):
-        """Convert job to dictionary for JSON response."""
+    def to_dict(self, include_messages: bool = True, message_limit: int | None = None):
+        """Convert job to dictionary for JSON response.
+
+        Parameters
+        ----------
+        include_messages: bool
+            If False, omit log messages from the returned dict.
+        message_limit: Optional[int]
+            If provided, only return the last ``message_limit`` log messages.
+        """
+        messages = []
+        if include_messages:
+            if message_limit is not None:
+                messages = self.messages[-message_limit:]
+            else:
+                messages = self.messages
+
         return {
             "job_id": self.job_id,
             "playlist_url": self.playlist_url,
@@ -110,7 +125,7 @@ class DownloadJob:
             "playlist_start": self.playlist_start,
             "status": self.status,
             "progress": self.progress,
-            "messages": self.messages,
+            "messages": messages,
             "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S"),
             "updated_at": self.updated_at.strftime("%Y-%m-%d %H:%M:%S"),
             "current_stage": self.current_stage,
@@ -1316,12 +1331,13 @@ class YTToJellyfin:
     def get_job(self, job_id: str) -> Optional[Dict]:
         """Get information about a specific job."""
         job = self.jobs.get(job_id)
-        return job.to_dict() if job else None
+        # Limit the number of log messages returned to avoid very large payloads
+        return job.to_dict(message_limit=200) if job else None
 
     def get_jobs(self) -> List[Dict]:
-        """Get a list of all jobs."""
+        """Get a list of all jobs without log messages."""
         with self.job_lock:
-            return [job.to_dict() for job in self.jobs.values()]
+            return [job.to_dict(include_messages=False) for job in self.jobs.values()]
 
     def list_media(self) -> List[Dict]:
         """List all media in the output directory."""

@@ -63,8 +63,8 @@ class TestAPIEndpoints(unittest.TestCase):
         """Test getting list of jobs"""
         # Add test jobs
         ytj.jobs = {
-            'job1': MagicMock(to_dict=lambda: {'job_id': 'job1', 'status': 'completed'}),
-            'job2': MagicMock(to_dict=lambda: {'job_id': 'job2', 'status': 'in_progress'})
+            'job1': MagicMock(to_dict=lambda **kwargs: {'job_id': 'job1', 'status': 'completed'}),
+            'job2': MagicMock(to_dict=lambda **kwargs: {'job_id': 'job2', 'status': 'in_progress'})
         }
         
         response = self.client.get('/jobs')
@@ -79,8 +79,8 @@ class TestAPIEndpoints(unittest.TestCase):
         """Test getting details of a specific job"""
         # Add test job
         ytj.jobs = {
-            'job1': MagicMock(to_dict=lambda: {
-                'job_id': 'job1', 
+            'job1': MagicMock(to_dict=lambda **kwargs: {
+                'job_id': 'job1',
                 'status': 'completed',
                 'show_name': 'Test Show'
             })
