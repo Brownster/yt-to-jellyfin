@@ -7,6 +7,7 @@ Tubarr is a Python application that downloads YouTube playlists and processes th
 - **Automated Downloads**: Download entire YouTube playlists with a single command using yt-dlp
 - **Incremental Updates**: Remembers downloaded videos and only grabs new items when a playlist grows
 - **Playlist Update Checker**: Automatically queue jobs when your saved playlists get new videos
+- **Scheduled Playlist Checks**: Enable background scanning at a configurable interval to download new videos as soon as they appear
 - **Single Video Downloads**: Individual videos are not tracked in the playlist list
 - **Proper Metadata**: Generate NFO files that Jellyfin uses to display episode details
 - **Episode Renumbering**: Set custom starting episode numbers for proper sequencing
@@ -112,6 +113,13 @@ Any new videos found will automatically create download jobs starting
 from the next episode number, keeping your library current without
 re-downloading existing files.
 
+You can also enable an automated scheduler that periodically checks all
+registered playlists. When `UPDATE_CHECKER_ENABLED` (or
+`update_checker.enabled` in `config.yml`) is set to `true`, Tubarr runs a
+background task every `UPDATE_CHECKER_INTERVAL` minutes to look for new
+videos and queue the downloads automatically. These options are
+available in the **Settings** page of the web interface.
+
 ### Docker
 
 The Docker container will automatically start the web interface on port 8000. You can access it at http://localhost:8000.
@@ -138,6 +146,8 @@ You can configure it by editing the `docker-compose.yml` file and the `config/co
 | WEB_PORT | Port for the web interface | 8000 |
 | WEB_HOST | Host for the web interface (0.0.0.0 for all interfaces) | 0.0.0.0 |
 | COMPLETED_JOBS_LIMIT | Number of completed jobs to keep in history | 10 |
+| UPDATE_CHECKER_ENABLED | Automatically check playlists for updates | false |
+| UPDATE_CHECKER_INTERVAL | Minutes between update checks | 60 |
 | CONFIG_FILE | Path to configuration file | config/config.yml |
 | JELLYFIN_ENABLED | Enable direct Jellyfin integration | false |
 | JELLYFIN_TV_PATH | Path to Jellyfin TV library folder | |
