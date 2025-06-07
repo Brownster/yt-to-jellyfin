@@ -25,7 +25,9 @@ class TestJobManagement(unittest.TestCase):
             'crf': 28,
             'ytdlp_path': 'yt-dlp',
             'cookies': '',
-            'completed_jobs_limit': 3
+            'completed_jobs_limit': 3,
+            'update_checker_enabled': False,
+            'update_checker_interval': 60
         }
         # Clear jobs
         self.app.jobs = {}

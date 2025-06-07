@@ -139,7 +139,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // Toggle Jellyfin settings visibility based on enabled state
         const jellyfinEnabled = document.getElementById('jellyfin_enabled');
         const jellyfinSettings = document.querySelectorAll('.jellyfin-settings');
-        
+        const autoCheck = document.getElementById('auto_check_updates');
+        const updateSchedule = document.querySelector('.update-schedule-settings');
+
         function toggleJellyfinSettings() {
             const isEnabled = jellyfinEnabled.checked;
             jellyfinSettings.forEach(el => {
@@ -150,12 +152,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         }
+
+        function toggleUpdateSchedule() {
+            if (autoCheck.checked) {
+                updateSchedule.style.display = 'flex';
+            } else {
+                updateSchedule.style.display = 'none';
+            }
+        }
         
         // Set initial state
         toggleJellyfinSettings();
-        
+        toggleUpdateSchedule();
+
         // Add event listener for toggle
         jellyfinEnabled.addEventListener('change', toggleJellyfinSettings);
+        autoCheck.addEventListener('change', toggleUpdateSchedule);
         
         // Form submission handler
         settingsForm.addEventListener('submit', function(e) {
@@ -170,6 +182,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 crf: document.getElementById('default_crf').value,
                 web_port: document.getElementById('web_port').value,
                 completed_jobs_limit: document.getElementById('completed_jobs_limit').value,
+                auto_check_updates: document.getElementById('auto_check_updates').checked,
+                update_interval: document.getElementById('update_interval').value,
                 // Jellyfin settings
                 jellyfin_enabled: document.getElementById('jellyfin_enabled').checked,
                 jellyfin_tv_path: document.getElementById('jellyfin_tv_path').value,
@@ -650,6 +664,8 @@ function loadSettings() {
             document.getElementById('default-crf-value').textContent = config.crf || 28;
             document.getElementById('web_port').value = config.web_port || 8000;
             document.getElementById('completed_jobs_limit').value = config.completed_jobs_limit || 10;
+            document.getElementById('auto_check_updates').checked = config.update_checker_enabled === true;
+            document.getElementById('update_interval').value = config.update_checker_interval || 60;
             
             // Cookies file settings
             const cookiesInput = document.getElementById('cookies_path');
@@ -689,6 +705,10 @@ function loadSettings() {
             if (jellyfinEnabled) {
                 const event = new Event('change');
                 jellyfinEnabled.dispatchEvent(event);
+            }
+            if (autoCheck) {
+                const ev2 = new Event('change');
+                autoCheck.dispatchEvent(ev2);
             }
         })
         .catch(error => {
