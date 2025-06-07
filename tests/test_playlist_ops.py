@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from app import YTToJellyfin, DownloadJob
+from tubarr.core import YTToJellyfin, DownloadJob
 
 class TestPlaylistOperations(unittest.TestCase):
     def setUp(self):

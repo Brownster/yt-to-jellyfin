@@ -8,7 +8,8 @@ from pathlib import Path
 # Ensure app.py can be imported
 import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from app import YTToJellyfin, app, ytj
+from tubarr.core import YTToJellyfin
+from tubarr.web import app, ytj
 import subprocess
 
 class TestConfigAndDependencies(unittest.TestCase):
