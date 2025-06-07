@@ -414,6 +414,12 @@ function updateJobsTable(jobs) {
             `;
         }
         
+        const canCancel = !['completed', 'failed', 'cancelled'].includes(job.status);
+        const cancelBtn = canCancel ? `
+                <button class="btn btn-sm btn-danger cancel-job" data-job-id="${job.job_id}">
+                    <i class="bi bi-x-circle"></i>
+                </button>` : '';
+
         row.innerHTML = `
             <td title="${job.job_id}">${shortId}...</td>
             <td>${job.show_name}</td>
@@ -425,6 +431,7 @@ function updateJobsTable(jobs) {
                 <button class="btn btn-sm btn-info view-job" data-job-id="${job.job_id}">
                     <i class="bi bi-eye"></i>
                 </button>
+                ${cancelBtn}
             </td>
         `;
         
@@ -436,6 +443,27 @@ function updateJobsTable(jobs) {
         btn.addEventListener('click', function() {
             const jobId = this.getAttribute('data-job-id');
             showJobDetails(jobId);
+        });
+    });
+
+    // Add event listeners to cancel buttons
+    document.querySelectorAll('.cancel-job').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const jobId = this.getAttribute('data-job-id');
+            if (confirm('Cancel this job?')) {
+                fetch(`/jobs/${jobId}`, { method: 'DELETE' })
+                    .then(r => {
+                        if (r.ok) {
+                            showToast('Success', 'Job cancelled');
+                            updateJobsData();
+                        } else {
+                            r.json().then(d => {
+                                showToast('Error', d.error || 'Failed to cancel job');
+                            });
+                        }
+                    })
+                    .catch(() => showToast('Error', 'Failed to cancel job'));
+            }
         });
     });
 }
@@ -561,6 +589,33 @@ function updateJobDetailModal(job) {
     
     // Scroll to bottom of log
     logContainer.scrollTop = logContainer.scrollHeight;
+
+    // Toggle cancel button visibility
+    const cancelBtn = document.getElementById('cancel-job-btn');
+    if (cancelBtn) {
+        if (['completed', 'failed', 'cancelled'].includes(job.status)) {
+            cancelBtn.style.display = 'none';
+        } else {
+            cancelBtn.style.display = 'inline-block';
+            cancelBtn.onclick = function() {
+                if (confirm('Cancel this job?')) {
+                    fetch(`/jobs/${job.job_id}`, { method: 'DELETE' })
+                        .then(r => {
+                            if (r.ok) {
+                                showToast('Success', 'Job cancelled');
+                                updateJobsData();
+                                const modalEl = document.getElementById('jobDetailModal');
+                                const modalObj = bootstrap.Modal.getInstance(modalEl);
+                                modalObj.hide();
+                            } else {
+                                r.json().then(d => showToast('Error', d.error || 'Failed to cancel job'));
+                            }
+                        })
+                        .catch(() => showToast('Error', 'Failed to cancel job'));
+                }
+            };
+        }
+    }
 }
 
 function loadMedia() {
