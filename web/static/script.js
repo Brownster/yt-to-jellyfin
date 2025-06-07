@@ -642,6 +642,7 @@ function createSeasonCard(season) {
                         <table class="table table-sm">
                             <thead>
                                 <tr>
+                                    <th>#</th>
                                     <th>Episode</th>
                                     <th>Size</th>
                                     <th>Modified</th>
@@ -660,9 +661,10 @@ function createSeasonCard(season) {
 
 function createEpisodeRow(episode) {
     const size = formatFileSize(episode.size);
-    
+
     return `
         <tr>
+            <td>${episode.episode_num !== null && episode.episode_num !== undefined ? episode.episode_num : ''}</td>
             <td>${episode.name}</td>
             <td>${size}</td>
             <td>${formatDate(episode.modified)}</td>
