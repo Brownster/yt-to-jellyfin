@@ -316,13 +316,14 @@ function updatePlaylistsTable(data) {
     tbody.innerHTML = '';
     if (data.length === 0) {
         const row = document.createElement('tr');
-        row.innerHTML = '<td colspan="3" class="text-center">No playlists</td>';
+        row.innerHTML = '<td colspan="4" class="text-center">No playlists</td>';
         tbody.appendChild(row);
         return;
     }
     data.forEach(p => {
         const row = document.createElement('tr');
-        row.innerHTML = `<td>${p.show_name}</td><td>${p.season_num}</td><td>${p.last_episode}</td>`;
+        const link = `<a href="${p.url}" target="_blank">${p.url}</a>`;
+        row.innerHTML = `<td>${p.show_name}</td><td>${p.season_num}</td><td>${p.last_episode}</td><td>${link}</td>`;
         tbody.appendChild(row);
     });
 }
