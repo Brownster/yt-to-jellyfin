@@ -3,6 +3,7 @@
 The following are planned improvements and tasks for Tubarr:
 
 - Separate tracking season/episode position from playlist position so adding a single video to a season does not affect automatic playlist downloads.
+- Option to enable / disable playlist tracking when adding and when added
 - Display all downloaded episodes in the media library and show a drop-down in the playlist view listing episodes downloaded from that playlist.
 - **Add missing MIT license**. The README references a license but none existed.
 - Implement job cancellation/stop capability so background jobs can be aborted.
