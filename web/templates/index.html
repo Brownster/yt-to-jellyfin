@@ -495,6 +495,19 @@
                                         <input type="number" class="form-control" id="completed_jobs_limit" name="completed_jobs_limit" min="1" max="100" value="10">
                                     </div>
                                 </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-lg-6">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="auto_check_updates" name="auto_check_updates">
+                                            <label class="form-check-label" for="auto_check_updates">Automatically check playlists for updates</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-6 update-schedule-settings">
+                                        <label for="update_interval" class="form-label">Check interval (minutes)</label>
+                                        <input type="number" class="form-control" id="update_interval" name="update_interval" min="5" value="60">
+                                    </div>
+                                </div>
                                 
                                 <!-- Jellyfin Integration Settings -->
                                 <h6 class="mt-4 mb-3">Jellyfin Integration</h6>

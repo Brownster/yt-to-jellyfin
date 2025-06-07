@@ -31,6 +31,8 @@ class TestPlaylistOperations(unittest.TestCase):
             'jellyfin_port': '8096',
             'jellyfin_api_key': '',
             'clean_filenames': True,
+            'update_checker_enabled': False,
+            'update_checker_interval': 60,
         }
         with patch.object(YTToJellyfin, '_load_config', return_value=self.config), \
              patch.object(YTToJellyfin, '_load_playlists', return_value={}):
