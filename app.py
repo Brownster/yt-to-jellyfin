@@ -1425,15 +1425,23 @@ class YTToJellyfin:
 
                 # Get episodes
                 for episode_file in season_dir.glob("*.mp4"):
+                    match = re.search(r"S(\d+)E(\d+)", episode_file.name)
+                    episode_num = int(match.group(2)) if match else None
+
                     episode = {
                         "name": episode_file.stem,
                         "path": str(episode_file),
                         "size": episode_file.stat().st_size,
-                        "modified": datetime.fromtimestamp(episode_file.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+                        "modified": datetime.fromtimestamp(episode_file.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
+                        "episode_num": episode_num,
                     }
                     season["episodes"].append(episode)
 
-                season["episodes"].sort(key=lambda e: e["name"])
+                def sort_key(e):
+                    ep_num = e.get("episode_num")
+                    return (ep_num is None, ep_num if ep_num is not None else e["name"])
+
+                season["episodes"].sort(key=sort_key)
                 show["seasons"].append(season)
 
             show["seasons"].sort(key=lambda s: s["name"])
