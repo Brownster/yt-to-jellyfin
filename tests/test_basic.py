@@ -46,7 +46,7 @@ class TestYTToJellyfin(unittest.TestCase):
         with patch('pathlib.Path.mkdir') as mock_mkdir:
             folder = self.app.create_folder_structure("Test Show", "01")
             self.assertTrue(mock_mkdir.called)
-            self.assertTrue("Test Show/Season 01" in folder)
+            self.assertTrue("Test_Show/Season 01" in folder)
     
     def test_config_loading(self):
         # Skip this test for now, will need to be revised

@@ -276,8 +276,11 @@ class YTToJellyfin:
     
     def sanitize_name(self, name: str) -> str:
         """Sanitize file/directory names to be compatible with file systems."""
-        # Replace illegal chars with underscore and trim whitespace
-        return re.sub(r'[\\/:"*?<>|]', '_', name).strip()
+        # Trim whitespace and replace spaces and illegal characters with underscores
+        name = name.strip()
+        sanitized = re.sub(r'[\\/:"*?<>|]', '_', name)
+        sanitized = sanitized.replace(' ', '_')
+        return sanitized
         
     def clean_filename(self, name: str) -> str:
         """Clean up filename for better readability.
@@ -570,6 +573,7 @@ class YTToJellyfin:
                     os.rename(original, new_file)
                     if job:
                         job.update(message=f"Renamed file to {os.path.basename(new_file)}")
+                    break
             
             # Create NFO file
             nfo_content = f"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -1124,18 +1128,18 @@ class YTToJellyfin:
             if not self.check_dependencies():
                 job.update(status="failed", message="Missing dependencies")
                 return
-                
-            folder = self.create_folder_structure(job.show_name, job.season_num)
-            job.update(message=f"Created folder structure: {folder}")
-            
-            if not self.download_playlist(job.playlist_url, folder, job.season_num, job_id):
-                job.update(status="failed", message="Download failed")
-                return
-                
+
             try:
                 episode_start = int(job.episode_start)
             except ValueError:
-                job.update(status="failed", message="Invalid episode start number")
+                job.update(status="failed", message="Invalid episode start")
+                return
+
+            folder = self.create_folder_structure(job.show_name, job.season_num)
+            job.update(message=f"Created folder structure: {folder}")
+
+            if not self.download_playlist(job.playlist_url, folder, job.season_num, job_id):
+                job.update(status="failed", message="Download failed")
                 return
                 
             self.process_metadata(folder, job.show_name, job.season_num, episode_start, job_id)
@@ -1154,8 +1158,15 @@ class YTToJellyfin:
             logger.exception(f"Error processing job {job_id}: {e}")
             job.update(status="failed", message=f"Error: {str(e)}")
     
-    def create_job(self, playlist_url: str, show_name: str, season_num: str, episode_start: str) -> str:
-        """Create a new download job and return the job ID."""
+    def create_job(self, playlist_url: str, show_name: str, season_num: str, episode_start: str, *, start_thread: bool = True) -> str:
+        """Create a new download job and return the job ID.
+
+        Parameters
+        ----------
+        start_thread: bool
+            Whether to start a processing thread automatically. Tests can pass
+            False to avoid running jobs concurrently.
+        """
         job_id = str(uuid.uuid4())
         job = DownloadJob(job_id, playlist_url, show_name, season_num, episode_start)
         
@@ -1171,8 +1182,9 @@ class YTToJellyfin:
                 old_job = completed_jobs.pop(0)
                 del self.jobs[old_job.job_id]
         
-        # Start job processing in a separate thread
-        threading.Thread(target=self.process_job, args=(job_id,)).start()
+        # Start job processing in a separate thread if requested
+        if start_thread:
+            threading.Thread(target=self.process_job, args=(job_id,)).start()
         
         return job_id
     
