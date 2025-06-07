@@ -282,10 +282,14 @@ class YTToJellyfin:
 
     def sanitize_name(self, name: str) -> str:
         """Sanitize file/directory names to be compatible with file systems."""
-        # Trim whitespace and replace spaces and illegal characters with underscores
+        # Trim surrounding whitespace
         name = name.strip()
-        sanitized = re.sub(r'[\\/:"*?<>|]', '_', name)
-        sanitized = sanitized.replace(' ', '_')
+        # Replace underscores with spaces for readability
+        name = name.replace('_', ' ')
+        # Remove characters that are invalid on most file systems
+        sanitized = re.sub(r'[\\/:"*?<>|]', '', name)
+        # Collapse multiple spaces into a single space
+        sanitized = re.sub(r'\s+', ' ', sanitized)
         return sanitized
 
     def clean_filename(self, name: str) -> str:
