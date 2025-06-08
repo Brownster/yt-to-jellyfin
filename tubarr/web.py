@@ -224,4 +224,16 @@ def config():
         return jsonify(safe_config)
 
 
-__all__ = ["app", "ytj"]
+@app.route("/history")
+def history():
+    """Return completed, failed and cancelled jobs sorted by creation time."""
+    finished = [
+        j.to_dict(include_messages=False)
+        for j in ytj.jobs.values()
+        if j.status in {"completed", "failed", "cancelled"}
+    ]
+    finished.sort(key=lambda j: j["created_at"])
+    return jsonify(finished)
+
+
+__all__ = ["app", "ytj", "history"]

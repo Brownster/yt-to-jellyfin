@@ -110,6 +110,20 @@ class TestAPIEndpoints(unittest.TestCase):
         response = self.client.get("/jobs/nonexistent")
         self.assertEqual(response.status_code, 404)
 
+    def test_history_endpoint(self):
+        """Test that /history returns only finished jobs"""
+        ytj.jobs = {
+            "job1": MagicMock(status="completed", to_dict=lambda **_: {"job_id": "job1", "status": "completed", "created_at": "2023-01-01 00:00:00"}),
+            "job2": MagicMock(status="in_progress", to_dict=lambda **_: {"job_id": "job2", "status": "in_progress", "created_at": "2023-01-02 00:00:00"}),
+            "job3": MagicMock(status="failed", to_dict=lambda **_: {"job_id": "job3", "status": "failed", "created_at": "2023-01-03 00:00:00"}),
+            "job4": MagicMock(status="cancelled", to_dict=lambda **_: {"job_id": "job4", "status": "cancelled", "created_at": "2023-01-04 00:00:00"}),
+        }
+
+        response = self.client.get("/history")
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertEqual([j["job_id"] for j in data], ["job1", "job3", "job4"])
+
     @patch("app.YTToJellyfin.cancel_job")
     def test_cancel_job_endpoint(self, mock_cancel):
         mock_cancel.return_value = True
