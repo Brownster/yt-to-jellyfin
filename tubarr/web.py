@@ -89,6 +89,13 @@ def media():
     return jsonify(ytj.list_media())
 
 
+@app.route("/media_files/<path:filename>")
+def media_files(filename):
+    """Serve media files such as posters."""
+    output_dir = ytj.config.get("output_dir", "")
+    return send_from_directory(output_dir, filename)
+
+
 @app.route("/playlists", methods=["GET"])
 def playlists():
     """Return registered playlists."""

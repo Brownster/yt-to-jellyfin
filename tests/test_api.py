@@ -146,6 +146,20 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertEqual(len(data[0]["seasons"]), 1)
         self.assertEqual(len(data[0]["seasons"][0]["episodes"]), 1)
 
+    def test_media_files_endpoint(self):
+        """Test serving of media files"""
+        with tempfile.TemporaryDirectory() as tempdir:
+            ytj.config["output_dir"] = tempdir
+            show_dir = os.path.join(tempdir, "Test Show")
+            os.makedirs(show_dir, exist_ok=True)
+            poster = os.path.join(show_dir, "poster.jpg")
+            with open(poster, "wb") as f:
+                f.write(b"data")
+
+            rel_path = os.path.relpath(poster, tempdir)
+            response = self.client.get(f"/media_files/{rel_path}")
+            self.assertEqual(response.status_code, 200)
+
     def test_get_config(self):
         """Test configuration endpoint"""
         # Set some config values
