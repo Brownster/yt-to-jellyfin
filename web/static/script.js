@@ -694,38 +694,58 @@ function loadMedia() {
 function displayMediaLibrary(media) {
     const mediaContainer = document.getElementById('media-container');
     mediaContainer.innerHTML = '';
-    
+
     if (media.length === 0) {
         mediaContainer.innerHTML = '<div class="alert alert-info">No media found in library</div>';
         return;
     }
-    
+
+    const row = document.createElement('div');
+    row.className = 'row';
+
     media.forEach(show => {
-        const showCard = document.createElement('div');
-        showCard.className = 'card shadow mb-4';
-        
-        showCard.innerHTML = `
-            <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                <h6 class="m-0 font-weight-bold">${show.name}</h6>
-                <span class="badge bg-secondary">${show.seasons.length} Seasons</span>
-            </div>
-            <div class="card-body">
-                <div class="row seasons-container-${show.name.replace(/[^a-zA-Z0-9]/g, '_')}">
-                    ${show.seasons.map(season => createSeasonCard(season)).join('')}
+        const showId = show.name.replace(/[^a-zA-Z0-9]/g, '_');
+        const totalEpisodes = show.episode_count || 0;
+        const posterUrl = show.poster ? `/media_files/${encodeURIComponent(show.poster)}` : null;
+
+        const col = document.createElement('div');
+        col.className = 'col-sm-6 col-md-4 col-lg-3 mb-4';
+
+        col.innerHTML = `
+            <div class="card h-100 show-card" data-show-id="${showId}">
+                <div class="show-poster-container position-relative">
+                    ${posterUrl ? `<img src="${posterUrl}" class="show-poster" alt="${show.name}">` : `<div class="show-poster bg-secondary d-flex align-items-center justify-content-center"><i class="bi bi-tv text-white" style="font-size: 3rem;"></i></div>`}
+                    <span class="badge bg-primary position-absolute top-0 end-0 m-2">${totalEpisodes}</span>
+                </div>
+                <div class="card-body text-center">
+                    <h5 class="card-title">${show.name}</h5>
                 </div>
             </div>
+            <div id="show-seasons-${showId}" class="row mt-2 d-none">
+                ${show.seasons.map(season => createSeasonCard(season)).join('')}
+            </div>
         `;
-        
-        mediaContainer.appendChild(showCard);
+
+        row.appendChild(col);
     });
-    
-    // Add click handlers for season cards
+
+    mediaContainer.appendChild(row);
+
+    document.querySelectorAll('.show-card').forEach(card => {
+        card.addEventListener('click', function() {
+            const showId = this.getAttribute('data-show-id');
+            const seasonsContainer = document.getElementById(`show-seasons-${showId}`);
+            if (seasonsContainer) {
+                seasonsContainer.classList.toggle('d-none');
+            }
+        });
+    });
+
     document.querySelectorAll('.season-card').forEach(card => {
         card.addEventListener('click', function() {
             const seasonId = this.getAttribute('data-season-id');
             const episodeContainer = document.getElementById(`episode-container-${seasonId}`);
-            
-            // Toggle visibility
+
             if (episodeContainer.classList.contains('d-none')) {
                 episodeContainer.classList.remove('d-none');
                 this.querySelector('.toggle-icon').classList.replace('bi-plus', 'bi-dash');
@@ -740,14 +760,13 @@ function displayMediaLibrary(media) {
 function createSeasonCard(season) {
     const seasonId = season.name.replace(/[^a-zA-Z0-9]/g, '_');
     const episodeCount = season.episodes.length;
-    
+    const posterUrl = season.poster ? `/media_files/${encodeURIComponent(season.poster)}` : null;
+
     return `
         <div class="col-md-6 col-lg-4 mb-4">
             <div class="card media-card">
                 <div class="season-poster-container">
-                    <div class="season-poster bg-secondary d-flex align-items-center justify-content-center">
-                        <i class="bi bi-film text-white" style="font-size: 3rem;"></i>
-                    </div>
+                    ${posterUrl ? `<img src="${posterUrl}" class="season-poster" alt="${season.name}">` : `<div class="season-poster bg-secondary d-flex align-items-center justify-content-center"><i class="bi bi-film text-white" style="font-size: 3rem;"></i></div>`}
                 </div>
                 <div class="card-body">
                     <h5 class="card-title">${season.name}</h5>

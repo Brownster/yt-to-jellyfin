@@ -425,11 +425,33 @@ def list_media(app) -> List[Dict]:
     for show_dir in output_dir.iterdir():
         if not show_dir.is_dir():
             continue
-        show = {"name": show_dir.name, "path": str(show_dir), "seasons": []}
+        show = {
+            "name": show_dir.name,
+            "path": str(show_dir),
+            "seasons": [],
+        }
+
+        poster_file = show_dir / "poster.jpg"
+        if poster_file.exists():
+            show["poster"] = os.path.relpath(poster_file, output_dir)
+
+        episode_total = 0
+
         for season_dir in show_dir.iterdir():
             if not season_dir.is_dir() or not season_dir.name.startswith("Season "):
                 continue
-            season = {"name": season_dir.name, "path": str(season_dir), "episodes": []}
+            season = {
+                "name": season_dir.name,
+                "path": str(season_dir),
+                "episodes": [],
+            }
+
+            match = re.search(r"(\d+)", season_dir.name)
+            season_num = match.group(1) if match else ""
+
+            season_poster = season_dir / f"season{season_num}-poster.jpg"
+            if season_poster.exists():
+                season["poster"] = os.path.relpath(season_poster, output_dir)
             for episode_file in season_dir.glob("*.mp4"):
                 match = re.search(r"S(\d+)E(\d+)", episode_file.name)
                 episode_num = int(match.group(2)) if match else None
@@ -441,12 +463,14 @@ def list_media(app) -> List[Dict]:
                     "episode_num": episode_num,
                 }
                 season["episodes"].append(episode)
+                episode_total += 1
             def sort_key(e):
                 ep_num = e.get("episode_num")
                 return (ep_num is None, ep_num if ep_num is not None else e["name"])
             season["episodes"].sort(key=sort_key)
             show["seasons"].append(season)
         show["seasons"].sort(key=lambda s: s["name"])
+        show["episode_count"] = episode_total
         media.append(show)
     return media
 
