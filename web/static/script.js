@@ -710,7 +710,6 @@ function displayMediaLibrary(media) {
 
         const col = document.createElement('div');
         col.className = 'col-sm-6 col-md-4 col-lg-3 mb-4';
-
         col.innerHTML = `
             <div class="card h-100 show-card" data-show-id="${showId}">
                 <div class="show-poster-container position-relative">
@@ -720,13 +719,15 @@ function displayMediaLibrary(media) {
                 <div class="card-body text-center">
                     <h5 class="card-title">${show.name}</h5>
                 </div>
-            </div>
-            <div id="show-seasons-${showId}" class="row mt-2 d-none">
-                ${show.seasons.map(season => createSeasonCard(season)).join('')}
-            </div>
-        `;
+            </div>`;
+
+        const seasonsRow = document.createElement('div');
+        seasonsRow.className = 'col-12 d-none';
+        seasonsRow.id = `show-seasons-${showId}`;
+        seasonsRow.innerHTML = `<div class="row mt-2">${show.seasons.map(season => createSeasonCard(season)).join('')}</div>`;
 
         row.appendChild(col);
+        row.appendChild(seasonsRow);
     });
 
     mediaContainer.appendChild(row);
