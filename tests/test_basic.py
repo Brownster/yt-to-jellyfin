@@ -70,7 +70,7 @@ class TestYTToJellyfin(unittest.TestCase):
         config = app.config
 
         self.assertEqual(config['output_dir'], '/env/media')
-        self.assertEqual(config['quality'], '480')
+        self.assertEqual(config['quality'], 480)
         self.assertFalse(config['use_h265'])
         self.assertEqual(config['crf'], 23)
         self.assertEqual(config['ytdlp_path'], '/usr/bin/ytdlp')
