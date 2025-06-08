@@ -171,6 +171,21 @@ class TestFrontend(unittest.TestCase):
         self.assertIn("completed", job_rows[0].text)
         self.assertIn("Test Show 2", job_rows[1].text)
         self.assertIn("downloading", job_rows[1].text)
+
+    @unittest.skip("Requires webdriver to be installed and accessible")
+    def test_history_page(self):
+        """Test that the history page displays completed jobs"""
+        self.driver.get("http://localhost:5000/")
+
+        self.driver.find_element(By.CSS_SELECTOR, '[data-section="history"]').click()
+
+        WebDriverWait(self.driver, 10).until(
+            EC.visibility_of_element_located((By.ID, "history-table"))
+        )
+
+        rows = self.driver.find_elements(By.CSS_SELECTOR, "#history-table tbody tr")
+        self.assertEqual(len(rows), 1)
+        self.assertIn("Test Show 1", rows[0].text)
     
     @unittest.skip("Requires webdriver to be installed and accessible")
     def test_new_job_form(self):

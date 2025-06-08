@@ -71,6 +71,8 @@ Tubarr includes a modern web interface to manage your downloads and media librar
 - Dashboard with stats and recent activity
 - Add new YouTube playlist downloads
 - Track download progress and view logs
+- Review past jobs in the new **History** tab
+  (number retained controlled by `COMPLETED_JOBS_LIMIT`)
 - Browse your media library
 - Configure application settings
 

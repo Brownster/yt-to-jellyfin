@@ -33,6 +33,8 @@ document.addEventListener('DOMContentLoaded', function() {
             // Load data when navigating to certain sections
             if (sectionId === 'jobs') {
                 loadJobs();
+            } else if (sectionId === 'history') {
+                loadHistory();
             } else if (sectionId === 'media') {
                 loadMedia();
             } else if (sectionId === 'playlists') {
@@ -273,7 +275,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Setup polling for active jobs
     setInterval(function() {
-        if (document.querySelector('#jobs:not(.d-none)') || document.querySelector('#dashboard:not(.d-none)')) {
+        if (document.querySelector('#jobs:not(.d-none)') ||
+            document.querySelector('#dashboard:not(.d-none)') ||
+            document.querySelector('#history:not(.d-none)')) {
             updateJobsData();
         }
         if (document.querySelector('#playlists:not(.d-none)')) {
@@ -327,6 +331,9 @@ function updateJobsData() {
             if (document.querySelector('#dashboard:not(.d-none)')) {
                 updateDashboardStats(jobs);
                 updateRecentJobs(jobs);
+            }
+            if (document.querySelector('#history:not(.d-none)')) {
+                loadHistory();
             }
             
             // Check if job details modal is open
@@ -526,6 +533,66 @@ function updateJobsTable(jobs) {
                     })
                     .catch(() => showToast('Error', 'Failed to cancel job'));
             }
+        });
+    });
+}
+
+function loadHistory() {
+    fetch('/history')
+        .then(response => response.json())
+        .then(jobs => {
+            updateHistoryTable(jobs);
+        })
+        .catch(error => {
+            console.error('Error fetching history:', error);
+        });
+}
+
+function updateHistoryTable(jobs) {
+    const histTable = document.getElementById('history-table').querySelector('tbody');
+    histTable.innerHTML = '';
+
+    if (jobs.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = '<td colspan="7" class="text-center">No jobs found</td>';
+        histTable.appendChild(row);
+        return;
+    }
+
+    jobs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    jobs.forEach(job => {
+        const row = document.createElement('tr');
+        const shortId = job.job_id.substring(0, 8);
+        const statusClass = getStatusBadgeClass(job.status);
+        let progressDisplay = `
+            <div class="progress">
+                <div class="progress-bar" role="progressbar" style="width: ${job.progress}%"
+                    aria-valuenow="${job.progress}" aria-valuemin="0" aria-valuemax="100">
+                    ${Math.round(job.progress)}%
+                </div>
+            </div>`;
+
+        row.innerHTML = `
+            <td title="${job.job_id}">${shortId}...</td>
+            <td>${job.show_name}</td>
+            <td>${job.season_num}</td>
+            <td><span class="badge ${statusClass}">${job.status}</span></td>
+            <td>${progressDisplay}</td>
+            <td>${formatDate(job.created_at)}</td>
+            <td>
+                <button class="btn btn-sm btn-info view-job" data-job-id="${job.job_id}">
+                    <i class="bi bi-eye"></i>
+                </button>
+            </td>`;
+
+        histTable.appendChild(row);
+    });
+
+    document.querySelectorAll('#history-table .view-job').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const jobId = this.getAttribute('data-job-id');
+            showJobDetails(jobId);
         });
     });
 }
