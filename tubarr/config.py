@@ -142,6 +142,9 @@ def _load_config() -> Dict:
         except (yaml.YAMLError, IOError) as e:
             logger.error(f"Error loading config file: {e}")
 
+    # Ensure output_dir is absolute so file serving works regardless of current working directory
+    config["output_dir"] = os.path.abspath(config["output_dir"])
+
     try:
         validated = ConfigModel(**config)
     except ValidationError as e:
