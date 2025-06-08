@@ -49,7 +49,8 @@ def _register_playlist(
     url: str,
     show_name: str,
     season_num: str,
-) -> None:
+    start_index: int | None = None,
+) -> bool:
     """Add a playlist to the tracking file if not already present."""
     pid = _get_playlist_id(url)
     if pid not in playlists:
@@ -59,8 +60,11 @@ def _register_playlist(
             "season_num": season_num,
             "archive": _get_archive_file(url),
             "disabled": False,
+            "start_index": int(start_index or 1),
         }
         _save_playlists(playlists_file, playlists)
+        return True
+    return False
 
 
 def _set_playlist_enabled(
@@ -106,7 +110,12 @@ def check_playlist_updates(app) -> List[str]:
         archive = info.get("archive", _get_archive_file(info["url"]))
         try:
             result = subprocess.run(
-                [app.config["ytdlp_path"], "--flat-playlist", "--dump-single-json", info["url"]],
+                [
+                    app.config["ytdlp_path"],
+                    "--flat-playlist",
+                    "--dump-single-json",
+                    info["url"],
+                ],
                 capture_output=True,
                 text=True,
                 check=True,
@@ -116,7 +125,12 @@ def check_playlist_updates(app) -> List[str]:
             logger.error(f"Failed to check playlist {info['url']}: {e}")
             continue
 
-        ids = [e.get("id") for e in data.get("entries", []) if e.get("id")]
+        start_index = int(info.get("start_index", 1))
+        ids = [
+            e.get("id")
+            for idx, e in enumerate(data.get("entries", []), start=1)
+            if idx >= start_index and e.get("id")
+        ]
         archived = set()
         if os.path.exists(archive):
             with open(archive, "r") as f:
@@ -126,12 +140,18 @@ def check_playlist_updates(app) -> List[str]:
             logger.info(f"No updates found for playlist {info['url']}")
             continue
 
-        folder = app.create_folder_structure(info["show_name"], info["season_num"]) 
-        last_ep = app.get_last_episode(info["show_name"], info["season_num"]) 
+        folder = app.create_folder_structure(info["show_name"], info["season_num"])
+        last_ep = app.get_last_episode(info["show_name"], info["season_num"])
         if last_ep == 0:
             last_ep = _get_existing_max_index(folder, info["season_num"])
         start = last_ep + 1
-        job_id = app.create_job(info["url"], info["show_name"], info["season_num"], str(start).zfill(2))
+        job_id = app.create_job(
+            info["url"],
+            info["show_name"],
+            info["season_num"],
+            str(start).zfill(2),
+            playlist_start=start_index,
+        )
         created_jobs.append(job_id)
     return created_jobs
 
@@ -149,6 +169,7 @@ def start_update_checker(app) -> None:
 
     app.update_thread = threading.Thread(target=_run, daemon=True)
     app.update_thread.start()
+
 
 __all__ = [
     "_load_playlists",

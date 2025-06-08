@@ -108,7 +108,7 @@ class TestJobManagement(unittest.TestCase):
 
         # Verify playlist was registered and thread started
         mock_register.assert_called_once_with(
-            "https://youtube.com/playlist?list=TEST", "Test Show", "01"
+            "https://youtube.com/playlist?list=TEST", "Test Show", "01", None
         )
         mock_thread.assert_called_once()
         mock_thread.return_value.start.assert_called_once()
@@ -388,6 +388,42 @@ class TestJobManagement(unittest.TestCase):
             jobs = self.app.check_playlist_updates()
             mock_create.assert_not_called()
             self.assertEqual(jobs, [])
+
+    @patch("subprocess.run")
+    def test_check_playlist_updates_respects_start_index(self, mock_run):
+        archive = os.path.join(self.temp_dir, "PID.txt")
+        with open(archive, "w") as f:
+            f.write("id1\n")
+            f.write("id2\n")
+
+        self.app.playlists = {
+            "PID": {
+                "url": "https://youtube.com/playlist?list=PID",
+                "show_name": "Test Show",
+                "season_num": "01",
+                "archive": archive,
+                "start_index": 3,
+            }
+        }
+        self.app.config["ytdlp_path"] = "yt-dlp"
+
+        mock_run.return_value = MagicMock(
+            stdout=json.dumps(
+                {"entries": [{"id": "id1"}, {"id": "id2"}, {"id": "id3"}]}
+            ),
+            returncode=0,
+        )
+
+        with patch.object(self.app, "create_job", return_value="job-42") as mock_create:
+            jobs = self.app.check_playlist_updates()
+            mock_create.assert_called_once_with(
+                "https://youtube.com/playlist?list=PID",
+                "Test Show",
+                "01",
+                "01",
+                playlist_start=3,
+            )
+            self.assertEqual(jobs, ["job-42"])
 
 
 if __name__ == "__main__":

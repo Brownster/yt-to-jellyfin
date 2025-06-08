@@ -1,4 +1,5 @@
 """Core interface wrapping helper modules for YT-to-Jellyfin."""
+
 import os
 import tempfile
 import threading
@@ -83,8 +84,17 @@ class YTToJellyfin:
     def _is_playlist_url(self, url: str) -> bool:
         return _is_playlist_url(url)
 
-    def _register_playlist(self, url: str, show_name: str, season_num: str) -> None:
-        _register_playlist(self.playlists, self.playlists_file, url, show_name, season_num)
+    def _register_playlist(
+        self, url: str, show_name: str, season_num: str, start_index: int | None = None
+    ) -> bool:
+        return _register_playlist(
+            self.playlists,
+            self.playlists_file,
+            url,
+            show_name,
+            season_num,
+            start_index,
+        )
 
     def _get_existing_max_index(self, folder: str, season_num: str) -> int:
         return _get_existing_max_index(folder, season_num)
@@ -96,7 +106,9 @@ class YTToJellyfin:
     def get_last_episode(self, show_name: str, season_num: str) -> int:
         return get_last_episode(self.episode_tracker, show_name, season_num)
 
-    def update_last_episode(self, show_name: str, season_num: str, last_episode: int) -> None:
+    def update_last_episode(
+        self, show_name: str, season_num: str, last_episode: int
+    ) -> None:
         update_last_episode(
             self.episode_tracker,
             self.episodes_file,
@@ -161,15 +173,21 @@ class YTToJellyfin:
             folder = self.create_folder_structure(job.show_name, job.season_num)
             job.update(message=f"Created folder structure: {folder}")
             if job.playlist_start is not None:
-                dl_success = self.download_playlist(job.playlist_url, folder, job.season_num, job_id, job.playlist_start)
+                dl_success = self.download_playlist(
+                    job.playlist_url, folder, job.season_num, job_id, job.playlist_start
+                )
             else:
-                dl_success = self.download_playlist(job.playlist_url, folder, job.season_num, job_id)
+                dl_success = self.download_playlist(
+                    job.playlist_url, folder, job.season_num, job_id
+                )
             if job.status == "cancelled":
                 return
             if not dl_success:
                 job.update(status="failed", message="Download failed")
                 return
-            self.process_metadata(folder, job.show_name, job.season_num, episode_start, job_id)
+            self.process_metadata(
+                folder, job.show_name, job.season_num, episode_start, job_id
+            )
             if job.status == "cancelled":
                 return
             self.convert_video_files(folder, job.season_num, job_id)
@@ -181,10 +199,30 @@ class YTToJellyfin:
             self.create_nfo_files(folder, job.show_name, job.season_num, job_id)
             if job.status == "cancelled":
                 return
-            if self.config.get("jellyfin_enabled", False) and self.config.get("jellyfin_tv_path"):
+            if self.config.get("jellyfin_enabled", False) and self.config.get(
+                "jellyfin_tv_path"
+            ):
                 self.copy_to_jellyfin(job.show_name, job.season_num, job_id)
-            job.update(status="completed", progress=100, message="Job completed successfully")
+            job.update(
+                status="completed", progress=100, message="Job completed successfully"
+            )
             logger.info(f"Job {job_id} completed successfully")
+            try:
+                pid = self._get_playlist_id(job.playlist_url)
+                info = self.playlists.get(pid)
+                if info:
+                    archive = info.get(
+                        "archive", self._get_archive_file(job.playlist_url)
+                    )
+                    if os.path.exists(archive):
+                        with open(archive, "r") as f:
+                            count = sum(1 for _ in f if _.strip())
+                        info["start_index"] = count + 1
+                        self._save_playlists()
+            except Exception as e:
+                logger.error(
+                    f"Failed to update playlist index for {job.playlist_url}: {e}"
+                )
         except Exception as e:  # pragma: no cover - for unexpected errors
             logger.exception(f"Error processing job {job_id}: {e}")
             job.update(status="failed", message=f"Error: {str(e)}")
@@ -201,7 +239,9 @@ class YTToJellyfin:
         job_id: str,
         playlist_start: Optional[int] = None,
     ) -> bool:
-        return download_playlist(self, playlist_url, folder, season_num, job_id, playlist_start)
+        return download_playlist(
+            self, playlist_url, folder, season_num, job_id, playlist_start
+        )
 
     def process_metadata(
         self,
@@ -216,10 +256,14 @@ class YTToJellyfin:
     def convert_video_files(self, folder: str, season_num: str, job_id: str) -> None:
         convert_video_files(self, folder, season_num, job_id)
 
-    def generate_artwork(self, folder: str, show_name: str, season_num: str, job_id: str) -> None:
+    def generate_artwork(
+        self, folder: str, show_name: str, season_num: str, job_id: str
+    ) -> None:
         generate_artwork(self, folder, show_name, season_num, job_id)
 
-    def create_nfo_files(self, folder: str, show_name: str, season_num: str, job_id: str) -> None:
+    def create_nfo_files(
+        self, folder: str, show_name: str, season_num: str, job_id: str
+    ) -> None:
         create_nfo_files(self, folder, show_name, season_num, job_id)
 
     def list_media(self) -> List[Dict]:
@@ -243,25 +287,35 @@ class YTToJellyfin:
             if os.path.exists(archive):
                 with open(archive, "r") as f:
                     last_downloaded = sum(1 for _ in f)
-            folder = Path(self.config["output_dir"]) / sanitize_name(info["show_name"]) / f"Season {info['season_num']}"
+            folder = (
+                Path(self.config["output_dir"])
+                / sanitize_name(info["show_name"])
+                / f"Season {info['season_num']}"
+            )
             last_episode = self.get_last_episode(info["show_name"], info["season_num"])
             if last_episode == 0:
-                last_episode = self._get_existing_max_index(str(folder), info["season_num"])
-            playlists.append({
-                "id": pid,
-                "url": info["url"],
-                "show_name": info["show_name"],
-                "season_num": info["season_num"],
-                "last_episode": last_episode,
-                "downloaded_videos": last_downloaded,
-                "enabled": not info.get("disabled", False),
-            })
+                last_episode = self._get_existing_max_index(
+                    str(folder), info["season_num"]
+                )
+            playlists.append(
+                {
+                    "id": pid,
+                    "url": info["url"],
+                    "show_name": info["show_name"],
+                    "season_num": info["season_num"],
+                    "last_episode": last_episode,
+                    "downloaded_videos": last_downloaded,
+                    "enabled": not info.get("disabled", False),
+                }
+            )
         return playlists
 
     def set_playlist_enabled(self, playlist_id: str, enabled: bool) -> bool:
         from .playlist import _set_playlist_enabled
 
-        if _set_playlist_enabled(self.playlists, self.playlists_file, playlist_id, enabled):
+        if _set_playlist_enabled(
+            self.playlists, self.playlists_file, playlist_id, enabled
+        ):
             return True
         return False
 
@@ -272,9 +326,13 @@ class YTToJellyfin:
             return True
         return False
 
-    def process(self, playlist_url: str, show_name: str, season_num: str, episode_start: int) -> bool:
+    def process(
+        self, playlist_url: str, show_name: str, season_num: str, episode_start: int
+    ) -> bool:
         try:
-            job_id = self.create_job(playlist_url, show_name, season_num, str(episode_start))
+            job_id = self.create_job(
+                playlist_url, show_name, season_num, str(episode_start)
+            )
             job = self.jobs.get(job_id)
             while job and job.status not in ("completed", "failed"):
                 time.sleep(1)

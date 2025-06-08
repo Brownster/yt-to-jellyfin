@@ -108,6 +108,10 @@ When adding a new playlist you can disable tracking if you don't want Tubarr to
 monitor it for future updates. Tracking can also be toggled or the playlist
 removed later from the **Playlists** page.
 
+If you want to start downloading from a specific video in a playlist, set the
+"Playlist Start" number when creating a job. Tubarr records this index and skips
+earlier videos when checking for updates.
+
 To check all saved playlists for newly added videos you can:
 
 - Run `python app.py --check-updates` from the command line.

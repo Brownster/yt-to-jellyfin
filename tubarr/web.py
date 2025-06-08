@@ -11,6 +11,7 @@ from flask import (
 import os
 
 from .core import logger, YTToJellyfin
+
 # Create Flask application for web interface
 # Determine the repository root so the web assets can be located correctly
 _BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
@@ -61,6 +62,7 @@ def jobs():
                 show_name,
                 season_num,
                 episode_start,
+                playlist_start=None,
                 track_playlist=track_playlist,
             )
         return jsonify({"job_id": job_id})
@@ -222,4 +224,4 @@ def config():
         return jsonify(safe_config)
 
 
-__all__ = ['app', 'ytj']
+__all__ = ["app", "ytj"]
