@@ -119,10 +119,20 @@ class YTToJellyfin:
         season_num: str,
         episode_start: str,
         playlist_start: Optional[int] = None,
+        track_playlist: bool = True,
         *,
         start_thread: bool = True,
     ) -> str:
-        return create_job(self, playlist_url, show_name, season_num, episode_start, playlist_start, start_thread=start_thread)
+        return create_job(
+            self,
+            playlist_url,
+            show_name,
+            season_num,
+            episode_start,
+            playlist_start,
+            track_playlist,
+            start_thread=start_thread,
+        )
 
     def get_job(self, job_id: str) -> Optional[Dict]:
         return get_job(self, job_id)
@@ -244,8 +254,23 @@ class YTToJellyfin:
                 "season_num": info["season_num"],
                 "last_episode": last_episode,
                 "downloaded_videos": last_downloaded,
+                "enabled": not info.get("disabled", False),
             })
         return playlists
+
+    def set_playlist_enabled(self, playlist_id: str, enabled: bool) -> bool:
+        from .playlist import _set_playlist_enabled
+
+        if _set_playlist_enabled(self.playlists, self.playlists_file, playlist_id, enabled):
+            return True
+        return False
+
+    def remove_playlist(self, playlist_id: str) -> bool:
+        from .playlist import _remove_playlist
+
+        if _remove_playlist(self.playlists, self.playlists_file, playlist_id):
+            return True
+        return False
 
     def process(self, playlist_url: str, show_name: str, season_num: str, episode_start: int) -> bool:
         try:

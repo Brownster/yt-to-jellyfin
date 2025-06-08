@@ -202,6 +202,8 @@
                             <th>Season</th>
                             <th>Last Episode</th>
                             <th>Playlist URL</th>
+                            <th>Tracking</th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -244,6 +246,15 @@
                                     <div class="col-lg-4">
                                         <label for="episode_start" class="form-label">Episode Start Number <span class="text-danger">*</span></label>
                                         <input type="text" class="form-control" id="episode_start" name="episode_start" placeholder="01" pattern="[0-9]+" required>
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-lg-12">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="track_playlist" checked>
+                                            <label class="form-check-label" for="track_playlist">Track playlist for updates</label>
+                                        </div>
                                     </div>
                                 </div>
                                 

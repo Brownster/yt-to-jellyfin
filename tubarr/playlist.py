@@ -43,7 +43,14 @@ def _is_playlist_url(url: str) -> bool:
     return "list=" in url or "/playlist" in url
 
 
-def _register_playlist(playlists: Dict[str, Dict[str, str]], playlists_file: str, url: str, show_name: str, season_num: str) -> None:
+def _register_playlist(
+    playlists: Dict[str, Dict[str, str]],
+    playlists_file: str,
+    url: str,
+    show_name: str,
+    season_num: str,
+) -> None:
+    """Add a playlist to the tracking file if not already present."""
     pid = _get_playlist_id(url)
     if pid not in playlists:
         playlists[pid] = {
@@ -51,8 +58,34 @@ def _register_playlist(playlists: Dict[str, Dict[str, str]], playlists_file: str
             "show_name": show_name,
             "season_num": season_num,
             "archive": _get_archive_file(url),
+            "disabled": False,
         }
         _save_playlists(playlists_file, playlists)
+
+
+def _set_playlist_enabled(
+    playlists: Dict[str, Dict[str, str]],
+    playlists_file: str,
+    pid: str,
+    enabled: bool,
+) -> bool:
+    """Enable or disable a tracked playlist."""
+    if pid in playlists:
+        playlists[pid]["disabled"] = not enabled
+        _save_playlists(playlists_file, playlists)
+        return True
+    return False
+
+
+def _remove_playlist(
+    playlists: Dict[str, Dict[str, str]], playlists_file: str, pid: str
+) -> bool:
+    """Remove a playlist from tracking."""
+    if pid in playlists:
+        playlists.pop(pid, None)
+        _save_playlists(playlists_file, playlists)
+        return True
+    return False
 
 
 def _get_existing_max_index(folder: str, season_num: str) -> int:
@@ -68,6 +101,8 @@ def _get_existing_max_index(folder: str, season_num: str) -> int:
 def check_playlist_updates(app) -> List[str]:
     created_jobs = []
     for pid, info in app.playlists.items():
+        if info.get("disabled"):
+            continue
         archive = info.get("archive", _get_archive_file(info["url"]))
         try:
             result = subprocess.run(
@@ -122,6 +157,8 @@ __all__ = [
     "_get_archive_file",
     "_is_playlist_url",
     "_register_playlist",
+    "_set_playlist_enabled",
+    "_remove_playlist",
     "_get_existing_max_index",
     "check_playlist_updates",
     "start_update_checker",

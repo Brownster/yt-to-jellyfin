@@ -40,6 +40,7 @@ def jobs():
         season_num = request.form.get("season_num")
         episode_start = request.form.get("episode_start")
         playlist_start = request.form.get("playlist_start")
+        track_playlist = request.form.get("track_playlist", "true").lower() != "false"
 
         if not playlist_url or not show_name or not season_num or not episode_start:
             return jsonify({"error": "Missing required parameters"}), 400
@@ -47,10 +48,21 @@ def jobs():
         playlist_start_int = int(playlist_start) if playlist_start else None
         if playlist_start_int is not None:
             job_id = ytj.create_job(
-                playlist_url, show_name, season_num, episode_start, playlist_start_int
+                playlist_url,
+                show_name,
+                season_num,
+                episode_start,
+                playlist_start_int,
+                track_playlist,
             )
         else:
-            job_id = ytj.create_job(playlist_url, show_name, season_num, episode_start)
+            job_id = ytj.create_job(
+                playlist_url,
+                show_name,
+                season_num,
+                episode_start,
+                track_playlist=track_playlist,
+            )
         return jsonify({"job_id": job_id})
     else:
         # Get all jobs
@@ -81,6 +93,22 @@ def media():
 def playlists():
     """Return registered playlists."""
     return jsonify(ytj.list_playlists())
+
+
+@app.route("/playlists/<pid>", methods=["PUT", "DELETE"])
+def playlist_modify(pid):
+    """Enable/disable or remove a playlist."""
+    if request.method == "PUT":
+        data = request.get_json() or {}
+        if "enabled" not in data:
+            return jsonify({"error": "Missing enabled flag"}), 400
+        if ytj.set_playlist_enabled(pid, bool(data["enabled"])):
+            return jsonify({"success": True})
+        return jsonify({"error": "Playlist not found"}), 404
+    else:  # DELETE
+        if ytj.remove_playlist(pid):
+            return jsonify({"success": True})
+        return jsonify({"error": "Playlist not found"}), 404
 
 
 @app.route("/playlist_info")

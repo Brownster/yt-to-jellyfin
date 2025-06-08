@@ -73,6 +73,18 @@ class TestPlaylistOperations(unittest.TestCase):
         max_idx = self.app._get_existing_max_index(folder, '01')
         self.assertEqual(max_idx, 3)
 
+    def test_disable_and_remove_playlist(self):
+        url = 'https://youtube.com/playlist?list=XYZ'
+        self.app._register_playlist(url, 'Show', '01')
+        pid = 'XYZ'
+        self.assertIn(pid, self.app.playlists)
+        self.app.set_playlist_enabled(pid, False)
+        self.assertTrue(self.app.playlists[pid]['disabled'])
+        self.app.set_playlist_enabled(pid, True)
+        self.assertFalse(self.app.playlists[pid]['disabled'])
+        self.app.remove_playlist(pid)
+        self.assertNotIn(pid, self.app.playlists)
+
     @patch('subprocess.run')
     def test_get_playlist_videos_success(self, mock_run):
         mock_run.return_value = MagicMock(

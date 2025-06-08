@@ -9,6 +9,7 @@ Tubarr is a Python application that downloads YouTube playlists and processes th
 - **Playlist Update Checker**: Automatically queue jobs when your saved playlists get new videos
 - **Scheduled Playlist Checks**: Enable background scanning at a configurable interval to download new videos as soon as they appear
 - **Single Video Downloads**: Individual videos are not tracked in the playlist list
+- **Optional Playlist Tracking**: Choose whether a playlist should be tracked for updates
 - **Proper Metadata**: Generate NFO files that Jellyfin uses to display episode details
 - **Episode Renumbering**: Set custom starting episode numbers for proper sequencing
 - **H.265 Conversion**: Convert videos to H.265 for better compression and playback performance
@@ -103,6 +104,9 @@ When you start a download job, the playlist information is saved to
 `config/playlists.json` and an archive file is created in
 `config/archives/`. These files record which videos have already been
 downloaded so subsequent runs only grab new content.
+When adding a new playlist you can disable tracking if you don't want Tubarr to
+monitor it for future updates. Tracking can also be toggled or the playlist
+removed later from the **Playlists** page.
 
 To check all saved playlists for newly added videos you can:
 
