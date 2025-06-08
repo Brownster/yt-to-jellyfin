@@ -24,6 +24,8 @@ def run_tests(test_type=None):
         suite = loader.discover(test_dir, pattern="test_integration.py")
     elif test_type == "job":
         suite = loader.discover(test_dir, pattern="test_job_management.py")
+    elif test_type == "jellyfin":
+        suite = loader.discover(test_dir, pattern="test_jellyfin.py")
     elif test_type == "web":
         web_dir = os.path.join(test_dir, 'web')
         suite = loader.discover(web_dir, pattern="test_*.py")
@@ -34,11 +36,13 @@ def run_tests(test_type=None):
         api_suite = loader.discover(test_dir, pattern="test_api.py")
         job_suite = loader.discover(test_dir, pattern="test_job_management.py")
         integration_suite = loader.discover(test_dir, pattern="test_integration.py")
-        
+        jellyfin_suite = loader.discover(test_dir, pattern="test_jellyfin.py")
+
         suite.addTests(basic_suite)
         suite.addTests(api_suite)
         suite.addTests(job_suite)
         suite.addTests(integration_suite)
+        suite.addTests(jellyfin_suite)
     
     # Run the tests
     runner = unittest.TextTestRunner(verbosity=2)
@@ -49,7 +53,7 @@ def run_tests(test_type=None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run tests for YT-to-Jellyfin')
-    parser.add_argument('--type', choices=['basic', 'api', 'job', 'integration', 'web', 'all'],
+    parser.add_argument('--type', choices=['basic', 'api', 'job', 'integration', 'jellyfin', 'web', 'all'],
                         help='Type of tests to run', default='all')
     
     args = parser.parse_args()
