@@ -12,10 +12,13 @@ import os
 
 from .core import logger, YTToJellyfin
 # Create Flask application for web interface
+# Determine the repository root so the web assets can be located correctly
+_BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+
 app = Flask(
     __name__,
-    template_folder=os.path.join(os.path.dirname(__file__), "web/templates"),
-    static_folder=os.path.join(os.path.dirname(__file__), "web/static"),
+    template_folder=os.path.join(_BASE_DIR, "web", "templates"),
+    static_folder=os.path.join(_BASE_DIR, "web", "static"),
 )
 
 ytj = YTToJellyfin()
