@@ -74,6 +74,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     showToast('Error', 'Please enter playlist URL first');
                     return;
                 }
+
+                const originalHTML = selectStartBtn.innerHTML;
+                selectStartBtn.disabled = true;
+                selectStartBtn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Loading...`;
+
                 fetch(`/playlist_info?url=${encodeURIComponent(url)}`)
                     .then(r => r.json())
                     .then(videos => {
@@ -88,7 +93,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         const modal = new bootstrap.Modal(document.getElementById('playlistStartModal'));
                         modal.show();
                     })
-                    .catch(() => showToast('Error', 'Failed to load playlist info'));
+                    .catch(() => showToast('Error', 'Failed to load playlist info'))
+                    .finally(() => {
+                        selectStartBtn.disabled = false;
+                        selectStartBtn.innerHTML = originalHTML;
+                    });
             });
 
             document.getElementById('confirm-start-video').addEventListener('click', function() {
@@ -104,7 +113,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
         newJobForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            
+
+            const startDownloadBtn = document.getElementById('start-download-btn');
+            const originalHTML = startDownloadBtn ? startDownloadBtn.innerHTML : '';
+            if (startDownloadBtn) {
+                startDownloadBtn.disabled = true;
+                startDownloadBtn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Starting...`;
+            }
+
             const formData = new FormData();
             formData.append('playlist_url', document.getElementById('playlist_url').value);
             formData.append('show_name', document.getElementById('show_name').value);
@@ -114,7 +130,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (playlistStartVal) {
                 formData.append('playlist_start', playlistStartVal);
             }
-            
+
             // Send request to create job
             fetch('/jobs', {
                 method: 'POST',
@@ -133,6 +149,12 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(error => {
                 console.error('Error:', error);
                 showToast('Error', 'An error occurred while creating the job');
+            })
+            .finally(() => {
+                if (startDownloadBtn) {
+                    startDownloadBtn.disabled = false;
+                    startDownloadBtn.innerHTML = originalHTML;
+                }
             });
         });
     }
