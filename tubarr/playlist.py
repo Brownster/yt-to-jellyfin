@@ -145,13 +145,21 @@ def check_playlist_updates(app) -> List[str]:
         if last_ep == 0:
             last_ep = _get_existing_max_index(folder, info["season_num"])
         start = last_ep + 1
-        job_id = app.create_job(
-            info["url"],
-            info["show_name"],
-            info["season_num"],
-            str(start).zfill(2),
-            playlist_start=start_index,
-        )
+        if start_index != 1:
+            job_id = app.create_job(
+                info["url"],
+                info["show_name"],
+                info["season_num"],
+                str(start).zfill(2),
+                playlist_start=start_index,
+            )
+        else:
+            job_id = app.create_job(
+                info["url"],
+                info["show_name"],
+                info["season_num"],
+                str(start).zfill(2),
+            )
         created_jobs.append(job_id)
     return created_jobs
 
