@@ -1,9 +1,38 @@
 import os
 import yaml
 import logging
-from typing import Dict
+from typing import Dict, Optional
+from pydantic import BaseModel, Field, ValidationError, validator
 
 logger = logging.getLogger("yt-to-jellyfin")
+
+
+class ConfigModel(BaseModel):
+    output_dir: str = Field(..., min_length=1)
+    quality: int = Field(..., gt=0)
+    use_h265: bool = True
+    crf: int = Field(..., ge=0, le=51)
+    ytdlp_path: str = Field(..., min_length=1)
+    cookies: str = ""
+    completed_jobs_limit: int = Field(..., ge=1)
+    web_enabled: bool = True
+    web_port: int = Field(..., ge=1, le=65535)
+    web_host: str = Field(..., min_length=1)
+    update_checker_enabled: bool = False
+    update_checker_interval: int = Field(..., ge=1)
+    jellyfin_enabled: bool = False
+    jellyfin_tv_path: str = ""
+    jellyfin_host: str = ""
+    jellyfin_port: int = Field(8096, ge=1, le=65535)
+    jellyfin_api_key: str = ""
+    clean_filenames: bool = True
+    defaults: Optional[Dict[str, str]] = Field(default_factory=dict)
+
+    @validator("jellyfin_tv_path", always=True)
+    def validate_jellyfin_tv_path(cls, v, values):
+        if values.get("jellyfin_enabled") and not v:
+            raise ValueError("jellyfin_tv_path is required when Jellyfin integration is enabled")
+        return v
 
 
 def _load_config() -> Dict:
@@ -113,7 +142,12 @@ def _load_config() -> Dict:
         except (yaml.YAMLError, IOError) as e:
             logger.error(f"Error loading config file: {e}")
 
-    logger.info(f"Configuration loaded: {config}")
-    return config
+    try:
+        validated = ConfigModel(**config)
+    except ValidationError as e:
+        raise ValueError(f"Invalid configuration: {e}")
+
+    logger.info(f"Configuration loaded: {validated.dict()}")
+    return validated.dict()
 
 __all__ = ["_load_config", "logger"]
