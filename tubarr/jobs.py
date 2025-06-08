@@ -86,10 +86,14 @@ class DownloadJob:
                 }
                 prefix = f"[{stage_desc.get(stage, stage)}]"
                 message = f"{prefix} {message}"
-            self.messages.append({"time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "text": message})
+            self.messages.append(
+                {"time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "text": message}
+            )
         self.updated_at = datetime.now()
 
-    def to_dict(self, include_messages: bool = True, message_limit: Optional[int] = None):
+    def to_dict(
+        self, include_messages: bool = True, message_limit: Optional[int] = None
+    ):
         messages = []
         if include_messages:
             if message_limit is not None:
@@ -120,6 +124,7 @@ class DownloadJob:
 
 # Job management helper functions
 
+
 def create_job(
     app,
     playlist_url: str,
@@ -132,7 +137,9 @@ def create_job(
     start_thread: bool = True,
 ) -> str:
     job_id = str(uuid.uuid4())
-    job = DownloadJob(job_id, playlist_url, show_name, season_num, episode_start, playlist_start)
+    job = DownloadJob(
+        job_id, playlist_url, show_name, season_num, episode_start, playlist_start
+    )
 
     try:
         ep_start_num = int(episode_start)
@@ -142,16 +149,35 @@ def create_job(
         videos = app.get_playlist_videos(playlist_url)
         start_idx = playlist_start or 1
         for i, entry in enumerate(videos[start_idx - 1 :], start=ep_start_num):
-            job.remaining_files.append(f"{entry.get('title', 'Video')} S{season_num}E{str(i).zfill(2)}")
+            job.remaining_files.append(
+                f"{entry.get('title', 'Video')} S{season_num}E{str(i).zfill(2)}"
+            )
     except Exception as e:
         logger.error(f"Failed to fetch playlist queue: {e}")
 
     if track_playlist and app._is_playlist_url(playlist_url):
-        app._register_playlist(playlist_url, show_name, season_num)
+        added = app._register_playlist(
+            playlist_url, show_name, season_num, playlist_start
+        )
+        if added and playlist_start and playlist_start > 1:
+            try:
+                videos = app.get_playlist_videos(playlist_url)
+                ids_to_seed = [
+                    v.get("id") for v in videos[: playlist_start - 1] if v.get("id")
+                ]
+                archive_file = app._get_archive_file(playlist_url)
+                os.makedirs(os.path.dirname(archive_file), exist_ok=True)
+                with open(archive_file, "a") as f:
+                    for vid in ids_to_seed:
+                        f.write(f"{vid}\n")
+            except Exception as e:
+                logger.error(f"Failed to seed archive for {playlist_url}: {e}")
 
     with app.job_lock:
         app.jobs[job_id] = job
-        completed_jobs = [j for j in app.jobs.values() if j.status in {"completed", "failed"}]
+        completed_jobs = [
+            j for j in app.jobs.values() if j.status in {"completed", "failed"}
+        ]
         completed_jobs.sort(key=lambda j: j.updated_at)
         while len(completed_jobs) > app.config.get("completed_jobs_limit", 10):
             old_job = completed_jobs.pop(0)
@@ -190,5 +216,6 @@ def cancel_job(app, job_id: str) -> bool:
     job.process = None
     job.update(status="cancelled", message="Job cancelled")
     return True
+
 
 __all__ = ["DownloadJob", "create_job", "get_job", "get_jobs", "cancel_job"]

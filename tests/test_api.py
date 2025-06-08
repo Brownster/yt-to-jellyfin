@@ -52,6 +52,7 @@ class TestAPIEndpoints(unittest.TestCase):
             "Test Show",
             "01",
             "01",
+            playlist_start=None,
             track_playlist=True,
         )
 
