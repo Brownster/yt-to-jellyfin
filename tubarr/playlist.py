@@ -91,8 +91,11 @@ def check_playlist_updates(app) -> List[str]:
             logger.info(f"No updates found for playlist {info['url']}")
             continue
 
-        folder = app.create_folder_structure(info["show_name"], info["season_num"])
-        start = _get_existing_max_index(folder, info["season_num"]) + 1
+        folder = app.create_folder_structure(info["show_name"], info["season_num"]) 
+        last_ep = app.get_last_episode(info["show_name"], info["season_num"]) 
+        if last_ep == 0:
+            last_ep = _get_existing_max_index(folder, info["season_num"])
+        start = last_ep + 1
         job_id = app.create_job(info["url"], info["show_name"], info["season_num"], str(start).zfill(2))
         created_jobs.append(job_id)
     return created_jobs
