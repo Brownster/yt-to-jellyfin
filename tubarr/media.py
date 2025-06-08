@@ -195,6 +195,9 @@ def process_metadata(app, folder: str, show_name: str, season_num: str, episode_
             progress = int((i + 1) / total_files * 100)
             job.update(progress=progress, stage_progress=progress, detailed_status=f"Processed {i+1} of {total_files} files")
 
+    last_episode = episode_start + total_files - 1
+    app.update_last_episode(show_name, season_num, last_episode)
+
 
 def convert_video_files(app, folder: str, season_num: str, job_id: str) -> None:
     if not app.config["use_h265"]:

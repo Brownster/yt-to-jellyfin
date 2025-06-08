@@ -32,6 +32,12 @@ from .media import (
 )
 from .jellyfin import copy_to_jellyfin, trigger_jellyfin_scan
 from .utils import sanitize_name, clean_filename, check_dependencies
+from .episodes import (
+    _load_episode_tracker,
+    _save_episode_tracker,
+    get_last_episode,
+    update_last_episode,
+)
 
 
 class YTToJellyfin:
@@ -50,6 +56,8 @@ class YTToJellyfin:
         self.job_lock = threading.Lock()
         self.playlists_file = os.path.join("config", "playlists.json")
         self.playlists = self._load_playlists()
+        self.episodes_file = os.path.join("config", "episodes.json")
+        self.episode_tracker = _load_episode_tracker(self.episodes_file)
         self.update_thread: Optional[threading.Thread] = None
         if self.config.get("update_checker_enabled"):
             start_update_checker(self)
@@ -80,6 +88,22 @@ class YTToJellyfin:
 
     def _get_existing_max_index(self, folder: str, season_num: str) -> int:
         return _get_existing_max_index(folder, season_num)
+
+    # episode tracker helpers
+    def _save_episode_tracker(self) -> None:
+        _save_episode_tracker(self.episodes_file, self.episode_tracker)
+
+    def get_last_episode(self, show_name: str, season_num: str) -> int:
+        return get_last_episode(self.episode_tracker, show_name, season_num)
+
+    def update_last_episode(self, show_name: str, season_num: str, last_episode: int) -> None:
+        update_last_episode(
+            self.episode_tracker,
+            self.episodes_file,
+            show_name,
+            season_num,
+            last_episode,
+        )
 
     def check_playlist_updates(self) -> List[str]:
         return check_playlist_updates(self)
@@ -210,7 +234,9 @@ class YTToJellyfin:
                 with open(archive, "r") as f:
                     last_downloaded = sum(1 for _ in f)
             folder = Path(self.config["output_dir"]) / sanitize_name(info["show_name"]) / f"Season {info['season_num']}"
-            last_episode = self._get_existing_max_index(str(folder), info["season_num"])
+            last_episode = self.get_last_episode(info["show_name"], info["season_num"])
+            if last_episode == 0:
+                last_episode = self._get_existing_max_index(str(folder), info["season_num"])
             playlists.append({
                 "id": pid,
                 "url": info["url"],

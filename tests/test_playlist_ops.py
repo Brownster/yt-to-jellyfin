@@ -59,6 +59,7 @@ class TestPlaylistOperations(unittest.TestCase):
         with open(archive, 'w') as f:
             f.write('id1\n')
             f.write('id2\n')
+        self.app.update_last_episode('Test Show', '01', 2)
         playlists = self.app.list_playlists()
         self.assertEqual(len(playlists), 1)
         info = playlists[0]

@@ -262,8 +262,8 @@ class TestJobManagement(unittest.TestCase):
 
             # Verify files were processed
             self.assertEqual(
-                mock_open.call_count, 5
-            )  # 3 reads (first index + 2 files) + 2 NFO writes
+                mock_open.call_count, 6
+            )  # 3 reads + 2 NFO writes + 1 tracker save
             self.assertEqual(mock_remove.call_count, 2)  # Remove two JSON files
             self.assertEqual(mock_rename.call_count, 2)  # Rename two video files
 
