@@ -48,7 +48,11 @@ class TestAPIEndpoints(unittest.TestCase):
 
         # Verify create_job was called with correct parameters
         mock_create_job.assert_called_once_with(
-            "https://youtube.com/playlist?list=TEST", "Test Show", "01", "01"
+            "https://youtube.com/playlist?list=TEST",
+            "Test Show",
+            "01",
+            "01",
+            track_playlist=True,
         )
 
         # Test missing parameters

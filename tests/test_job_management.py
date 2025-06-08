@@ -126,6 +126,22 @@ class TestJobManagement(unittest.TestCase):
         mock_thread.assert_called_once()
         mock_thread.return_value.start.assert_called_once()
 
+    @patch.object(YTToJellyfin, "_register_playlist")
+    @patch("threading.Thread")
+    def test_create_job_no_tracking(self, mock_thread, mock_register):
+        """Playlist should not be registered when tracking disabled"""
+        job_id = self.app.create_job(
+            "https://youtube.com/playlist?list=TEST2",
+            "Test Show",
+            "01",
+            "01",
+            track_playlist=False,
+        )
+        self.assertIn(job_id, self.app.jobs)
+        mock_register.assert_not_called()
+        mock_thread.assert_called_once()
+        mock_thread.return_value.start.assert_called_once()
+
     def test_job_limit_enforcement(self):
         """Test that completed jobs limit is enforced"""
         # Create more jobs than the limit

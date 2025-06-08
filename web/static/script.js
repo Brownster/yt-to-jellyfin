@@ -130,6 +130,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (playlistStartVal) {
                 formData.append('playlist_start', playlistStartVal);
             }
+            const track = document.getElementById('track_playlist');
+            formData.append('track_playlist', track && track.checked ? 'true' : 'false');
 
             // Send request to create job
             fetch('/jobs', {
@@ -356,15 +358,53 @@ function updatePlaylistsTable(data) {
     tbody.innerHTML = '';
     if (data.length === 0) {
         const row = document.createElement('tr');
-        row.innerHTML = '<td colspan="4" class="text-center">No playlists</td>';
+        row.innerHTML = '<td colspan="6" class="text-center">No playlists</td>';
         tbody.appendChild(row);
         return;
     }
     data.forEach(p => {
         const row = document.createElement('tr');
         const link = `<a href="${p.url}" target="_blank">${p.url}</a>`;
-        row.innerHTML = `<td>${p.show_name}</td><td>${p.season_num}</td><td>${p.last_episode}</td><td>${link}</td>`;
+        const toggle = `<div class="form-check form-switch"><input class="form-check-input playlist-toggle" type="checkbox" data-id="${p.id}" ${p.enabled ? 'checked' : ''}></div>`;
+        const actions = `<button class="btn btn-sm btn-danger remove-playlist" data-id="${p.id}"><i class="bi bi-trash"></i></button>`;
+        row.innerHTML = `<td>${p.show_name}</td><td>${p.season_num}</td><td>${p.last_episode}</td><td>${link}</td><td>${toggle}</td><td>${actions}</td>`;
         tbody.appendChild(row);
+    });
+
+    tbody.querySelectorAll('.playlist-toggle').forEach(el => {
+        el.addEventListener('change', function() {
+            const pid = this.getAttribute('data-id');
+            fetch(`/playlists/${pid}`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({enabled: this.checked})
+            }).then(r => r.json()).then(d => {
+                if (!d.success) {
+                    showToast('Error', d.error || 'Failed to update playlist');
+                    this.checked = !this.checked;
+                }
+            }).catch(() => {
+                showToast('Error', 'Failed to update playlist');
+                this.checked = !this.checked;
+            });
+        });
+    });
+
+    tbody.querySelectorAll('.remove-playlist').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (!confirm('Remove this playlist?')) return;
+            const pid = this.getAttribute('data-id');
+            fetch(`/playlists/${pid}`, {method: 'DELETE'})
+                .then(r => r.json())
+                .then(d => {
+                    if (d.success) {
+                        loadPlaylists();
+                    } else {
+                        showToast('Error', d.error || 'Failed to remove playlist');
+                    }
+                })
+                .catch(() => showToast('Error', 'Failed to remove playlist'));
+        });
     });
 }
 

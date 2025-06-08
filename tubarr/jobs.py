@@ -127,6 +127,7 @@ def create_job(
     season_num: str,
     episode_start: str,
     playlist_start: Optional[int] = None,
+    track_playlist: bool = True,
     *,
     start_thread: bool = True,
 ) -> str:
@@ -145,7 +146,7 @@ def create_job(
     except Exception as e:
         logger.error(f"Failed to fetch playlist queue: {e}")
 
-    if app._is_playlist_url(playlist_url):
+    if track_playlist and app._is_playlist_url(playlist_url):
         app._register_playlist(playlist_url, show_name, season_num)
 
     with app.job_lock:
