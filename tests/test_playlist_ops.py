@@ -126,5 +126,55 @@ class TestPlaylistOperations(unittest.TestCase):
             result = self.app.process('u', 's', '01', 1)
             self.assertFalse(result)
 
+    def test_start_update_checker_thread(self):
+        """start_update_checker should create and start a daemon thread"""
+        temp_dir = tempfile.mkdtemp()
+        config = self.config.copy()
+        config.update({
+            'output_dir': temp_dir,
+            'update_checker_enabled': True,
+            'update_checker_interval': 2,
+        })
+        playlists = {
+            'PID': {
+                'url': 'https://yt/playlist',
+                'show_name': 'Show',
+                'season_num': '01'
+            }
+        }
+        threads = []
+
+        def fake_thread(target=None, daemon=None):
+            thread = MagicMock()
+            thread.daemon = daemon
+
+            def start():
+                try:
+                    target()
+                except StopIteration:
+                    pass
+
+            thread.start.side_effect = start
+            threads.append(thread)
+            return thread
+
+        def fake_sleep(duration):
+            raise StopIteration
+
+        with patch.object(YTToJellyfin, '_load_config', return_value=config), \
+             patch.object(YTToJellyfin, '_load_playlists', return_value=playlists), \
+             patch.object(YTToJellyfin, 'check_playlist_updates') as mock_check, \
+             patch('threading.Thread', side_effect=fake_thread) as mock_thread, \
+             patch('time.sleep', side_effect=fake_sleep) as mock_sleep:
+            ytj = YTToJellyfin()
+
+        self.assertEqual(len(threads), 1)
+        thread = threads[0]
+        self.assertIs(ytj.update_thread, thread)
+        self.assertTrue(thread.daemon)
+        thread.start.assert_called_once()
+        mock_check.assert_called_once()
+        mock_sleep.assert_called_once_with(max(1, config['update_checker_interval']) * 60)
+
 if __name__ == '__main__':
     unittest.main()
