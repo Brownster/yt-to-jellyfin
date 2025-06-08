@@ -5,7 +5,7 @@ import subprocess
 import threading
 import time
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from .config import logger
 from .utils import sanitize_name
@@ -49,7 +49,7 @@ def _register_playlist(
     url: str,
     show_name: str,
     season_num: str,
-    start_index: int | None = None,
+    start_index: Optional[int] = None,
 ) -> bool:
     """Add a playlist to the tracking file if not already present."""
     pid = _get_playlist_id(url)
