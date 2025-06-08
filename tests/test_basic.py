@@ -162,5 +162,20 @@ web:
         self.assertEqual(job_dict["progress"], 25)
         self.assertEqual(len(job_dict["messages"]), 1)
 
+    def test_clean_filename_variations(self):
+        """clean_filename should handle underscores and episode markers"""
+        self.assertEqual(
+            self.app.clean_filename("My_Show_S01E01_Title"),
+            "My Show S01E01_Title",
+        )
+        self.assertEqual(
+            self.app.clean_filename("S01E01_Title"),
+            "S01E01 _Title",
+        )
+        self.assertEqual(
+            self.app.clean_filename("My_Show_Title"),
+            "My Show Title",
+        )
+
 if __name__ == '__main__':
     unittest.main()
