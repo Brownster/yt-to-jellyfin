@@ -140,6 +140,11 @@ main {
     font-size: 0.8rem;
 }
 
+/* Movie name hidden by default */
+#detail-movie-field {
+    display: none;
+}
+
 /* Media cards styling */
 .show-poster-container {
     position: relative;

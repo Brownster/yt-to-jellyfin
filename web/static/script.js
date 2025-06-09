@@ -831,6 +831,24 @@ function updateJobDetailModal(job) {
     document.getElementById('detail-show-name').textContent = job.show_name;
     document.getElementById('detail-season').textContent = job.season_num;
     document.getElementById('detail-episode-start').textContent = job.episode_start;
+    document.getElementById('detail-movie-name').textContent = job.movie_name || '';
+
+    const movieField = document.getElementById('detail-movie-field');
+    const showField = document.getElementById('detail-show-name').parentElement;
+    const seasonField = document.getElementById('detail-season').parentElement;
+    const episodeField = document.getElementById('detail-episode-start').parentElement;
+
+    if (job.media_type === 'movie') {
+        movieField.style.display = 'block';
+        showField.style.display = 'none';
+        seasonField.style.display = 'none';
+        episodeField.style.display = 'none';
+    } else {
+        movieField.style.display = 'none';
+        showField.style.display = 'block';
+        seasonField.style.display = 'block';
+        episodeField.style.display = 'block';
+    }
     
     const statusBadge = document.getElementById('detail-status');
     statusBadge.textContent = job.status;
