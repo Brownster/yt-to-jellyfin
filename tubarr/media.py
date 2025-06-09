@@ -7,7 +7,7 @@ from typing import List, Dict, Optional
 from datetime import datetime
 
 from .config import logger
-from .utils import sanitize_name, clean_filename, run_subprocess
+from .utils import sanitize_name, clean_filename, run_subprocess, terminate_process
 from . import tmdb
 
 
@@ -94,12 +94,13 @@ def download_playlist(
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             universal_newlines=True,
+            start_new_session=True,
         )
         if job:
             job.process = process
         for line in process.stdout:
             if job and job.status == "cancelled":
-                process.terminate()
+                terminate_process(process)
                 break
             line = line.strip()
             logger.info(line)
@@ -403,12 +404,13 @@ def convert_video_files(app, folder: str, season_num: str, job_id: str) -> None:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 universal_newlines=True,
+                start_new_session=True,
             )
             if job:
                 job.process = process
             for line in process.stdout:
                 if job and job.status == "cancelled":
-                    process.terminate()
+                    terminate_process(process)
                     break
                 logger.debug(line.strip())
                 if job and "time=" in line:
@@ -604,12 +606,13 @@ def convert_movie_file(app, folder: str, job_id: str) -> None:
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             universal_newlines=True,
+            start_new_session=True,
         )
         if job:
             job.process = process
         for line in process.stdout:
             if job and job.status == "cancelled":
-                process.terminate()
+                terminate_process(process)
                 break
             logger.debug(line.strip())
             if job and "time=" in line:
@@ -642,7 +645,9 @@ def convert_movie_file(app, folder: str, job_id: str) -> None:
                                 job.update(
                                     progress=file_progress,
                                     stage_progress=file_progress,
-                                    detailed_status=f"Converting {filename}: {file_progress}%",
+                                    detailed_status=(
+                                        f"Converting {filename}: {file_progress}%"
+                                    ),
                                 )
                 except Exception as e:
                     logger.error(f"Error parsing progress: {e}")
@@ -668,7 +673,8 @@ def convert_movie_file(app, folder: str, job_id: str) -> None:
             if job:
                 job.update(
                     message=(
-                        f"Failed to convert {filename}, return code: {process.returncode}"
+                        "Failed to convert "
+                        f"{filename}, return code: {process.returncode}"
                     ),
                     detailed_status=f"Error converting {filename}",
                 )
@@ -684,7 +690,6 @@ def convert_movie_file(app, folder: str, job_id: str) -> None:
             )
         if os.path.exists(temp_file):
             os.remove(temp_file)
-
 
 
 def process_movie_metadata(
@@ -977,8 +982,16 @@ def generate_artwork(
                 f"Season {season_num}",
                 f"{folder}/season{season_num}-poster.jpg",
             ]
-            p1 = subprocess.Popen(montage_args, stdout=subprocess.PIPE)
-            p2 = subprocess.Popen(convert_args, stdin=p1.stdout)
+            p1 = subprocess.Popen(
+                montage_args,
+                stdout=subprocess.PIPE,
+                start_new_session=True,
+            )
+            p2 = subprocess.Popen(
+                convert_args,
+                stdin=p1.stdout,
+                start_new_session=True,
+            )
             p2.communicate()
             run_subprocess(
                 [
