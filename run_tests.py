@@ -7,14 +7,15 @@ import sys
 import unittest
 import argparse
 
+
 def run_tests(test_type=None):
     """Run the specified tests"""
     # Get the directory containing the tests
-    test_dir = os.path.join(os.path.dirname(__file__), 'tests')
-    
+    test_dir = os.path.join(os.path.dirname(__file__), "tests")
+
     # Create a test loader
     loader = unittest.TestLoader()
-    
+
     # Discover tests based on the type
     if test_type == "api":
         suite = loader.discover(test_dir, pattern="test_api.py")
@@ -27,7 +28,7 @@ def run_tests(test_type=None):
     elif test_type == "jellyfin":
         suite = loader.discover(test_dir, pattern="test_jellyfin.py")
     elif test_type == "web":
-        web_dir = os.path.join(test_dir, 'web')
+        web_dir = os.path.join(test_dir, "web")
         suite = loader.discover(web_dir, pattern="test_*.py")
     else:
         # Run all tests except web tests (which require webdriver)
@@ -43,18 +44,23 @@ def run_tests(test_type=None):
         suite.addTests(job_suite)
         suite.addTests(integration_suite)
         suite.addTests(jellyfin_suite)
-    
+
     # Run the tests
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
-    
+
     # Return 0 if all tests passed, 1 otherwise
     return 0 if result.wasSuccessful() else 1
 
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Run tests for YT-to-Jellyfin')
-    parser.add_argument('--type', choices=['basic', 'api', 'job', 'integration', 'jellyfin', 'web', 'all'],
-                        help='Type of tests to run', default='all')
-    
+    parser = argparse.ArgumentParser(description="Run tests for YT-to-Jellyfin")
+    parser.add_argument(
+        "--type",
+        choices=["basic", "api", "job", "integration", "jellyfin", "web", "all"],
+        help="Type of tests to run",
+        default="all",
+    )
+
     args = parser.parse_args()
     sys.exit(run_tests(args.type))

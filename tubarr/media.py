@@ -1,7 +1,6 @@
 import os
 import json
 import re
-import shutil
 import subprocess
 from pathlib import Path
 from typing import List, Dict, Optional
@@ -12,12 +11,23 @@ from .utils import sanitize_name, clean_filename, run_subprocess
 
 
 def create_folder_structure(app, show_name: str, season_num: str) -> str:
-    folder = Path(app.config["output_dir"]) / sanitize_name(show_name) / f"Season {season_num}"
+    folder = (
+        Path(app.config["output_dir"])
+        / sanitize_name(show_name)
+        / f"Season {season_num}"
+    )
     folder.mkdir(parents=True, exist_ok=True)
     return str(folder)
 
 
-def download_playlist(app, playlist_url: str, folder: str, season_num: str, job_id: str, playlist_start: Optional[int] = None) -> bool:
+def download_playlist(
+    app,
+    playlist_url: str,
+    folder: str,
+    season_num: str,
+    job_id: str,
+    playlist_start: Optional[int] = None,
+) -> bool:
     output_template = f"{folder}/%(title)s S{season_num}E%(playlist_index)02d.%(ext)s"
     ytdlp_path = app.config["ytdlp_path"]
     if not os.path.isabs(ytdlp_path):
@@ -30,7 +40,10 @@ def download_playlist(app, playlist_url: str, folder: str, season_num: str, job_
         ytdlp_path,
         "--ignore-errors",
         "--no-warnings",
-        f'-f bestvideo[height<={app.config["quality"]}]+bestaudio/best[height<={app.config["quality"]}]',
+        (
+            f'-f bestvideo[height<={app.config["quality"]}]'
+            f'+bestaudio/best[height<={app.config["quality"]}]'
+        ),
         "-o",
         output_template,
         "--write-info-json",
@@ -69,7 +82,12 @@ def download_playlist(app, playlist_url: str, folder: str, season_num: str, job_
     total_files = 0
     processed_files = 0
     try:
-        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            universal_newlines=True,
+        )
         if job:
             job.process = process
         for line in process.stdout:
@@ -87,7 +105,12 @@ def download_playlist(app, playlist_url: str, folder: str, season_num: str, job_
                             processed_files += 1
                             if job.remaining_files:
                                 job.remaining_files.pop(0)
-                            job.update(file_name=current_file, processed_files=processed_files, detailed_status=f"Downloading: {current_file}", message=f"Downloading file: {current_file}")
+                            job.update(
+                                file_name=current_file,
+                                processed_files=processed_files,
+                                detailed_status=f"Downloading: {current_file}",
+                                message=f"Downloading file: {current_file}",
+                            )
                     except (ValueError, AttributeError) as e:
                         logger.error(f"Error parsing destination: {e}")
                 elif "[download]" in line and "of" in line and "item" in line:
@@ -104,10 +127,22 @@ def download_playlist(app, playlist_url: str, folder: str, season_num: str, job_
                         if progress_str:
                             file_progress = float(progress_str.group(1))
                             if total_files > 0:
-                                overall_progress = min(99, ((processed_files - 1) / total_files * 100) + (file_progress / total_files))
+                                overall_progress = min(
+                                    99,
+                                    ((processed_files - 1) / total_files * 100)
+                                    + (file_progress / total_files),
+                                )
                             else:
                                 overall_progress = file_progress
-                            job.update(progress=overall_progress, stage_progress=file_progress, message=line, detailed_status=f"Downloading: {current_file} ({file_progress:.1f}%)")
+                            job.update(
+                                progress=overall_progress,
+                                stage_progress=file_progress,
+                                message=line,
+                                detailed_status=(
+                                    f"Downloading: {current_file} "
+                                    f"({file_progress:.1f}%)"
+                                ),
+                            )
                     except (ValueError, AttributeError) as e:
                         logger.error(f"Error parsing progress: {e}")
                         job.update(message=line)
@@ -118,11 +153,25 @@ def download_playlist(app, playlist_url: str, folder: str, season_num: str, job_
             job.process = None
         if process.returncode != 0:
             if job:
-                job.update(status="failed", stage="failed", detailed_status="Download failed", message=f"Download failed with return code {process.returncode}")
-            logger.error(f"Error downloading playlist, return code: {process.returncode}")
+                job.update(
+                    status="failed",
+                    stage="failed",
+                    detailed_status="Download failed",
+                    message=f"Download failed with return code {process.returncode}",
+                )
+            logger.error(
+                f"Error downloading playlist, return code: {process.returncode}"
+            )
             return False
         if job:
-            job.update(status="downloaded", stage="downloading", progress=100, stage_progress=100, detailed_status="Download completed successfully", message="Download completed successfully")
+            job.update(
+                status="downloaded",
+                stage="downloading",
+                progress=100,
+                stage_progress=100,
+                detailed_status="Download completed successfully",
+                message="Download completed successfully",
+            )
         return True
     except subprocess.SubprocessError as e:
         if job:
@@ -132,14 +181,26 @@ def download_playlist(app, playlist_url: str, folder: str, season_num: str, job_
         return False
 
 
-def process_metadata(app, folder: str, show_name: str, season_num: str, episode_start: int, job_id: str) -> None:
+def process_metadata(
+    app, folder: str, show_name: str, season_num: str, episode_start: int, job_id: str
+) -> None:
     job = app.jobs.get(job_id)
     if job:
-        job.update(status="processing_metadata", stage="processing_metadata", progress=0, stage_progress=0, detailed_status="Processing metadata from videos", message="Processing metadata and creating NFO files")
+        job.update(
+            status="processing_metadata",
+            stage="processing_metadata",
+            progress=0,
+            stage_progress=0,
+            detailed_status="Processing metadata from videos",
+            message="Processing metadata and creating NFO files",
+        )
     json_files = list(Path(folder).glob("*.info.json"))
     if not json_files:
         if job:
-            job.update(message="Warning: No JSON metadata files found", detailed_status="No metadata files found")
+            job.update(
+                message="Warning: No JSON metadata files found",
+                detailed_status="No metadata files found",
+            )
         logger.warning("No JSON metadata files found")
         return
     with open(json_files[0], "r") as f:
@@ -148,12 +209,19 @@ def process_metadata(app, folder: str, show_name: str, season_num: str, episode_
     episode_offset = episode_start - first_index
     total_files = len(json_files)
     if job:
-        job.update(total_files=total_files, detailed_status=f"Processing metadata for {total_files} videos")
+        job.update(
+            total_files=total_files,
+            detailed_status=f"Processing metadata for {total_files} videos",
+        )
     for i, json_file in enumerate(json_files):
         with open(json_file, "r") as f:
             data = json.load(f)
         title = data.get("title", "Unknown Title")
-        description = data.get("description", "").split("\n")[0] if data.get("description") else ""
+        description = (
+            data.get("description", "").split("\n")[0]
+            if data.get("description")
+            else ""
+        )
         upload_date = data.get("upload_date", "")
         if upload_date:
             try:
@@ -166,10 +234,19 @@ def process_metadata(app, folder: str, show_name: str, season_num: str, episode_
         new_ep = original_ep + episode_offset
         new_ep_padded = f"{new_ep:02d}"
         base_file = str(json_file).replace(".info.json", "")
-        new_base = re.sub(rf"(\s?)?(S{season_num}E)[0-9]+", lambda m: f"{m.group(1) or ' '}{m.group(2)}{new_ep_padded}", base_file)
+        new_base = re.sub(
+            rf"(\s?)?(S{season_num}E)[0-9]+",
+            lambda m: f"{m.group(1) or ' '}{m.group(2)}{new_ep_padded}",
+            base_file,
+        )
         file_name = os.path.basename(new_base)
         if job:
-            job.update(file_name=file_name, processed_files=i + 1, detailed_status=f"Processing metadata: {file_name}", message=f"Processing metadata for {title}")
+            job.update(
+                file_name=file_name,
+                processed_files=i + 1,
+                detailed_status=f"Processing metadata: {file_name}",
+                message=f"Processing metadata for {title}",
+            )
         for ext in ["mp4", "mkv", "webm"]:
             original = f"{base_file}.{ext}"
             if os.path.exists(original):
@@ -181,7 +258,18 @@ def process_metadata(app, folder: str, show_name: str, season_num: str, episode_
                 if job:
                     job.update(message=f"Renamed file to {os.path.basename(new_file)}")
                 break
-        nfo_content = f"""<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<episodedetails>\n  <title>{title}</title>\n  <season>{season_num}</season>\n  <episode>{new_ep_padded}</episode>\n  <plot>{description}</plot>\n  <aired>{air_date}</aired>\n  <studio>YouTube</studio>\n  <showtitle>{show_name}</showtitle>\n</episodedetails>\n"""
+        nfo_content = (
+            "<?xml version='1.0' encoding='UTF-8' standalone='yes'?>\n"
+            "<episodedetails>\n"
+            f"  <title>{title}</title>\n"
+            f"  <season>{season_num}</season>\n"
+            f"  <episode>{new_ep_padded}</episode>\n"
+            f"  <plot>{description}</plot>\n"
+            f"  <aired>{air_date}</aired>\n"
+            "  <studio>YouTube</studio>\n"
+            f"  <showtitle>{show_name}</showtitle>\n"
+            "</episodedetails>\n"
+        )
         basename = os.path.basename(new_base)
         if app.config.get("clean_filenames", True):
             basename = clean_filename(basename)
@@ -193,7 +281,11 @@ def process_metadata(app, folder: str, show_name: str, season_num: str, episode_
         os.remove(json_file)
         if job and total_files:
             progress = int((i + 1) / total_files * 100)
-            job.update(progress=progress, stage_progress=progress, detailed_status=f"Processed {i+1} of {total_files} files")
+            job.update(
+                progress=progress,
+                stage_progress=progress,
+                detailed_status=f"Processed {i+1} of {total_files} files",
+            )
 
     last_episode = episode_start + total_files - 1
     app.update_last_episode(show_name, season_num, last_episode)
@@ -204,31 +296,66 @@ def convert_video_files(app, folder: str, season_num: str, job_id: str) -> None:
         logger.info("H.265 conversion disabled, skipping")
         job = app.jobs.get(job_id)
         if job:
-            job.update(message="H.265 conversion disabled, skipping", detailed_status="H.265 conversion disabled")
+            job.update(
+                message="H.265 conversion disabled, skipping",
+                detailed_status="H.265 conversion disabled",
+            )
         return
     job = app.jobs.get(job_id)
     if job:
-        job.update(status="converting", stage="converting", progress=0, stage_progress=0, detailed_status="Preparing video conversion to H.265", message="Starting video conversion to H.265")
+        job.update(
+            status="converting",
+            stage="converting",
+            progress=0,
+            stage_progress=0,
+            detailed_status="Preparing video conversion to H.265",
+            message="Starting video conversion to H.265",
+        )
     video_files = []
     for ext in ["webm", "mp4"]:
         video_files.extend(list(Path(folder).glob(f"*S{season_num}E*.{ext}")))
     total_files = len(video_files)
     if total_files == 0:
         if job:
-            job.update(message="No video files found for conversion", detailed_status="No video files to convert")
+            job.update(
+                message="No video files found for conversion",
+                detailed_status="No video files to convert",
+            )
         return
     if job:
-        job.update(total_files=total_files, detailed_status=f"Converting {total_files} video files to H.265")
+        job.update(
+            total_files=total_files,
+            detailed_status=f"Converting {total_files} video files to H.265",
+        )
     for i, video in enumerate(video_files):
         ext = str(video).rsplit(".", 1)[1].lower()
         if ext == "mp4":
-            probe_cmd = ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=codec_name", "-of", "json", str(video)]
+            probe_cmd = [
+                "ffprobe",
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-show_entries",
+                "stream=codec_name",
+                "-of",
+                "json",
+                str(video),
+            ]
             result = subprocess.run(probe_cmd, capture_output=True, text=True)
-            codec = json.loads(result.stdout).get("streams", [{}])[0].get("codec_name", "")
+            codec = (
+                json.loads(result.stdout).get("streams", [{}])[0].get("codec_name", "")
+            )
             if codec in ["hevc", "h265"]:
                 logger.info(f"Skipping already H.265 encoded file: {video}")
                 if job:
-                    job.update(processed_files=i + 1, message=f"Skipping already H.265 encoded file: {os.path.basename(str(video))}")
+                    job.update(
+                        processed_files=i + 1,
+                        message=(
+                            "Skipping already H.265 encoded file: "
+                            f"{os.path.basename(str(video))}"
+                        ),
+                    )
                 continue
         base = str(video).rsplit(".", 1)[0]
         temp_file = f"{base}.temp.mp4"
@@ -252,10 +379,24 @@ def convert_video_files(app, folder: str, season_num: str, job_id: str) -> None:
         ]
         filename = os.path.basename(str(video))
         if job:
-            job.update(file_name=filename, processed_files=i + 1, detailed_status=f"Converting {filename} to H.265 (file {i+1}/{total_files})", message=f"Converting {filename} to H.265 ({i+1}/{total_files})")
+            job.update(
+                file_name=filename,
+                processed_files=i + 1,
+                detailed_status=(
+                    f"Converting {filename} to H.265 (file {i+1}/{total_files})"
+                ),
+                message=(
+                    f"Converting {filename} to H.265 ({i+1}/{total_files})"
+                ),
+            )
         logger.info(f"Converting {video} to H.265")
         try:
-            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                universal_newlines=True,
+            )
             if job:
                 job.process = process
             for line in process.stdout:
@@ -268,16 +409,47 @@ def convert_video_files(app, folder: str, season_num: str, job_id: str) -> None:
                         time_str = re.search(r"time=(\d+:\d+:\d+\.\d+)", line)
                         if time_str:
                             time_parts = time_str.group(1).split(":")
-                            seconds = float(time_parts[0]) * 3600 + float(time_parts[1]) * 60 + float(time_parts[2])
-                            duration_cmd = ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", str(video)]
-                            duration_result = subprocess.run(duration_cmd, capture_output=True, text=True, check=True)
+                            seconds = (
+                                float(time_parts[0]) * 3600
+                                + float(time_parts[1]) * 60
+                                + float(time_parts[2])
+                            )
+                            duration_cmd = [
+                                "ffprobe",
+                                "-v",
+                                "error",
+                                "-show_entries",
+                                "format=duration",
+                                "-of",
+                                "default=noprint_wrappers=1:nokey=1",
+                                str(video),
+                            ]
+                            duration_result = subprocess.run(
+                                duration_cmd, capture_output=True, text=True, check=True
+                            )
                             duration = float(duration_result.stdout.strip())
                             if duration > 0:
                                 file_progress = min(100, int(seconds / duration * 100))
-                                total_progress = min(99, ((i) / total_files * 100) + (file_progress / total_files))
-                                job.update(progress=total_progress, stage_progress=file_progress, detailed_status=f"Converting {filename}: {file_progress}% (file {i+1}/{total_files})")
+                                total_progress = min(
+                                    99,
+                                    ((i) / total_files * 100)
+                                    + (file_progress / total_files),
+                                )
+                                job.update(
+                                    progress=total_progress,
+                                    stage_progress=file_progress,
+                                    detailed_status=(
+                                        f"Converting {filename}: {file_progress}% "
+                                        f"(file {i+1}/{total_files})"
+                                    ),
+                                )
                                 if file_progress % 20 == 0:
-                                    job.update(message=f"Converting {filename}: {file_progress}% complete")
+                                    job.update(
+                                        message=(
+                                            f"Converting {filename}: {file_progress}% "
+                                            f"complete"
+                                        )
+                                    )
                     except Exception as e:
                         logger.error(f"Error parsing progress: {e}")
             process.wait()
@@ -289,28 +461,51 @@ def convert_video_files(app, folder: str, season_num: str, job_id: str) -> None:
                     os.remove(video)
                 logger.info(f"Converted: {video} → {base}.mp4")
                 if job:
-                    job.update(message=f"Successfully converted {filename} to H.265", detailed_status=f"Converted {i+1}/{total_files} files")
+                    job.update(
+                        message=f"Successfully converted {filename} to H.265",
+                        detailed_status=f"Converted {i+1}/{total_files} files",
+                    )
             else:
-                logger.error(f"Failed to convert {video}, return code: {process.returncode}")
+                logger.error(
+                    f"Failed to convert {video}, return code: {process.returncode}"
+                )
                 if job:
-                    job.update(message=f"Failed to convert {filename}, return code: {process.returncode}", detailed_status=f"Error converting {filename}")
+                    job.update(
+                        message=(
+                            "Failed to convert "
+                            f"{filename}, return code: {process.returncode}"
+                        ),
+                        detailed_status=f"Error converting {filename}",
+                    )
                 if os.path.exists(temp_file):
                     os.remove(temp_file)
         except subprocess.SubprocessError as e:
             logger.error(f"Failed to convert {video}: {e}")
             if job:
                 job.process = None
-                job.update(message=f"Failed to convert {filename}: {str(e)}", detailed_status=f"Error converting {filename}")
+                job.update(
+                    message=f"Failed to convert {filename}: {str(e)}",
+                    detailed_status=f"Error converting {filename}",
+                )
             if os.path.exists(temp_file):
                 os.remove(temp_file)
     if job:
-        job.update(progress=100, stage_progress=100, detailed_status="Video conversion completed", message="Video conversion completed")
+        job.update(
+            progress=100,
+            stage_progress=100,
+            detailed_status="Video conversion completed",
+            message="Video conversion completed",
+        )
 
 
-def generate_artwork(app, folder: str, show_name: str, season_num: str, job_id: str) -> None:
+def generate_artwork(
+    app, folder: str, show_name: str, season_num: str, job_id: str
+) -> None:
     job = app.jobs.get(job_id)
     if job:
-        job.update(status="generating_artwork", message="Generating thumbnails and artwork")
+        job.update(
+            status="generating_artwork", message="Generating thumbnails and artwork"
+        )
     show_folder = str(Path(folder).parent)
     episodes = list(Path(folder).glob(f"*S{season_num}E*.mp4"))
     if not episodes:
@@ -325,56 +520,115 @@ def generate_artwork(app, folder: str, show_name: str, season_num: str, job_id: 
         for i, episode in enumerate(episodes[:1]):
             poster_file = os.path.join(app.temp_dir, f"tmp_poster_{i:03d}.jpg")
             filter_str = r"select=not(mod(n\,1000)),scale=640:360"
-            run_subprocess([
-                "ffmpeg",
-                "-i",
-                str(episode),
-                "-vf",
-                filter_str,
-                "-vframes",
-                "3",
-                poster_file,
-            ], check=True, capture_output=True)
+            run_subprocess(
+                [
+                    "ffmpeg",
+                    "-i",
+                    str(episode),
+                    "-vf",
+                    filter_str,
+                    "-vframes",
+                    "3",
+                    poster_file,
+                ],
+                check=True,
+                capture_output=True,
+            )
             temp_posters.append(poster_file)
         if temp_posters:
             poster_path = os.path.join(show_folder, "poster.jpg")
-            run_subprocess([
-                "convert",
-                *temp_posters,
-                "-gravity",
-                "Center",
-                "-background",
-                "Black",
-                "-resize",
-                "1000x1500^",
-                "-extent",
-                "1000x1500",
-                "-pointsize",
-                "80",
-                "-fill",
-                "white",
-                "-gravity",
-                "south",
-                "-annotate",
-                "+0+50",
-                show_name,
-                poster_path,
-            ], check=True)
+            run_subprocess(
+                [
+                    "convert",
+                    *temp_posters,
+                    "-gravity",
+                    "Center",
+                    "-background",
+                    "Black",
+                    "-resize",
+                    "1000x1500^",
+                    "-extent",
+                    "1000x1500",
+                    "-pointsize",
+                    "80",
+                    "-fill",
+                    "white",
+                    "-gravity",
+                    "south",
+                    "-annotate",
+                    "+0+50",
+                    show_name,
+                    poster_path,
+                ],
+                check=True,
+            )
             if job:
                 job.update(progress=60, message="Created show poster")
         season_frames_dir = os.path.join(app.temp_dir, "season_frames")
         os.makedirs(season_frames_dir, exist_ok=True)
         for i, episode in enumerate(episodes[:6]):
             frame_file = os.path.join(season_frames_dir, f"frame_{i:03d}.jpg")
-            run_subprocess(["ffmpeg", "-i", str(episode), "-vf", "thumbnail", "-frames:v", "1", frame_file], check=True, capture_output=True)
+            run_subprocess(
+                [
+                    "ffmpeg",
+                    "-i",
+                    str(episode),
+                    "-vf",
+                    "thumbnail",
+                    "-frames:v",
+                    "1",
+                    frame_file,
+                ],
+                check=True,
+                capture_output=True,
+            )
         season_frames = list(Path(season_frames_dir).glob("*.jpg"))
         if season_frames:
-            montage_args = ["montage", "-geometry", "400x225+5+5", "-background", "black", "-tile", "3x2", *[str(f) for f in season_frames], "-"]
-            convert_args = ["convert", "-", "-resize", "1000x1500", "-", "-gravity", "south", "-background", "#00000080", "-splice", "0x60", "-pointsize", "48", "-fill", "white", "-annotate", "+0+20", f"Season {season_num}", f"{folder}/season{season_num}-poster.jpg"]
+            montage_args = [
+                "montage",
+                "-geometry",
+                "400x225+5+5",
+                "-background",
+                "black",
+                "-tile",
+                "3x2",
+                *[str(f) for f in season_frames],
+                "-",
+            ]
+            convert_args = [
+                "convert",
+                "-",
+                "-resize",
+                "1000x1500",
+                "-",
+                "-gravity",
+                "south",
+                "-background",
+                "#00000080",
+                "-splice",
+                "0x60",
+                "-pointsize",
+                "48",
+                "-fill",
+                "white",
+                "-annotate",
+                "+0+20",
+                f"Season {season_num}",
+                f"{folder}/season{season_num}-poster.jpg",
+            ]
             p1 = subprocess.Popen(montage_args, stdout=subprocess.PIPE)
             p2 = subprocess.Popen(convert_args, stdin=p1.stdout)
             p2.communicate()
-            run_subprocess(["convert", f"{folder}/season{season_num}-poster.jpg", "-resize", "1000x562!", f"{folder}/season{season_num}.jpg"], check=True)
+            run_subprocess(
+                [
+                    "convert",
+                    f"{folder}/season{season_num}-poster.jpg",
+                    "-resize",
+                    "1000x562!",
+                    f"{folder}/season{season_num}.jpg",
+                ],
+                check=True,
+            )
             if job:
                 job.update(progress=100, message="Created season artwork")
         for i, video in enumerate(episodes):
@@ -382,40 +636,66 @@ def generate_artwork(app, folder: str, show_name: str, season_num: str, job_id: 
             basename = os.path.basename(video_base)
             if app.config.get("clean_filenames", True):
                 basename = clean_filename(basename)
-            thumb_path = os.path.join(os.path.dirname(video_base), f"{basename}-thumb.jpg")
+            thumb_path = os.path.join(
+                os.path.dirname(video_base), f"{basename}-thumb.jpg"
+            )
             try:
-                subprocess.run([
-                    "ffmpeg",
-                    "-ss",
-                    "00:01:30",
-                    "-i",
-                    str(video),
-                    "-vframes",
-                    "1",
-                    "-q:v",
-                    "2",
-                    thumb_path,
-                ], check=True, capture_output=True)
+                subprocess.run(
+                    [
+                        "ffmpeg",
+                        "-ss",
+                        "00:01:30",
+                        "-i",
+                        str(video),
+                        "-vframes",
+                        "1",
+                        "-q:v",
+                        "2",
+                        thumb_path,
+                    ],
+                    check=True,
+                    capture_output=True,
+                )
                 logger.info(f"Generated thumbnail: {thumb_path}")
             except subprocess.CalledProcessError:
                 logger.error(f"Failed to generate thumbnail for {video}")
                 if job:
-                    job.update(message=f"Failed to generate thumbnail for {os.path.basename(str(video))}")
+                    job.update(
+                        message=(
+                            "Failed to generate thumbnail for "
+                            f"{os.path.basename(str(video))}"
+                        )
+                    )
     except (subprocess.CalledProcessError, OSError) as e:
         logger.error(f"Error generating artwork: {e}")
         if job:
             job.update(message=f"Error generating artwork: {str(e)}")
 
 
-def create_nfo_files(app, folder: str, show_name: str, season_num: str, job_id: str) -> None:
+def create_nfo_files(
+    app, folder: str, show_name: str, season_num: str, job_id: str
+) -> None:
     job = app.jobs.get(job_id)
     if job:
         job.update(status="creating_nfo", message="Creating NFO files")
     show_folder = str(Path(folder).parent)
-    season_nfo = f"""<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<season>\n  <seasonnumber>{season_num}</seasonnumber>\n  <title>Season {season_num}</title>\n  <plot>Season {season_num} of {show_name}</plot>\n</season>\n"""
+    season_nfo = (
+        "<?xml version='1.0' encoding='UTF-8' standalone='yes'?>\n"
+        "<season>\n"
+        f"  <seasonnumber>{season_num}</seasonnumber>\n"
+        f"  <title>Season {season_num}</title>\n"
+        f"  <plot>Season {season_num} of {show_name}</plot>\n"
+        "</season>\n"
+    )
     with open(f"{folder}/season.nfo", "w") as f:
         f.write(season_nfo)
-    tvshow_nfo = f"""<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<tvshow>\n  <title>{show_name}</title>\n  <studio>YouTube</studio>\n</tvshow>\n"""
+    tvshow_nfo = (
+        "<?xml version='1.0' encoding='UTF-8' standalone='yes'?>\n"
+        "<tvshow>\n"
+        f"  <title>{show_name}</title>\n"
+        "  <studio>YouTube</studio>\n"
+        "</tvshow>\n"
+    )
     with open(f"{show_folder}/tvshow.nfo", "w") as f:
         f.write(tvshow_nfo)
     if job:
@@ -464,14 +744,18 @@ def list_media(app) -> List[Dict]:
                     "name": episode_file.stem,
                     "path": str(episode_file),
                     "size": episode_file.stat().st_size,
-                    "modified": datetime.fromtimestamp(episode_file.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
+                    "modified": datetime.fromtimestamp(
+                        episode_file.stat().st_mtime
+                    ).strftime("%Y-%m-%d %H:%M:%S"),
                     "episode_num": episode_num,
                 }
                 season["episodes"].append(episode)
                 episode_total += 1
+
             def sort_key(e):
                 ep_num = e.get("episode_num")
                 return (ep_num is None, ep_num if ep_num is not None else e["name"])
+
             season["episodes"].sort(key=sort_key)
             show["seasons"].append(season)
         show["seasons"].sort(key=lambda s: s["name"])
@@ -482,21 +766,29 @@ def list_media(app) -> List[Dict]:
 
 def get_playlist_videos(app, url: str) -> List[Dict]:
     try:
-        result = subprocess.run([
-            app.config["ytdlp_path"],
-            "--flat-playlist",
-            "--dump-single-json",
-            url,
-        ], capture_output=True, text=True, check=True)
+        result = subprocess.run(
+            [
+                app.config["ytdlp_path"],
+                "--flat-playlist",
+                "--dump-single-json",
+                url,
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
         data = json.loads(result.stdout)
         entries = data.get("entries", [])
         videos = []
         for idx, entry in enumerate(entries, start=1):
-            videos.append({"index": idx, "id": entry.get("id"), "title": entry.get("title")})
+            videos.append(
+                {"index": idx, "id": entry.get("id"), "title": entry.get("title")}
+            )
         return videos
     except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
         logger.error(f"Failed to fetch playlist info: {e}")
         return []
+
 
 __all__ = [
     "create_folder_structure",

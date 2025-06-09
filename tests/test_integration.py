@@ -1,20 +1,18 @@
 import os
-import sys
 import unittest
 import tempfile
 import shutil
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import patch
 
 # Add parent directory to path to import app.py
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from tubarr.core import YTToJellyfin, DownloadJob
+from tubarr.core import YTToJellyfin
 
 
 class TestIntegration(unittest.TestCase):
-    """
-    Integration tests for the complete workflow.
-    These tests simulate a full download and processing without actually downloading from YouTube.
+    """Integration tests for the complete workflow.
+
+    These tests simulate a full download and processing without actually
+    downloading from YouTube.
     """
 
     def setUp(self):

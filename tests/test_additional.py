@@ -4,14 +4,10 @@ import tempfile
 import unittest
 from unittest.mock import patch, MagicMock
 from pathlib import Path
+import subprocess
 
-# Ensure app.py can be imported
-import sys
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from tubarr.core import YTToJellyfin
 from tubarr.web import app, ytj
-import subprocess
 
 
 class TestConfigAndDependencies(unittest.TestCase):

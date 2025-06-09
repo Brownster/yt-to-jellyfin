@@ -22,7 +22,9 @@ def _save_episode_tracker(episodes_file: str, data: Dict[str, Dict[str, int]]) -
         json.dump(data, f, indent=2)
 
 
-def get_last_episode(tracker: Dict[str, Dict[str, int]], show_name: str, season_num: str) -> int:
+def get_last_episode(
+    tracker: Dict[str, Dict[str, int]], show_name: str, season_num: str
+) -> int:
     return tracker.get(sanitize_name(show_name), {}).get(season_num, 0)
 
 

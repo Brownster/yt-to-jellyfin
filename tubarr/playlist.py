@@ -3,12 +3,10 @@ import json
 import re
 import subprocess
 import threading
-import time
 from pathlib import Path
 from typing import Dict, List, Optional
 
 from .config import logger
-from .utils import sanitize_name
 
 
 def _load_playlists(playlists_file: str) -> Dict[str, Dict[str, str]]:
