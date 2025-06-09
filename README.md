@@ -232,6 +232,15 @@ python run_tests.py --type web       # Web UI tests (requires webdriver)
 - `tests/test_integration.py` - Integration tests for full workflow
 - `tests/web/test_frontend.py` - Web UI tests (requires Selenium webdriver)
 
+### Linting
+
+Install development requirements and run flake8 to check code style:
+
+```bash
+pip install -r requirements-dev.txt
+flake8 .
+```
+
 ### Continuous Integration
 
 This project uses GitHub Actions for continuous integration:
