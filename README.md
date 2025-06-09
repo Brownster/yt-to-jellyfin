@@ -150,7 +150,7 @@ You can configure it by editing the `docker-compose.yml` file and the `config/co
 | USE_H265 | Enable H.265 conversion | true |
 | CRF | Compression quality (lower = better quality, larger files) | 28 |
 | CLEAN_FILENAMES | Replace underscores with spaces in filenames | true |
-| YTDLP_PATH | Path to yt-dlp executable | yt-dlp |
+| YTDLP_PATH | Path to yt-dlp executable (optional) | yt-dlp |
 | COOKIES_PATH | Path to cookies file (optional) | |
 | WEB_ENABLED | Enable the web interface | true |
 | WEB_PORT | Port for the web interface | 8000 |
@@ -164,6 +164,10 @@ You can configure it by editing the `docker-compose.yml` file and the `config/co
 | JELLYFIN_HOST | Jellyfin server hostname/IP | |
 | JELLYFIN_PORT | Jellyfin server port | 8096 |
 | JELLYFIN_API_KEY | Jellyfin API key for triggering library scan (optional) | |
+
+If `YTDLP_PATH` is not provided, Tubarr will search common locations
+(`/usr/local/bin/yt-dlp`, `/usr/bin/yt-dlp`) and fall back to simply
+`yt-dlp` in the current `PATH`.
 
 ### Using a Cookies File
 

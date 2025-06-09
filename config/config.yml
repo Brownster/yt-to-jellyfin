@@ -10,7 +10,7 @@ media:
 
 # Optional Settings
 cookies_path: ./config/cookies.txt  # Optional cookies file for authenticated content
-ytdlp_path: /home/marc/Documents/yt-dlp/yt-dlp  # Path to your existing yt-dlp
+ytdlp_path: yt-dlp  # Executable path or leave for auto-detect
 
 # Web Interface Settings
 web:
