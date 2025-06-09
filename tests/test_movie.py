@@ -124,6 +124,27 @@ class TestMovieWorkflow(unittest.TestCase):
         renamed = folder / "Test Movie (2022) [abc].mp4"
         self.assertTrue(renamed.exists())
 
+    def test_process_movie_metadata_multiple_json_files(self):
+        folder = Path(self.temp_dir) / "Test Movie"
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / "video.mp4").write_text("data")
+        info1 = {"description": "Desc1", "upload_date": "20200101", "id": "id1"}
+        info2 = {"description": "Desc2", "upload_date": "20210101", "id": "id2"}
+        with open(folder / "first.info.json", "w") as f:
+            json.dump(info1, f)
+        with open(folder / "second.info.json", "w") as f:
+            json.dump(info2, f)
+
+        self.app.process_movie_metadata(
+            str(folder), "Test Movie", "job1", json_index=1
+        )
+
+        renamed = folder / "Test Movie (2021) [id2].mp4"
+        self.assertTrue(renamed.exists())
+        self.job.update.assert_any_call(
+            message="Warning: Multiple JSON metadata files found"
+        )
+
     def test_copy_movie_to_jellyfin(self):
         src_folder = Path(self.temp_dir) / "Test Movie"
         src_folder.mkdir(parents=True, exist_ok=True)
