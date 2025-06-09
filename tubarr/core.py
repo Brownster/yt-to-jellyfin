@@ -6,6 +6,7 @@ import threading
 import time
 import shutil
 import uuid
+import logging
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -43,7 +44,7 @@ from .jellyfin import (
     copy_movie_to_jellyfin,
     trigger_jellyfin_scan,
 )
-from .utils import sanitize_name, clean_filename, check_dependencies
+from .utils import sanitize_name, clean_filename, check_dependencies, log_job
 from .episodes import (
     _load_episode_tracker,
     _save_episode_tracker,
@@ -213,7 +214,7 @@ class YTToJellyfin:
     def process_job(self, job_id: str) -> None:
         job = self.jobs.get(job_id)
         if not job:
-            logger.error(f"Job {job_id} not found")
+            log_job(job_id, logging.ERROR, "Job not found")
             return
         try:
             job.update(status="in_progress", message="Starting job processing")
@@ -261,7 +262,7 @@ class YTToJellyfin:
             job.update(
                 status="completed", progress=100, message="Job completed successfully"
             )
-            logger.info(f"Job {job_id} completed successfully")
+            log_job(job_id, logging.INFO, "Job completed successfully")
             try:
                 pid = self._get_playlist_id(job.playlist_url)
                 info = self.playlists.get(pid)
@@ -275,11 +276,13 @@ class YTToJellyfin:
                         info["start_index"] = count + 1
                         self._save_playlists()
             except Exception as e:
-                logger.error(
-                    f"Failed to update playlist index for {job.playlist_url}: {e}"
+                log_job(
+                    job_id,
+                    logging.ERROR,
+                    f"Failed to update playlist index for {job.playlist_url}: {e}",
                 )
         except Exception as e:  # pragma: no cover - for unexpected errors
-            logger.exception(f"Error processing job {job_id}: {e}")
+            logger.exception(f"Job {job_id}: Error processing job: {e}")
             job.update(status="failed", message=f"Error: {str(e)}")
         finally:
             self._on_job_complete(job_id)
@@ -287,7 +290,7 @@ class YTToJellyfin:
     def process_movie_job(self, job_id: str) -> None:
         job = self.jobs.get(job_id)
         if not job:
-            logger.error(f"Job {job_id} not found")
+            log_job(job_id, logging.ERROR, "Job not found")
             return
         try:
             job.update(status="in_progress", message="Starting job processing")
@@ -321,9 +324,9 @@ class YTToJellyfin:
                 progress=100,
                 message="Job completed successfully",
             )
-            logger.info(f"Job {job_id} completed successfully")
+            log_job(job_id, logging.INFO, "Job completed successfully")
         except Exception as e:  # pragma: no cover - for unexpected errors
-            logger.exception(f"Error processing job {job_id}: {e}")
+            logger.exception(f"Job {job_id}: Error processing job: {e}")
             job.update(status="failed", message=f"Error: {str(e)}")
         finally:
             self._on_job_complete(job_id)
@@ -477,7 +480,7 @@ class YTToJellyfin:
                 job = self.jobs.get(job_id)
             return job.status == "completed" if job else False
         except Exception as e:
-            logger.exception(f"Error processing playlist: {e}")
+            logger.exception(f"Error processing playlist {playlist_url}: {e}")
             return False
         finally:
             self.cleanup()

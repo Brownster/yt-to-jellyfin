@@ -8,6 +8,11 @@ from typing import List
 logger = logging.getLogger("yt-to-jellyfin")
 
 
+def log_job(job_id: str, level: int, message: str) -> None:
+    """Log a message with job context."""
+    logger.log(level, f"Job {job_id}: {message}")
+
+
 def sanitize_name(name: str) -> str:
     """Sanitize file/directory names to be compatible with file systems."""
     name = name.strip()
@@ -109,4 +114,5 @@ __all__ = [
     "run_subprocess",
     "terminate_process",
     "logger",
+    "log_job",
 ]

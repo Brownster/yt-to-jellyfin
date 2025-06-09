@@ -2,12 +2,19 @@ import os
 import json
 import re
 import subprocess
+import logging
 from pathlib import Path
 from typing import List, Dict, Optional
 from datetime import datetime
 
 from .config import logger
-from .utils import sanitize_name, clean_filename, run_subprocess, terminate_process
+from .utils import (
+    sanitize_name,
+    clean_filename,
+    run_subprocess,
+    terminate_process,
+    log_job,
+)
 from . import tmdb
 
 
@@ -42,7 +49,7 @@ def download_playlist(
         local_ytdlp = os.path.join(script_dir, ytdlp_path)
         if os.path.exists(local_ytdlp) and os.access(local_ytdlp, os.X_OK):
             ytdlp_path = local_ytdlp
-    logger.info(f"Using yt-dlp from: {ytdlp_path}")
+    log_job(job_id, logging.INFO, f"Using yt-dlp from: {ytdlp_path}")
     cmd = [
         ytdlp_path,
         "--ignore-errors",
@@ -84,7 +91,7 @@ def download_playlist(
             detailed_status="Starting download of playlist",
             message=f"Starting download of playlist: {playlist_url}",
         )
-    logger.info(f"Starting download of playlist: {playlist_url}")
+    log_job(job_id, logging.INFO, f"Starting download of playlist: {playlist_url}")
     current_file = ""
     total_files = 0
     processed_files = 0
@@ -103,7 +110,7 @@ def download_playlist(
                 terminate_process(process)
                 break
             line = line.strip()
-            logger.info(line)
+            log_job(job_id, logging.INFO, line)
             if job:
                 if "[download]" in line and "Destination:" in line:
                     try:
@@ -120,7 +127,11 @@ def download_playlist(
                                 message=f"Downloading file: {current_file}",
                             )
                     except (ValueError, AttributeError) as e:
-                        logger.error(f"Error parsing destination: {e}")
+                        log_job(
+                            job_id,
+                            logging.ERROR,
+                            f"Error parsing destination: {e}",
+                        )
                 elif "[download]" in line and "of" in line and "item" in line:
                     try:
                         total_match = re.search(r"of\s+(\d+)\s+item", line)
@@ -128,7 +139,11 @@ def download_playlist(
                             total_files = int(total_match.group(1))
                             job.update(total_files=total_files)
                     except (ValueError, AttributeError) as e:
-                        logger.error(f"Error parsing total files: {e}")
+                        log_job(
+                            job_id,
+                            logging.ERROR,
+                            f"Error parsing total files: {e}",
+                        )
                 elif "%" in line:
                     try:
                         progress_str = re.search(r"(\d+\.\d+)%", line)
@@ -152,7 +167,7 @@ def download_playlist(
                                 ),
                             )
                     except (ValueError, AttributeError) as e:
-                        logger.error(f"Error parsing progress: {e}")
+                        log_job(job_id, logging.ERROR, f"Error parsing progress: {e}")
                         job.update(message=line)
                 else:
                     job.update(message=line)
@@ -167,8 +182,10 @@ def download_playlist(
                     detailed_status="Download failed",
                     message=f"Download failed with return code {process.returncode}",
                 )
-            logger.error(
-                f"Error downloading playlist, return code: {process.returncode}"
+            log_job(
+                job_id,
+                logging.ERROR,
+                f"Error downloading playlist, return code: {process.returncode}",
             )
             return False
         if job:
@@ -185,7 +202,7 @@ def download_playlist(
         if job:
             job.process = None
             job.update(status="failed", message=f"Download failed: {str(e)}")
-        logger.error(f"Error downloading playlist: {e}")
+        log_job(job_id, logging.ERROR, f"Error downloading playlist: {e}")
         return False
 
 
@@ -209,7 +226,7 @@ def process_metadata(
                 message="Warning: No JSON metadata files found",
                 detailed_status="No metadata files found",
             )
-        logger.warning("No JSON metadata files found")
+        log_job(job_id, logging.WARNING, "No JSON metadata files found")
         return
     with open(json_files[0], "r") as f:
         first_data = json.load(f)
@@ -301,7 +318,7 @@ def process_metadata(
 
 def convert_video_files(app, folder: str, season_num: str, job_id: str) -> None:
     if not app.config["use_h265"]:
-        logger.info("H.265 conversion disabled, skipping")
+        log_job(job_id, logging.INFO, "H.265 conversion disabled, skipping")
         job = app.jobs.get(job_id)
         if job:
             job.update(
@@ -355,7 +372,11 @@ def convert_video_files(app, folder: str, season_num: str, job_id: str) -> None:
                 json.loads(result.stdout).get("streams", [{}])[0].get("codec_name", "")
             )
             if codec in ["hevc", "h265"]:
-                logger.info(f"Skipping already H.265 encoded file: {video}")
+                log_job(
+                    job_id,
+                    logging.INFO,
+                    f"Skipping already H.265 encoded file: {video}",
+                )
                 if job:
                     job.update(
                         processed_files=i + 1,
@@ -397,7 +418,7 @@ def convert_video_files(app, folder: str, season_num: str, job_id: str) -> None:
                     f"Converting {filename} to H.265 ({i+1}/{total_files})"
                 ),
             )
-        logger.info(f"Converting {video} to H.265")
+        log_job(job_id, logging.INFO, f"Converting {video} to H.265")
         try:
             process = subprocess.Popen(
                 cmd,
@@ -460,7 +481,7 @@ def convert_video_files(app, folder: str, season_num: str, job_id: str) -> None:
                                         )
                                     )
                     except Exception as e:
-                        logger.error(f"Error parsing progress: {e}")
+                        log_job(job_id, logging.ERROR, f"Error parsing progress: {e}")
             process.wait()
             if job:
                 job.process = None
@@ -468,15 +489,17 @@ def convert_video_files(app, folder: str, season_num: str, job_id: str) -> None:
                 os.rename(temp_file, f"{base}.mp4")
                 if str(video) != f"{base}.mp4":
                     os.remove(video)
-                logger.info(f"Converted: {video} → {base}.mp4")
+                log_job(job_id, logging.INFO, f"Converted: {video} → {base}.mp4")
                 if job:
                     job.update(
                         message=f"Successfully converted {filename} to H.265",
                         detailed_status=f"Converted {i+1}/{total_files} files",
                     )
             else:
-                logger.error(
-                    f"Failed to convert {video}, return code: {process.returncode}"
+                log_job(
+                    job_id,
+                    logging.ERROR,
+                    f"Failed to convert {video}, return code: {process.returncode}",
                 )
                 if job:
                     job.update(
@@ -489,7 +512,7 @@ def convert_video_files(app, folder: str, season_num: str, job_id: str) -> None:
                 if os.path.exists(temp_file):
                     os.remove(temp_file)
         except subprocess.SubprocessError as e:
-            logger.error(f"Failed to convert {video}: {e}")
+            log_job(job_id, logging.ERROR, f"Failed to convert {video}: {e}")
             if job:
                 job.process = None
                 job.update(
@@ -510,7 +533,7 @@ def convert_video_files(app, folder: str, season_num: str, job_id: str) -> None:
 def convert_movie_file(app, folder: str, job_id: str) -> None:
     """Convert a downloaded movie to H.265 if enabled."""
     if not app.config["use_h265"]:
-        logger.info("H.265 conversion disabled, skipping")
+        log_job(job_id, logging.INFO, "H.265 conversion disabled, skipping")
         job = app.jobs.get(job_id)
         if job:
             job.update(
@@ -543,7 +566,7 @@ def convert_movie_file(app, folder: str, job_id: str) -> None:
                 message="No movie file found for conversion",
                 detailed_status="No movie file to convert",
             )
-        logger.warning("No movie file found for conversion")
+        log_job(job_id, logging.WARNING, "No movie file found for conversion")
         return
 
     ext = video_file.suffix.lower()[1:]
@@ -563,7 +586,11 @@ def convert_movie_file(app, folder: str, job_id: str) -> None:
         result = subprocess.run(probe_cmd, capture_output=True, text=True)
         codec = json.loads(result.stdout).get("streams", [{}])[0].get("codec_name", "")
         if codec in ["hevc", "h265"]:
-            logger.info(f"Skipping already H.265 encoded file: {video_file}")
+            log_job(
+                job_id,
+                logging.INFO,
+                f"Skipping already H.265 encoded file: {video_file}",
+            )
             if job:
                 job.update(
                     processed_files=1,
@@ -599,7 +626,7 @@ def convert_movie_file(app, folder: str, job_id: str) -> None:
             detailed_status="Converting movie to H.265",
             message=f"Converting {filename} to H.265",
         )
-    logger.info(f"Converting {video_file} to H.265")
+    log_job(job_id, logging.INFO, f"Converting {video_file} to H.265")
     try:
         process = subprocess.Popen(
             cmd,
@@ -650,7 +677,7 @@ def convert_movie_file(app, folder: str, job_id: str) -> None:
                                     ),
                                 )
                 except Exception as e:
-                    logger.error(f"Error parsing progress: {e}")
+                    log_job(job_id, logging.ERROR, f"Error parsing progress: {e}")
         process.wait()
         if job:
             job.process = None
@@ -658,7 +685,7 @@ def convert_movie_file(app, folder: str, job_id: str) -> None:
             os.rename(temp_file, f"{base}.mp4")
             if str(video_file) != f"{base}.mp4":
                 os.remove(video_file)
-            logger.info(f"Converted: {video_file} → {base}.mp4")
+            log_job(job_id, logging.INFO, f"Converted: {video_file} → {base}.mp4")
             if job:
                 job.update(
                     progress=100,
@@ -667,8 +694,10 @@ def convert_movie_file(app, folder: str, job_id: str) -> None:
                     detailed_status="Movie conversion completed",
                 )
         else:
-            logger.error(
-                f"Failed to convert {video_file}, return code: {process.returncode}"
+            log_job(
+                job_id,
+                logging.ERROR,
+                f"Failed to convert {video_file}, return code: {process.returncode}",
             )
             if job:
                 job.update(
@@ -681,7 +710,7 @@ def convert_movie_file(app, folder: str, job_id: str) -> None:
             if os.path.exists(temp_file):
                 os.remove(temp_file)
     except subprocess.SubprocessError as e:
-        logger.error(f"Failed to convert {video_file}: {e}")
+        log_job(job_id, logging.ERROR, f"Failed to convert {video_file}: {e}")
         if job:
             job.process = None
             job.update(
@@ -709,14 +738,14 @@ def process_movie_metadata(
     if not json_files:
         if job:
             job.update(message="Warning: No JSON metadata file found")
-        logger.warning("No JSON metadata file found")
+        log_job(job_id, logging.WARNING, "No JSON metadata file found")
         return
     if len(json_files) > 1:
-        logger.warning("Multiple JSON metadata files found")
+        log_job(job_id, logging.WARNING, "Multiple JSON metadata files found")
         if job:
             job.update(message="Warning: Multiple JSON metadata files found")
     if json_index >= len(json_files) or json_index < -len(json_files):
-        logger.error("JSON metadata index out of range")
+        log_job(job_id, logging.ERROR, "JSON metadata index out of range")
         if job:
             job.update(message="Error: JSON metadata index out of range")
         return
@@ -738,7 +767,7 @@ def process_movie_metadata(
             if result:
                 tmdb_data = tmdb.fetch_movie_details(result["id"], api_key)
         except Exception as e:  # network or api errors should not fail job
-            logger.error(f"TMDb lookup failed: {e}")
+            log_job(job_id, logging.ERROR, f"TMDb lookup failed: {e}")
 
     if tmdb_data:
         title = tmdb_data.get("title", movie_name)
@@ -784,7 +813,7 @@ def process_movie_metadata(
         try:
             tmdb.download_poster(poster_path, str(Path(folder) / "poster.jpg"), api_key)
         except Exception as e:
-            logger.error(f"Failed to download poster: {e}")
+            log_job(job_id, logging.ERROR, f"Failed to download poster: {e}")
     nfo_content = (
         "<?xml version='1.0' encoding='UTF-8' standalone='yes'?>\n"
         "<movie>\n"
@@ -859,7 +888,7 @@ def generate_movie_artwork(app, folder: str, job_id: str) -> None:
             if job:
                 job.update(progress=100, message="Created movie poster")
     except (subprocess.CalledProcessError, OSError) as e:
-        logger.error(f"Error generating movie artwork: {e}")
+        log_job(job_id, logging.ERROR, f"Error generating movie artwork: {e}")
         if job:
             job.update(message=f"Error generating movie artwork: {str(e)}")
 
@@ -875,7 +904,7 @@ def generate_artwork(
     show_folder = str(Path(folder).parent)
     episodes = list(Path(folder).glob(f"*S{season_num}E*.mp4"))
     if not episodes:
-        logger.warning("No episodes found for artwork generation")
+        log_job(job_id, logging.WARNING, "No episodes found for artwork generation")
         if job:
             job.update(message="No episodes found for artwork generation")
         return
@@ -1030,9 +1059,17 @@ def generate_artwork(
                     check=True,
                     capture_output=True,
                 )
-                logger.info(f"Generated thumbnail: {thumb_path}")
+                log_job(
+                    job_id,
+                    logging.INFO,
+                    f"Generated thumbnail: {thumb_path}",
+                )
             except subprocess.CalledProcessError:
-                logger.error(f"Failed to generate thumbnail for {video}")
+                log_job(
+                    job_id,
+                    logging.ERROR,
+                    f"Failed to generate thumbnail for {video}",
+                )
                 if job:
                     job.update(
                         message=(
@@ -1041,7 +1078,7 @@ def generate_artwork(
                         )
                     )
     except (subprocess.CalledProcessError, OSError) as e:
-        logger.error(f"Error generating artwork: {e}")
+        log_job(job_id, logging.ERROR, f"Error generating artwork: {e}")
         if job:
             job.update(message=f"Error generating artwork: {str(e)}")
 

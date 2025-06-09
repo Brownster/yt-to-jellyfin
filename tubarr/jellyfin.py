@@ -1,17 +1,27 @@
 import os
 import shutil
 from pathlib import Path
+import logging
 
 from .config import logger
+from .utils import log_job
 
 
 def copy_to_jellyfin(app, show_name: str, season_num: str, job_id: str) -> None:
     if not app.config.get("jellyfin_enabled", False):
-        logger.info("Jellyfin integration disabled, skipping file copy")
+        log_job(
+            job_id,
+            logging.INFO,
+            "Jellyfin integration disabled, skipping file copy",
+        )
         return
     jellyfin_tv_path = app.config.get("jellyfin_tv_path", "")
     if not jellyfin_tv_path:
-        logger.error("Jellyfin TV path not configured, skipping file copy")
+        log_job(
+            job_id,
+            logging.ERROR,
+            "Jellyfin TV path not configured, skipping file copy",
+        )
         return
     job = app.jobs.get(job_id)
     if job:
@@ -31,22 +41,38 @@ def copy_to_jellyfin(app, show_name: str, season_num: str, job_id: str) -> None:
     if not os.path.exists(dest_show_folder):
         try:
             os.makedirs(dest_show_folder, exist_ok=True)
-            logger.info(f"Created show folder at {dest_show_folder}")
+            log_job(
+                job_id,
+                logging.INFO,
+                f"Created show folder at {dest_show_folder}",
+            )
             if job:
                 job.update(message=f"Created show folder at {dest_show_folder}")
         except OSError as e:
-            logger.error(f"Failed to create Jellyfin show folder: {e}")
+            log_job(
+                job_id,
+                logging.ERROR,
+                f"Failed to create Jellyfin show folder: {e}",
+            )
             if job:
                 job.update(message=f"Error: Failed to create Jellyfin show folder: {e}")
             return
     if not os.path.exists(dest_season_folder):
         try:
             os.makedirs(dest_season_folder, exist_ok=True)
-            logger.info(f"Created season folder at {dest_season_folder}")
+            log_job(
+                job_id,
+                logging.INFO,
+                f"Created season folder at {dest_season_folder}",
+            )
             if job:
                 job.update(message=f"Created season folder at {dest_season_folder}")
         except OSError as e:
-            logger.error(f"Failed to create Jellyfin season folder: {e}")
+            log_job(
+                job_id,
+                logging.ERROR,
+                f"Failed to create Jellyfin season folder: {e}",
+            )
             if job:
                 job.update(
                     message=f"Error: Failed to create Jellyfin season folder: {e}"
@@ -66,10 +92,15 @@ def copy_to_jellyfin(app, show_name: str, season_num: str, job_id: str) -> None:
             )
         for i, file_path in enumerate(all_files):
             dest_file = dest_season_folder / file_path.name
-            if os.path.exists(dest_file) and os.path.getsize(
-                dest_file
-            ) == os.path.getsize(file_path):
-                logger.info(f"Skipping {file_path.name} - already exists and same size")
+            if (
+                os.path.exists(dest_file)
+                and os.path.getsize(dest_file) == os.path.getsize(file_path)
+            ):
+                log_job(
+                    job_id,
+                    logging.INFO,
+                    f"Skipping {file_path.name} - already exists and same size",
+                )
                 if job:
                     job.update(
                         processed_files=i + 1,
@@ -77,7 +108,11 @@ def copy_to_jellyfin(app, show_name: str, season_num: str, job_id: str) -> None:
                     )
                 continue
             shutil.copy2(file_path, dest_file)
-            logger.info(f"Copied {file_path.name} to Jellyfin")
+            log_job(
+                job_id,
+                logging.INFO,
+                f"Copied {file_path.name} to Jellyfin",
+            )
             if job:
                 job.update(
                     processed_files=i + 1,
@@ -103,7 +138,11 @@ def copy_to_jellyfin(app, show_name: str, season_num: str, job_id: str) -> None:
         for source, dest in show_files:
             if source.exists():
                 shutil.copy2(source, dest)
-                logger.info(f"Copied show file {source.name} to Jellyfin")
+                log_job(
+                    job_id,
+                    logging.INFO,
+                    f"Copied show file {source.name} to Jellyfin",
+                )
                 if job:
                     job.update(message=f"Copied {source.name} to Jellyfin")
         if job:
@@ -116,7 +155,11 @@ def copy_to_jellyfin(app, show_name: str, season_num: str, job_id: str) -> None:
         if app.config.get("jellyfin_api_key") and app.config.get("jellyfin_host"):
             app.trigger_jellyfin_scan(job_id)
     except (IOError, shutil.Error) as e:
-        logger.error(f"Error copying files to Jellyfin: {e}")
+        log_job(
+            job_id,
+            logging.ERROR,
+            f"Error copying files to Jellyfin: {e}",
+        )
         if job:
             job.update(message=f"Error copying files to Jellyfin: {e}")
 
@@ -144,11 +187,19 @@ def copy_movie_to_jellyfin(app, movie_name: str, job_id: str) -> None:
     if not os.path.exists(dest_folder):
         try:
             os.makedirs(dest_folder, exist_ok=True)
-            logger.info(f"Created movie folder at {dest_folder}")
+            log_job(
+                job_id,
+                logging.INFO,
+                f"Created movie folder at {dest_folder}",
+            )
             if job:
                 job.update(message=f"Created movie folder at {dest_folder}")
         except OSError as e:
-            logger.error(f"Failed to create Jellyfin movie folder: {e}")
+            log_job(
+                job_id,
+                logging.ERROR,
+                f"Failed to create Jellyfin movie folder: {e}",
+            )
             if job:
                 job.update(
                     message=f"Error: Failed to create Jellyfin movie folder: {e}"
@@ -169,7 +220,11 @@ def copy_movie_to_jellyfin(app, movie_name: str, job_id: str) -> None:
                 os.path.exists(dest_file)
                 and os.path.getsize(dest_file) == os.path.getsize(file_path)
             ):
-                logger.info(f"Skipping {file_path.name} - already exists and same size")
+                log_job(
+                    job_id,
+                    logging.INFO,
+                    f"Skipping {file_path.name} - already exists and same size",
+                )
                 if job:
                     job.update(
                         processed_files=i + 1,
@@ -177,7 +232,11 @@ def copy_movie_to_jellyfin(app, movie_name: str, job_id: str) -> None:
                     )
                 continue
             shutil.copy2(file_path, dest_file)
-            logger.info(f"Copied {file_path.name} to Jellyfin")
+            log_job(
+                job_id,
+                logging.INFO,
+                f"Copied {file_path.name} to Jellyfin",
+            )
             if job:
                 job.update(
                     processed_files=i + 1,
@@ -196,7 +255,7 @@ def copy_movie_to_jellyfin(app, movie_name: str, job_id: str) -> None:
         if app.config.get("jellyfin_api_key") and app.config.get("jellyfin_host"):
             app.trigger_jellyfin_scan(job_id)
     except (IOError, shutil.Error) as e:
-        logger.error(f"Error copying files to Jellyfin: {e}")
+        log_job(job_id, logging.ERROR, f"Error copying files to Jellyfin: {e}")
         if job:
             job.update(message=f"Error copying files to Jellyfin: {e}")
 
@@ -212,7 +271,11 @@ def trigger_jellyfin_scan(app, job_id: str) -> None:
     host = app.config.get("jellyfin_host", "")
     port = app.config.get("jellyfin_port", "8096")
     if not api_key or not host:
-        logger.warning("Jellyfin API key or host not set, skipping library scan")
+        log_job(
+            job_id,
+            logging.WARNING,
+            "Jellyfin API key or host not set, skipping library scan",
+        )
         return
     url = f"http://{host}:{port}/Library/Refresh?api_key={api_key}"
     try:
@@ -220,13 +283,19 @@ def trigger_jellyfin_scan(app, job_id: str) -> None:
 
         response = requests.post(url, timeout=10)
         if response.status_code in (200, 204):
-            logger.info("Successfully triggered Jellyfin library scan")
+            log_job(
+                job_id,
+                logging.INFO,
+                "Successfully triggered Jellyfin library scan",
+            )
             if job:
                 job.update(message="Successfully triggered Jellyfin library scan")
         else:
-            logger.warning(
+            log_job(
+                job_id,
+                logging.WARNING,
                 "Failed to trigger Jellyfin scan: %s %s"
-                % (response.status_code, response.text)
+                % (response.status_code, response.text),
             )
             if job:
                 job.update(
@@ -235,7 +304,7 @@ def trigger_jellyfin_scan(app, job_id: str) -> None:
                     )
                 )
     except Exception as e:
-        logger.error(f"Error triggering Jellyfin scan: {e}")
+        log_job(job_id, logging.ERROR, f"Error triggering Jellyfin scan: {e}")
         if job:
             job.update(message=f"Error triggering Jellyfin scan: {str(e)}")
 
