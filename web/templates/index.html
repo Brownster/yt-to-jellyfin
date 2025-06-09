@@ -304,26 +304,34 @@
                             <form id="new-job-form">
                                 <div class="row mb-3">
                                     <div class="col-lg-10">
-                                        <label for="playlist_url" class="form-label">YouTube Playlist URL <span class="text-danger">*</span></label>
+                                        <label for="playlist_url" class="form-label">YouTube Playlist URL <span class="text-danger">*</span>
+                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Full URL of the playlist to download"></i>
+                                        </label>
                                         <input type="text" class="form-control" id="playlist_url" name="playlist_url" placeholder="https://youtube.com/playlist?list=..." required>
                                     </div>
                                     <div class="col-lg-2 d-flex align-items-end">
-                                        <button type="button" class="btn btn-secondary w-100" id="select-start-btn">Choose Start Video</button>
+                                        <button type="button" class="btn btn-secondary w-100" id="select-start-btn" data-bs-toggle="tooltip" title="Pick which playlist item to start from">Choose Start Video</button>
                                     </div>
                                 </div>
                                 <input type="hidden" id="playlist_start" name="playlist_start">
                                 
                                 <div class="row mb-3">
                                     <div class="col-lg-4">
-                                        <label for="show_name" class="form-label">TV Show Name <span class="text-danger">*</span></label>
+                                        <label for="show_name" class="form-label">TV Show Name <span class="text-danger">*</span>
+                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Name of the show to create in your library"></i>
+                                        </label>
                                         <input type="text" class="form-control" id="show_name" name="show_name" placeholder="Show Name" required>
                                     </div>
                                     <div class="col-lg-4">
-                                        <label for="season_num" class="form-label">Season Number <span class="text-danger">*</span></label>
+                                        <label for="season_num" class="form-label">Season Number <span class="text-danger">*</span>
+                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Season folder to place these episodes in"></i>
+                                        </label>
                                         <input type="text" class="form-control" id="season_num" name="season_num" placeholder="01" pattern="[0-9]+" required>
                                     </div>
                                     <div class="col-lg-4">
-                                        <label for="episode_start" class="form-label">Episode Start Number <span class="text-danger">*</span></label>
+                                        <label for="episode_start" class="form-label">Episode Start Number <span class="text-danger">*</span>
+                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Number of the first episode in this download"></i>
+                                        </label>
                                         <input type="text" class="form-control" id="episode_start" name="episode_start" placeholder="01" pattern="[0-9]+" required>
                                     </div>
                                 </div>
@@ -332,7 +340,9 @@
                                     <div class="col-lg-12">
                                         <div class="form-check form-switch">
                                             <input class="form-check-input" type="checkbox" id="track_playlist" checked>
-                                            <label class="form-check-label" for="track_playlist">Track playlist for updates</label>
+                                            <label class="form-check-label" for="track_playlist">Track playlist for updates
+                                                <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Automatically queue new videos as they are added"></i>
+                                            </label>
                                         </div>
                                     </div>
                                 </div>
@@ -341,14 +351,18 @@
                                     <div class="col-lg-12">
                                         <div class="form-check form-switch">
                                             <input class="form-check-input" type="checkbox" id="use_h265" checked>
-                                            <label class="form-check-label" for="use_h265">Convert to H.265 (Recommended for smaller file size)</label>
+                                            <label class="form-check-label" for="use_h265">Convert to H.265 (Recommended for smaller file size)
+                                                <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Enable video conversion to efficient H.265 format"></i>
+                                            </label>
                                         </div>
                                     </div>
                                 </div>
                                 
                                 <div class="row mb-3">
                                     <div class="col-lg-4">
-                                        <label for="quality" class="form-label">Maximum Video Quality</label>
+                                        <label for="quality" class="form-label">Maximum Video Quality
+                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Highest resolution to download"></i>
+                                        </label>
                                         <select class="form-select" id="quality">
                                             <option value="2160">4K (2160p)</option>
                                             <option value="1440">QHD (1440p)</option>
@@ -358,7 +372,9 @@
                                         </select>
                                     </div>
                                     <div class="col-lg-4">
-                                        <label for="crf" class="form-label">H.265 Quality (CRF)</label>
+                                        <label for="crf" class="form-label">H.265 Quality (CRF)
+                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Lower values give better quality but bigger files"></i>
+                                        </label>
                                         <input type="range" class="form-range" min="18" max="32" step="1" id="crf" value="28">
                                         <div class="d-flex justify-content-between">
                                             <small>Higher Quality</small>
@@ -389,11 +405,15 @@
                         <div class="card-body">
                             <form id="new-movie-form">
                                 <div class="mb-3">
-                                    <label for="movie_url" class="form-label">Movie or Playlist URL <span class="text-danger">*</span></label>
+                                    <label for="movie_url" class="form-label">Movie or Playlist URL <span class="text-danger">*</span>
+                                        <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Link to the movie or playlist"></i>
+                                    </label>
                                     <input type="text" class="form-control" id="movie_url" name="movie_url" placeholder="https://youtube.com/watch?v=..." required>
                                 </div>
                                 <div class="mb-3">
-                                    <label for="movie_name" class="form-label">Movie Name <span class="text-danger">*</span></label>
+                                    <label for="movie_name" class="form-label">Movie Name <span class="text-danger">*</span>
+                                        <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Title to save the movie as"></i>
+                                    </label>
                                     <input type="text" class="form-control" id="movie_name" name="movie_name" placeholder="Movie Name" required>
                                 </div>
                                 <div class="d-grid gap-2 d-md-flex justify-content-md-end">
@@ -650,11 +670,15 @@
                             <form id="settings-form">
                                 <div class="row mb-3">
                                     <div class="col-lg-6">
-                                        <label for="output_dir" class="form-label">Output Directory</label>
+                                        <label for="output_dir" class="form-label">Output Directory
+                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Where processed videos and metadata are saved"></i>
+                                        </label>
                                         <input type="text" class="form-control" id="output_dir" name="output_dir">
                                     </div>
                                     <div class="col-lg-6">
-                                        <label for="cookies_path" class="form-label">Cookies File Path</label>
+                                        <label for="cookies_path" class="form-label">Cookies File Path
+                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Path to cookies.txt for authenticated downloads"></i>
+                                        </label>
                                         <input type="text" class="form-control" id="cookies_path" name="cookies_path">
                                         <div class="form-text">Optional: Path to cookies file for authenticated content</div>
                                     </div>
@@ -662,7 +686,9 @@
                                 
                                 <div class="row mb-3">
                                     <div class="col-lg-6">
-                                        <label for="default_quality" class="form-label">Default Video Quality</label>
+                                        <label for="default_quality" class="form-label">Default Video Quality
+                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Preferred resolution for new downloads"></i>
+                                        </label>
                                         <select class="form-select" id="default_quality" name="default_quality">
                                             <option value="2160">4K (2160p)</option>
                                             <option value="1440">QHD (1440p)</option>
@@ -672,7 +698,9 @@
                                         </select>
                                     </div>
                                     <div class="col-lg-6">
-                                        <label for="default_crf" class="form-label">Default H.265 Quality (CRF)</label>
+                                        <label for="default_crf" class="form-label">Default H.265 Quality (CRF)
+                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Lower values give better quality but larger files"></i>
+                                        </label>
                                         <input type="range" class="form-range" min="18" max="32" step="1" id="default_crf" name="default_crf" value="28">
                                         <div class="d-flex justify-content-between">
                                             <small>Higher Quality</small>
@@ -686,20 +714,26 @@
                                     <div class="col-lg-6">
                                         <div class="form-check form-switch">
                                             <input class="form-check-input" type="checkbox" id="default_use_h265" name="default_use_h265" checked>
-                                            <label class="form-check-label" for="default_use_h265">Convert to H.265 by default</label>
+                                            <label class="form-check-label" for="default_use_h265">Convert to H.265 by default
+                                                <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Use H.265 for all new jobs unless changed"></i>
+                                            </label>
                                         </div>
                                     </div>
                                     <div class="col-lg-6">
                                         <div class="form-check form-switch">
                                             <input class="form-check-input" type="checkbox" id="clean_filenames" name="clean_filenames" checked>
-                                            <label class="form-check-label" for="clean_filenames">Clean filenames (spaces instead of underscores)</label>
+                                            <label class="form-check-label" for="clean_filenames">Clean filenames (spaces instead of underscores)
+                                                <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Replace _ with spaces when naming files"></i>
+                                            </label>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div class="row mb-3 h265-concurrency">
                                     <div class="col-lg-6">
-                                        <label for="max_concurrent_jobs" class="form-label">Concurrent Transcodes</label>
+                                        <label for="max_concurrent_jobs" class="form-label">Concurrent Transcodes
+                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Number of H.265 conversions to run at once"></i>
+                                        </label>
                                         <input type="range" class="form-range" min="1" max="4" step="1" id="max_concurrent_jobs" name="max_concurrent_jobs" value="1">
                                         <div class="d-flex justify-content-between">
                                             <small>1</small>
@@ -711,11 +745,15 @@
                                 
                                 <div class="row mb-3">
                                     <div class="col-lg-6">
-                                        <label for="web_port" class="form-label">Web Interface Port</label>
+                                        <label for="web_port" class="form-label">Web Interface Port
+                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Port number used for the web dashboard"></i>
+                                        </label>
                                         <input type="number" class="form-control" id="web_port" name="web_port" min="1" max="65535" value="8000">
                                     </div>
                                     <div class="col-lg-6">
-                                        <label for="completed_jobs_limit" class="form-label">Number of completed jobs to keep</label>
+                                        <label for="completed_jobs_limit" class="form-label">Number of completed jobs to keep
+                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="History entries to retain"></i>
+                                        </label>
                                         <input type="number" class="form-control" id="completed_jobs_limit" name="completed_jobs_limit" min="1" max="100" value="10">
                                     </div>
                                 </div>
@@ -724,11 +762,15 @@
                                     <div class="col-lg-6">
                                         <div class="form-check form-switch">
                                             <input class="form-check-input" type="checkbox" id="auto_check_updates" name="auto_check_updates">
-                                            <label class="form-check-label" for="auto_check_updates">Automatically check playlists for updates</label>
+                                            <label class="form-check-label" for="auto_check_updates">Automatically check playlists for updates
+                                                <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Run background scans for new videos"></i>
+                                            </label>
                                         </div>
                                     </div>
                                     <div class="col-lg-6 update-schedule-settings">
-                                        <label for="update_interval" class="form-label">Check interval (minutes)</label>
+                                        <label for="update_interval" class="form-label">Check interval (minutes)
+                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="How often to check playlists for new videos"></i>
+                                        </label>
                                         <input type="number" class="form-control" id="update_interval" name="update_interval" min="5" value="60">
                                     </div>
                                 </div>
@@ -740,14 +782,18 @@
                                     <div class="col-lg-12">
                                         <div class="form-check form-switch">
                                             <input class="form-check-input" type="checkbox" id="imdb_enabled" name="imdb_enabled">
-                                            <label class="form-check-label" for="imdb_enabled">Use IMDb for movie metadata</label>
+                                            <label class="form-check-label" for="imdb_enabled">Use IMDb for movie metadata
+                                                <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Pull movie info from IMDb"></i>
+                                            </label>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div class="row mb-3 imdb-settings">
                                     <div class="col-lg-6">
-                                        <label for="imdb_api_key" class="form-label">IMDb API Key</label>
+                                        <label for="imdb_api_key" class="form-label">IMDb API Key
+                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Required when using IMDb metadata"></i>
+                                        </label>
                                         <input type="text" class="form-control" id="imdb_api_key" name="imdb_api_key">
                                     </div>
                                 </div>
@@ -759,7 +805,9 @@
                                     <div class="col-lg-12">
                                         <div class="form-check form-switch">
                                             <input class="form-check-input" type="checkbox" id="jellyfin_enabled" name="jellyfin_enabled">
-                                            <label class="form-check-label" for="jellyfin_enabled">Enable Jellyfin integration</label>
+                                            <label class="form-check-label" for="jellyfin_enabled">Enable Jellyfin integration
+                                                <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Copy files to Jellyfin and trigger library scan"></i>
+                                            </label>
                                         </div>
                                         <div class="form-text">Copy processed files to Jellyfin TV folder structure</div>
                                     </div>
@@ -767,7 +815,9 @@
                                 
                                 <div class="row mb-3 jellyfin-settings">
                                     <div class="col-lg-12">
-                                        <label for="jellyfin_tv_path" class="form-label">Jellyfin TV Library Path</label>
+                                        <label for="jellyfin_tv_path" class="form-label">Jellyfin TV Library Path
+                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Folder where Jellyfin stores TV shows"></i>
+                                        </label>
                                         <input type="text" class="form-control" id="jellyfin_tv_path" name="jellyfin_tv_path" placeholder="/path/to/jellyfin/tv">
                                         <div class="form-text">Full path to Jellyfin TV library folder</div>
                                     </div>
@@ -775,15 +825,21 @@
                                 
                                 <div class="row mb-3 jellyfin-settings">
                                     <div class="col-lg-4">
-                                        <label for="jellyfin_host" class="form-label">Jellyfin Host</label>
+                                        <label for="jellyfin_host" class="form-label">Jellyfin Host
+                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Hostname of your Jellyfin server"></i>
+                                        </label>
                                         <input type="text" class="form-control" id="jellyfin_host" name="jellyfin_host" placeholder="localhost">
                                     </div>
                                     <div class="col-lg-4">
-                                        <label for="jellyfin_port" class="form-label">Jellyfin Port</label>
+                                        <label for="jellyfin_port" class="form-label">Jellyfin Port
+                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Port where Jellyfin is reachable"></i>
+                                        </label>
                                         <input type="text" class="form-control" id="jellyfin_port" name="jellyfin_port" value="8096">
                                     </div>
                                     <div class="col-lg-4">
-                                        <label for="jellyfin_api_key" class="form-label">API Key (Optional)</label>
+                                        <label for="jellyfin_api_key" class="form-label">API Key (Optional)
+                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Used to trigger Jellyfin library scan after copying"></i>
+                                        </label>
                                         <input type="text" class="form-control" id="jellyfin_api_key" name="jellyfin_api_key">
                                     </div>
                                     <div class="col-12 mt-1">
