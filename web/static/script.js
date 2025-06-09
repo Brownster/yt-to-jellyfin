@@ -352,7 +352,10 @@ function loadDashboard() {
         .then(response => response.json())
         .then(jobs => {
             updateDashboardStats(jobs);
-            updateRecentJobs(jobs);
+            const tvJobs = jobs.filter(j => j.media_type !== 'movie');
+            const movieJobs = jobs.filter(j => j.media_type === 'movie');
+            updateRecentTvJobs(tvJobs);
+            updateRecentMovieJobs(movieJobs);
         })
         .catch(error => {
             console.error('Error fetching jobs:', error);
@@ -363,7 +366,7 @@ function loadDashboard() {
         .then(response => response.json())
         .then(media => {
             updateMediaStats(media);
-            updateRecentMedia(media);
+            updateRecentTvMedia(media);
         })
         .catch(error => {
             console.error('Error fetching media:', error);
@@ -374,6 +377,7 @@ function loadDashboard() {
         .then(response => response.json())
         .then(movies => {
             updateMovieStats(movies);
+            updateRecentMovieMedia(movies);
         })
         .catch(error => {
             console.error('Error fetching movies:', error);
@@ -406,7 +410,8 @@ function updateJobsData() {
             }
             if (document.querySelector('#dashboard:not(.d-none)')) {
                 updateDashboardStats(jobs);
-                updateRecentJobs(jobs);
+                updateRecentTvJobs(tvJobs);
+                updateRecentMovieJobs(movieJobs);
             }
             if (document.querySelector('#history:not(.d-none)')) {
                 loadHistory();
@@ -1245,8 +1250,8 @@ function updateMovieStats(movies) {
     document.getElementById('total-movies').textContent = totalMovies;
 }
 
-function updateRecentJobs(jobs) {
-    const recentJobsTable = document.getElementById('recent-jobs-table').querySelector('tbody');
+function updateRecentTvJobs(jobs) {
+    const recentJobsTable = document.getElementById('recent-tv-jobs-table').querySelector('tbody');
     recentJobsTable.innerHTML = '';
     
     if (jobs.length === 0) {
@@ -1279,8 +1284,8 @@ function updateRecentJobs(jobs) {
     });
 }
 
-function updateRecentMedia(media) {
-    const recentMediaTable = document.getElementById('recent-media-table').querySelector('tbody');
+function updateRecentTvMedia(media) {
+    const recentMediaTable = document.getElementById('recent-tv-media-table').querySelector('tbody');
     recentMediaTable.innerHTML = '';
     
     if (media.length === 0) {
@@ -1327,7 +1332,58 @@ function updateRecentMedia(media) {
             <td>${latestDate ? formatDate(new Date(latestDate).toISOString()) : 'N/A'}</td>
         `;
         
-        recentMediaTable.appendChild(row);
+    recentMediaTable.appendChild(row);
+    });
+}
+
+function updateRecentMovieJobs(jobs) {
+    const table = document.getElementById('recent-movie-jobs-table').querySelector('tbody');
+    table.innerHTML = '';
+
+    if (jobs.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = '<td colspan="3" class="text-center">No jobs found</td>';
+        table.appendChild(row);
+        return;
+    }
+
+    jobs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    const recent = jobs.slice(0, 5);
+
+    recent.forEach(job => {
+        const row = document.createElement('tr');
+        const statusClass = getStatusBadgeClass(job.status);
+        row.innerHTML = `
+            <td>${job.movie_name}</td>
+            <td><span class="badge ${statusClass}">${job.status}</span></td>
+            <td>${formatDate(job.created_at)}</td>
+        `;
+        table.appendChild(row);
+    });
+}
+
+function updateRecentMovieMedia(movies) {
+    const table = document.getElementById('recent-movie-media-table').querySelector('tbody');
+    table.innerHTML = '';
+
+    if (movies.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = '<td colspan="3" class="text-center">No movies found</td>';
+        table.appendChild(row);
+        return;
+    }
+
+    movies.sort((a, b) => new Date(b.modified) - new Date(a.modified));
+    const recent = movies.slice(0, 5);
+
+    recent.forEach(movie => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${movie.name}</td>
+            <td>${formatFileSize(movie.size)}</td>
+            <td>${formatDate(movie.modified)}</td>
+        `;
+        table.appendChild(row);
     });
 }
 
