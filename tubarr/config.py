@@ -43,12 +43,7 @@ def _load_config() -> Dict:
     if os.path.exists(local_ytdlp) and os.access(local_ytdlp, os.X_OK):
         ytdlp_default = local_ytdlp
     else:
-        specific_paths = [
-            "/home/marc/Documents/yt-dlp/yt-dlp",
-            "/usr/local/bin/yt-dlp",
-            "/usr/bin/yt-dlp",
-        ]
-        for path in specific_paths:
+        for path in ["/usr/local/bin/yt-dlp", "/usr/bin/yt-dlp"]:
             if os.path.exists(path) and os.access(path, os.X_OK):
                 ytdlp_default = path
                 break
