@@ -23,6 +23,7 @@ class ConfigModel(BaseModel):
     update_checker_interval: int = Field(..., ge=1)
     jellyfin_enabled: bool = False
     jellyfin_tv_path: str = ""
+    jellyfin_movie_path: str = ""
     jellyfin_host: str = ""
     jellyfin_port: int = Field(8096, ge=1, le=65535)
     jellyfin_api_key: str = ""
@@ -73,6 +74,7 @@ def _load_config() -> Dict:
         "jellyfin_enabled": os.environ.get("JELLYFIN_ENABLED", "false").lower()
         == "true",
         "jellyfin_tv_path": os.environ.get("JELLYFIN_TV_PATH", ""),
+        "jellyfin_movie_path": os.environ.get("JELLYFIN_MOVIE_PATH", ""),
         "jellyfin_host": os.environ.get("JELLYFIN_HOST", ""),
         "jellyfin_port": os.environ.get("JELLYFIN_PORT", "8096"),
         "jellyfin_api_key": os.environ.get("JELLYFIN_API_KEY", ""),
@@ -141,6 +143,8 @@ def _load_config() -> Dict:
                             config["jellyfin_enabled"] = value
                         elif key == "tv_path":
                             config["jellyfin_tv_path"] = value
+                        elif key == "movie_path":
+                            config["jellyfin_movie_path"] = value
                         elif key == "host":
                             config["jellyfin_host"] = value
                         elif key == "port":

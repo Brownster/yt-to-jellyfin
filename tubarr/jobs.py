@@ -19,6 +19,8 @@ class DownloadJob:
         season_num,
         episode_start,
         playlist_start=None,
+        media_type="tv",
+        movie_name="",
     ):
         self.job_id = job_id
         self.playlist_url = playlist_url
@@ -26,6 +28,8 @@ class DownloadJob:
         self.season_num = season_num
         self.episode_start = episode_start
         self.playlist_start = playlist_start
+        self.media_type = media_type
+        self.movie_name = movie_name
         self.status = "queued"
         self.progress = 0
         self.messages = []
@@ -103,6 +107,8 @@ class DownloadJob:
             "season_num": self.season_num,
             "episode_start": self.episode_start,
             "playlist_start": self.playlist_start,
+            "media_type": self.media_type,
+            "movie_name": self.movie_name,
             "status": self.status,
             "progress": self.progress,
             "messages": messages,

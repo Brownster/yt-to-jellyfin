@@ -254,6 +254,18 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertFalse(ytj.config["use_h265"])
         self.assertEqual(ytj.config["cookies"], "/cookies.txt")
 
+    @patch("app.YTToJellyfin.create_movie_job")
+    def test_create_movie_job(self, mock_create):
+        mock_create.return_value = "m1"
+        response = self.client.post(
+            "/movies",
+            json={"video_url": "https://youtube.com/watch?v=abc", "movie_name": "My Movie"},
+        )
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertEqual(data["job_id"], "m1")
+        mock_create.assert_called_once_with("https://youtube.com/watch?v=abc", "My Movie")
+
 
 if __name__ == "__main__":
     unittest.main()

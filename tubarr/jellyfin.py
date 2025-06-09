@@ -121,6 +121,74 @@ def copy_to_jellyfin(app, show_name: str, season_num: str, job_id: str) -> None:
             job.update(message=f"Error copying files to Jellyfin: {e}")
 
 
+def copy_movie_to_jellyfin(app, movie_name: str, job_id: str) -> None:
+    if not app.config.get("jellyfin_enabled", False):
+        logger.info("Jellyfin integration disabled, skipping file copy")
+        return
+    jellyfin_movie_path = app.config.get("jellyfin_movie_path", "")
+    if not jellyfin_movie_path:
+        logger.error("Jellyfin movie path not configured, skipping file copy")
+        return
+    job = app.jobs.get(job_id)
+    if job:
+        job.update(
+            status="copying_to_jellyfin",
+            stage="copying_to_jellyfin",
+            progress=95,
+            detailed_status="Copying files to Jellyfin movie folder",
+            message="Starting copy to Jellyfin movie folder",
+        )
+    sanitized = app.sanitize_name(movie_name)
+    source_folder = Path(app.config["output_dir"]) / sanitized
+    dest_folder = Path(jellyfin_movie_path) / sanitized
+    if not os.path.exists(dest_folder):
+        try:
+            os.makedirs(dest_folder, exist_ok=True)
+            logger.info(f"Created movie folder at {dest_folder}")
+            if job:
+                job.update(message=f"Created movie folder at {dest_folder}")
+        except OSError as e:
+            logger.error(f"Failed to create Jellyfin movie folder: {e}")
+            if job:
+                job.update(message=f"Error: Failed to create Jellyfin movie folder: {e}")
+            return
+    try:
+        all_files = list(source_folder.glob("*"))
+        total_files = len(all_files)
+        if job:
+            job.update(total_files=total_files, processed_files=0, detailed_status=f"Copying {total_files} files to Jellyfin")
+        for i, file_path in enumerate(all_files):
+            dest_file = dest_folder / file_path.name
+            if os.path.exists(dest_file) and os.path.getsize(dest_file) == os.path.getsize(file_path):
+                logger.info(f"Skipping {file_path.name} - already exists and same size")
+                if job:
+                    job.update(processed_files=i + 1, message=f"Skipped {file_path.name} - already exists")
+                continue
+            shutil.copy2(file_path, dest_file)
+            logger.info(f"Copied {file_path.name} to Jellyfin")
+            if job:
+                job.update(
+                    processed_files=i + 1,
+                    file_name=file_path.name,
+                    stage_progress=int((i + 1) / total_files * 100),
+                    detailed_status=f"Copying: {file_path.name} ({i+1}/{total_files})",
+                    message=f"Copied {file_path.name} to Jellyfin movie folder",
+                )
+        if job:
+            job.update(
+                progress=98,
+                stage_progress=100,
+                detailed_status="Copy to Jellyfin completed",
+                message="Successfully copied all files to Jellyfin movie folder",
+            )
+        if app.config.get("jellyfin_api_key") and app.config.get("jellyfin_host"):
+            app.trigger_jellyfin_scan(job_id)
+    except (IOError, shutil.Error) as e:
+        logger.error(f"Error copying files to Jellyfin: {e}")
+        if job:
+            job.update(message=f"Error copying files to Jellyfin: {e}")
+
+
 def trigger_jellyfin_scan(app, job_id: str) -> None:
     job = app.jobs.get(job_id)
     if job:
@@ -160,4 +228,8 @@ def trigger_jellyfin_scan(app, job_id: str) -> None:
             job.update(message=f"Error triggering Jellyfin scan: {str(e)}")
 
 
-__all__ = ["copy_to_jellyfin", "trigger_jellyfin_scan"]
+__all__ = [
+    "copy_to_jellyfin",
+    "copy_movie_to_jellyfin",
+    "trigger_jellyfin_scan",
+]
