@@ -167,18 +167,33 @@ def check_playlist_updates(app) -> List[str]:
 
 
 def start_update_checker(app) -> None:
+    """Start a background thread that periodically checks for playlist updates."""
+
+    if not getattr(app, "update_stop_event", None):
+        app.update_stop_event = threading.Event()
+    else:
+        app.update_stop_event.clear()
+
     def _run() -> None:
         interval = app.config.get("update_checker_interval", 60)
-        while True:
+        while not app.update_stop_event.is_set():
             try:
                 if app.playlists:
                     app.check_playlist_updates()
             except Exception as e:
                 logger.error(f"Automatic update check failed: {e}")
-            time.sleep(max(1, interval) * 60)
+            app.update_stop_event.wait(max(1, interval) * 60)
 
     app.update_thread = threading.Thread(target=_run, daemon=True)
     app.update_thread.start()
+
+
+def stop_update_checker(app) -> None:
+    """Signal the background update checker thread to stop and wait for it."""
+    if getattr(app, "update_stop_event", None):
+        app.update_stop_event.set()
+    if getattr(app, "update_thread", None):
+        app.update_thread.join()
 
 
 __all__ = [
@@ -193,4 +208,5 @@ __all__ = [
     "_get_existing_max_index",
     "check_playlist_updates",
     "start_update_checker",
+    "stop_update_checker",
 ]
