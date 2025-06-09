@@ -203,7 +203,7 @@ def config():
 
             if should_restart_update:
                 if ytj.update_thread and ytj.update_thread.is_alive():
-                    ytj.update_thread = None
+                    ytj.stop_update_checker()
                 if ytj.config.get("update_checker_enabled"):
                     ytj.start_update_checker()
 

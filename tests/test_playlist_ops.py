@@ -40,6 +40,8 @@ class TestPlaylistOperations(unittest.TestCase):
         ), patch.object(YTToJellyfin, "_load_playlists", return_value={}):
             self.app = YTToJellyfin()
         self.app.playlists_file = os.path.join(self.temp_dir, "playlists.json")
+        self.app.episodes_file = os.path.join(self.temp_dir, "episodes.json")
+        self.app.episode_tracker = {}
 
     def tearDown(self):
         import shutil
@@ -138,7 +140,7 @@ class TestPlaylistOperations(unittest.TestCase):
             self.assertFalse(result)
 
     def test_start_update_checker_thread(self):
-        """start_update_checker should create and start a daemon thread"""
+        """start and stop update checker thread cleanly"""
         temp_dir = tempfile.mkdtemp()
         config = self.config.copy()
         config.update(
@@ -156,6 +158,13 @@ class TestPlaylistOperations(unittest.TestCase):
             }
         }
         threads = []
+        event = MagicMock()
+        event.is_set.return_value = False
+
+        def fake_wait(duration):
+            raise StopIteration
+
+        event.wait.side_effect = fake_wait
 
         def fake_thread(target=None, daemon=None):
             thread = MagicMock()
@@ -168,11 +177,9 @@ class TestPlaylistOperations(unittest.TestCase):
                     pass
 
             thread.start.side_effect = start
+            thread.join = MagicMock()
             threads.append(thread)
             return thread
-
-        def fake_sleep(duration):
-            raise StopIteration
 
         with patch.object(
             YTToJellyfin, "_load_config", return_value=config
@@ -183,9 +190,10 @@ class TestPlaylistOperations(unittest.TestCase):
         ) as mock_check, patch(
             "threading.Thread", side_effect=fake_thread
         ) as mock_thread, patch(
-            "time.sleep", side_effect=fake_sleep
-        ) as mock_sleep:
+            "threading.Event", return_value=event
+        ) as mock_event:
             ytj = YTToJellyfin()
+            ytj.stop_update_checker()
 
         self.assertEqual(len(threads), 1)
         thread = threads[0]
@@ -193,9 +201,11 @@ class TestPlaylistOperations(unittest.TestCase):
         self.assertTrue(thread.daemon)
         thread.start.assert_called_once()
         mock_check.assert_called_once()
-        mock_sleep.assert_called_once_with(
+        event.wait.assert_called_once_with(
             max(1, config["update_checker_interval"]) * 60
         )
+        event.set.assert_called_once()
+        thread.join.assert_called_once()
 
 
 if __name__ == "__main__":

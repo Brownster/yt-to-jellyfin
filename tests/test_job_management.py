@@ -32,6 +32,8 @@ class TestJobManagement(unittest.TestCase):
         }
         # Clear jobs
         self.app.jobs = {}
+        self.app.episodes_file = os.path.join(self.temp_dir, "episodes.json")
+        self.app.episode_tracker = {}
 
     def tearDown(self):
         # Clean up temp directory

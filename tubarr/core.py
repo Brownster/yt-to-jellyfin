@@ -20,6 +20,7 @@ from .playlist import (
     _get_existing_max_index,
     check_playlist_updates,
     start_update_checker,
+    stop_update_checker,
 )
 from .media import (
     create_folder_structure,
@@ -60,6 +61,7 @@ class YTToJellyfin:
         self.episodes_file = os.path.join("config", "episodes.json")
         self.episode_tracker = _load_episode_tracker(self.episodes_file)
         self.update_thread: Optional[threading.Thread] = None
+        self.update_stop_event: Optional[threading.Event] = None
         if self.config.get("update_checker_enabled"):
             start_update_checker(self)
 
@@ -125,6 +127,9 @@ class YTToJellyfin:
 
     def start_update_checker(self) -> None:
         start_update_checker(self)
+
+    def stop_update_checker(self) -> None:
+        stop_update_checker(self)
 
     # job helpers
     def create_job(
