@@ -189,6 +189,9 @@ You can configure it by editing the `docker-compose.yml` file and the `config/co
 | JELLYFIN_API_KEY | Jellyfin API key for triggering library scan (optional) | |
 | TMDB_API_KEY | TMDb API key for enhanced movie metadata (optional) | |
 
+Set `TMDB_API_KEY` or configure `tmdb.api_key` in `config.yml` to enable
+automatic movie metadata and poster retrieval from The Movie Database.
+
 If `YTDLP_PATH` is not provided, Tubarr will search common locations
 (`/usr/local/bin/yt-dlp`, `/usr/bin/yt-dlp`) and fall back to simply
 `yt-dlp` in the current `PATH`.

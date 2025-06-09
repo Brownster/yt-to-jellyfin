@@ -15,4 +15,4 @@ The following are planned improvements and tasks for Tubarr:
 - Package the application so it can be installed with `pip`.
 - Increase test coverage for playlist update logic.
 - Continue to improve the media library experience.
-- Integrate TMDb to fetch movie posters and metadata when an API key is provided (see `docs/TMDB_METADATA_PLAN.md`).
+- Integrate TMDb to fetch movie posters and metadata when an API key is provided (done).

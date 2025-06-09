@@ -35,6 +35,10 @@ jellyfin:
   port: 8096
   api_key: ""  # Optional: API key for triggering library scan
 
+# TMDb Integration
+tmdb:
+  api_key: ""  # Optional TMDb API key for movie metadata
+
 # Default startup options - override with command parameters
 defaults:
   playlist_url: ""
