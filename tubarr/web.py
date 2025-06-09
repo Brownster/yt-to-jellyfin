@@ -68,6 +68,19 @@ def jobs():
         return jsonify(ytj.get_jobs())
 
 
+@app.route("/movies", methods=["GET", "POST"])
+def movies():
+    if request.method == "POST":
+        video_url = request.form.get("video_url") or (request.json or {}).get("video_url")
+        movie_name = request.form.get("movie_name") or (request.json or {}).get("movie_name")
+        if not video_url or not movie_name:
+            return jsonify({"error": "Missing required parameters"}), 400
+        job_id = ytj.create_movie_job(video_url, movie_name)
+        return jsonify({"job_id": job_id})
+    else:
+        return jsonify(ytj.list_movies())
+
+
 @app.route("/jobs/<job_id>", methods=["GET", "DELETE"])
 def job_detail(job_id):
     """Get or modify a specific job."""
@@ -150,6 +163,7 @@ def config():
                 "max_concurrent_jobs",
                 "jellyfin_enabled",
                 "jellyfin_tv_path",
+                "jellyfin_movie_path",
                 "jellyfin_host",
                 "jellyfin_port",
                 "jellyfin_api_key",

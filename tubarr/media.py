@@ -20,6 +20,12 @@ def create_folder_structure(app, show_name: str, season_num: str) -> str:
     return str(folder)
 
 
+def create_movie_folder(app, movie_name: str) -> str:
+    folder = Path(app.config["output_dir"]) / sanitize_name(movie_name)
+    folder.mkdir(parents=True, exist_ok=True)
+    return str(folder)
+
+
 def download_playlist(
     app,
     playlist_url: str,
@@ -498,6 +504,66 @@ def convert_video_files(app, folder: str, season_num: str, job_id: str) -> None:
         )
 
 
+def process_movie_metadata(app, folder: str, movie_name: str, job_id: str) -> None:
+    job = app.jobs.get(job_id)
+    if job:
+        job.update(
+            status="processing_metadata",
+            stage="processing_metadata",
+            progress=0,
+            stage_progress=0,
+            detailed_status="Processing movie metadata",
+            message="Processing movie metadata",
+        )
+    json_files = list(Path(folder).glob("*.info.json"))
+    if not json_files:
+        if job:
+            job.update(message="Warning: No JSON metadata file found")
+        logger.warning("No JSON metadata file found")
+        return
+    with open(json_files[0], "r") as f:
+        data = json.load(f)
+    description = data.get("description", "").split("\n")[0] if data.get("description") else ""
+    upload_date = data.get("upload_date", "")
+    year = upload_date[:4] if len(upload_date) >= 4 else ""
+    video_id = data.get("id", "")
+    base_name = movie_name
+    if year:
+        base_name += f" ({year})"
+    if video_id:
+        base_name += f" [{video_id}]"
+    base_name = clean_filename(sanitize_name(base_name))
+    video_file = None
+    for ext in ["mp4", "mkv", "webm"]:
+        files = list(Path(folder).glob(f"*.{ext}"))
+        if files:
+            video_file = files[0]
+            break
+    if video_file:
+        new_file = Path(folder) / f"{base_name}{video_file.suffix}"
+        os.rename(video_file, new_file)
+        if job:
+            job.update(message=f"Renamed movie file to {new_file.name}")
+    nfo_content = (
+        "<?xml version='1.0' encoding='UTF-8' standalone='yes'?>\n"
+        "<movie>\n"
+        f"  <title>{movie_name}</title>\n"
+        f"  <plot>{description}</plot>\n"
+        f"  <studio>YouTube</studio>\n"
+    )
+    if year:
+        nfo_content += f"  <year>{year}</year>\n"
+    if video_id:
+        nfo_content += f"  <id>{video_id}</id>\n"
+    nfo_content += "</movie>\n"
+    with open(Path(folder) / "movie.nfo", "w") as f:
+        f.write(nfo_content)
+    if job:
+        job.update(progress=100, stage_progress=100, message="Movie metadata processed")
+    for jf in json_files:
+        os.remove(jf)
+
+
 def generate_artwork(
     app, folder: str, show_name: str, season_num: str, job_id: str
 ) -> None:
@@ -764,6 +830,34 @@ def list_media(app) -> List[Dict]:
     return media
 
 
+def list_movies(app) -> List[Dict]:
+    movies = []
+    output_dir = Path(app.config["output_dir"])
+    if not output_dir.exists():
+        return movies
+    for movie_dir in output_dir.iterdir():
+        if not movie_dir.is_dir():
+            continue
+        if any(sd.is_dir() and sd.name.startswith("Season ") for sd in movie_dir.iterdir()):
+            continue
+        movie_file = None
+        for ext in ["mp4"]:
+            candidate = movie_dir / f"{movie_dir.name}.{ext}"
+            if candidate.exists():
+                movie_file = candidate
+                break
+        if movie_file:
+            movies.append(
+                {
+                    "name": movie_dir.name,
+                    "path": str(movie_file),
+                    "size": movie_file.stat().st_size,
+                    "modified": datetime.fromtimestamp(movie_file.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
+                }
+            )
+    return movies
+
+
 def get_playlist_videos(app, url: str) -> List[Dict]:
     try:
         result = subprocess.run(
@@ -792,11 +886,14 @@ def get_playlist_videos(app, url: str) -> List[Dict]:
 
 __all__ = [
     "create_folder_structure",
+    "create_movie_folder",
     "download_playlist",
     "process_metadata",
+    "process_movie_metadata",
     "convert_video_files",
     "generate_artwork",
     "create_nfo_files",
     "list_media",
+    "list_movies",
     "get_playlist_videos",
 ]

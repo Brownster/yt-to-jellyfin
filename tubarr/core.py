@@ -5,6 +5,7 @@ import tempfile
 import threading
 import time
 import shutil
+import uuid
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -24,15 +25,22 @@ from .playlist import (
 )
 from .media import (
     create_folder_structure,
+    create_movie_folder,
     download_playlist,
     process_metadata,
+    process_movie_metadata,
     convert_video_files,
     generate_artwork,
     create_nfo_files,
     list_media,
+    list_movies,
     get_playlist_videos,
 )
-from .jellyfin import copy_to_jellyfin, trigger_jellyfin_scan
+from .jellyfin import (
+    copy_to_jellyfin,
+    copy_movie_to_jellyfin,
+    trigger_jellyfin_scan,
+)
 from .utils import sanitize_name, clean_filename, check_dependencies
 from .episodes import (
     _load_episode_tracker,
@@ -160,6 +168,34 @@ class YTToJellyfin:
             start_thread=start_thread,
         )
 
+    def create_movie_job(
+        self,
+        video_url: str,
+        movie_name: str,
+        *,
+        start_thread: bool = True,
+    ) -> str:
+        job_id = str(uuid.uuid4())
+        job = DownloadJob(
+            job_id,
+            video_url,
+            "",
+            "",
+            "",
+            media_type="movie",
+            movie_name=movie_name,
+        )
+        with self.job_lock:
+            self.jobs[job_id] = job
+            if len(self.active_jobs) < self.config.get("max_concurrent_jobs", 1):
+                self.active_jobs.append(job_id)
+                if start_thread:
+                    threading.Thread(target=self.process_movie_job, args=(job_id,)).start()
+            else:
+                self.job_queue.append(job_id)
+                job.update(message="Job queued")
+        return job_id
+
     def get_job(self, job_id: str) -> Optional[Dict]:
         return get_job(self, job_id)
 
@@ -243,6 +279,37 @@ class YTToJellyfin:
         finally:
             self._on_job_complete(job_id)
 
+    def process_movie_job(self, job_id: str) -> None:
+        job = self.jobs.get(job_id)
+        if not job:
+            logger.error(f"Job {job_id} not found")
+            return
+        try:
+            job.update(status="in_progress", message="Starting job processing")
+            if not self.check_dependencies():
+                job.update(status="failed", message="Missing dependencies")
+                return
+            folder = self.create_movie_folder(job.movie_name)
+            job.update(message=f"Created folder structure: {folder}")
+            dl_success = self.download_playlist(job.playlist_url, folder, "01", job_id)
+            if job.status == "cancelled":
+                return
+            if not dl_success:
+                job.update(status="failed", message="Download failed")
+                return
+            self.process_movie_metadata(folder, job.movie_name, job_id)
+            if job.status == "cancelled":
+                return
+            if self.config.get("jellyfin_enabled", False) and self.config.get("jellyfin_movie_path"):
+                self.copy_movie_to_jellyfin(job.movie_name, job_id)
+            job.update(status="completed", progress=100, message="Job completed successfully")
+            logger.info(f"Job {job_id} completed successfully")
+        except Exception as e:  # pragma: no cover - for unexpected errors
+            logger.exception(f"Error processing job {job_id}: {e}")
+            job.update(status="failed", message=f"Error: {str(e)}")
+        finally:
+            self._on_job_complete(job_id)
+
     def _on_job_complete(self, job_id: str) -> None:
         """Start the next queued job if available."""
         with self.job_lock:
@@ -256,6 +323,9 @@ class YTToJellyfin:
     # media functions
     def create_folder_structure(self, show_name: str, season_num: str) -> str:
         return create_folder_structure(self, show_name, season_num)
+
+    def create_movie_folder(self, movie_name: str) -> str:
+        return create_movie_folder(self, movie_name)
 
     def download_playlist(
         self,
@@ -279,6 +349,11 @@ class YTToJellyfin:
     ) -> None:
         process_metadata(self, folder, show_name, season_num, episode_start, job_id)
 
+    def process_movie_metadata(
+        self, folder: str, movie_name: str, job_id: str
+    ) -> None:
+        process_movie_metadata(self, folder, movie_name, job_id)
+
     def convert_video_files(self, folder: str, season_num: str, job_id: str) -> None:
         convert_video_files(self, folder, season_num, job_id)
 
@@ -295,11 +370,17 @@ class YTToJellyfin:
     def list_media(self) -> List[Dict]:
         return list_media(self)
 
+    def list_movies(self) -> List[Dict]:
+        return list_movies(self)
+
     def get_playlist_videos(self, url: str) -> List[Dict]:
         return get_playlist_videos(self, url)
 
     def copy_to_jellyfin(self, show_name: str, season_num: str, job_id: str) -> None:
         copy_to_jellyfin(self, show_name, season_num, job_id)
+
+    def copy_movie_to_jellyfin(self, movie_name: str, job_id: str) -> None:
+        copy_movie_to_jellyfin(self, movie_name, job_id)
 
     def trigger_jellyfin_scan(self, job_id: str) -> None:
         trigger_jellyfin_scan(self, job_id)
