@@ -135,5 +135,44 @@ class TestMovieWorkflow(unittest.TestCase):
         )
 
 
+    @patch("app.YTToJellyfin.copy_movie_to_jellyfin")
+    @patch("app.YTToJellyfin.generate_movie_artwork")
+    @patch("app.YTToJellyfin.process_movie_metadata")
+    @patch("app.YTToJellyfin.download_playlist")
+    @patch("app.YTToJellyfin.check_dependencies", return_value=True)
+    @patch("threading.Thread")
+    def test_process_movie_job_full_workflow(
+        self,
+        mock_thread,
+        mock_check,
+        mock_download,
+        mock_metadata,
+        mock_artwork,
+        mock_copy,
+    ):
+        mock_download.return_value = True
+
+        job_id = self.app.create_movie_job(
+            "https://youtube.com/watch?v=abc",
+            "Test Movie",
+            start_thread=False,
+        )
+
+        self.app.process_movie_job(job_id)
+
+        job = self.app.jobs[job_id]
+        self.assertEqual(job.status, "completed")
+        self.assertEqual(job.progress, 100)
+        mock_download.assert_called_once_with(
+            "https://youtube.com/watch?v=abc",
+            os.path.join(self.temp_dir, "Test Movie"),
+            "01",
+            job_id,
+        )
+        mock_metadata.assert_called_once()
+        mock_artwork.assert_called_once()
+        mock_copy.assert_called_once_with("Test Movie", job_id)
+
+
 if __name__ == "__main__":
     unittest.main()
