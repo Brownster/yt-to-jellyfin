@@ -204,6 +204,21 @@ If you prefer to manage the files manually:
 3. Set the metadata provider to "Local metadata only" to use the generated NFO files
 4. Scan the library, and your shows will appear with proper metadata and artwork
 
+## Packaging and Installation
+
+To build Tubarr as a Python package, install the build tool and run:
+
+```bash
+python -m pip install build
+python -m build
+```
+
+This creates a wheel file in the `dist/` directory. Install it with:
+
+```bash
+pip install dist/tubarr-*.whl
+```
+
 ## Testing
 
 Tubarr includes a comprehensive test suite to verify functionality.
