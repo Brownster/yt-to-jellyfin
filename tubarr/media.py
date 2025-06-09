@@ -957,12 +957,19 @@ def list_movies(app) -> List[Dict]:
         ):
             continue
         movie_file = None
-        for ext in ["mp4"]:
+        for ext in ["mp4", "mkv", "webm"]:
             candidate = movie_dir / f"{movie_dir.name}.{ext}"
             if candidate.exists():
                 movie_file = candidate
                 break
+        if not movie_file:
+            for ext in ["mp4", "mkv", "webm"]:
+                files = list(movie_dir.glob(f"*.{ext}"))
+                if files:
+                    movie_file = files[0]
+                    break
         if movie_file:
+            poster_file = movie_dir / "poster.jpg"
             movies.append(
                 {
                     "name": movie_dir.name,
@@ -971,6 +978,9 @@ def list_movies(app) -> List[Dict]:
                     "modified": datetime.fromtimestamp(
                         movie_file.stat().st_mtime
                     ).strftime("%Y-%m-%d %H:%M:%S"),
+                    "poster": os.path.relpath(poster_file, output_dir)
+                    if poster_file.exists()
+                    else None,
                 }
             )
     return movies

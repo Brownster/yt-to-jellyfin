@@ -242,6 +242,23 @@ class TestMovieWorkflow(unittest.TestCase):
             message="No movie file found for artwork generation"
         )
 
+    def test_list_movies_detects_renamed_movie(self):
+        folder = Path(self.temp_dir) / "My Movie"
+        folder.mkdir(parents=True, exist_ok=True)
+        movie_file = folder / "My Movie (2023) [abc].mp4"
+        movie_file.write_text("data")
+        poster = folder / "poster.jpg"
+        poster.touch()
+
+        movies = self.app.list_movies()
+
+        self.assertEqual(len(movies), 1)
+        self.assertEqual(movies[0]["name"], "My Movie")
+        self.assertEqual(Path(movies[0]["path"]).name, movie_file.name)
+        self.assertEqual(
+            movies[0]["poster"], os.path.relpath(poster, self.temp_dir)
+        )
+
     @patch("app.YTToJellyfin.copy_movie_to_jellyfin")
     @patch("app.YTToJellyfin.generate_movie_artwork")
     @patch("app.YTToJellyfin.process_movie_metadata")
