@@ -75,6 +75,55 @@ class TestMovieWorkflow(unittest.TestCase):
         self.assertTrue(renamed.exists())
         self.assertFalse((folder / "video.mp4").exists())
 
+    @patch("tubarr.tmdb.download_poster")
+    @patch("tubarr.tmdb.fetch_movie_details")
+    @patch("tubarr.tmdb.search_movie")
+    def test_process_movie_metadata_uses_tmdb(
+        self, mock_search, mock_details, mock_poster
+    ):
+        self.app.config["tmdb_api_key"] = "token"
+        mock_search.return_value = {"id": 1}
+        mock_details.return_value = {
+            "id": 1,
+            "title": "Real Movie",
+            "overview": "Plot",
+            "release_date": "2020-01-01",
+            "poster_path": "/poster.jpg",
+            "genres": [{"name": "Drama"}],
+            "credits": {"cast": [{"name": "Actor"}]},
+        }
+        folder = Path(self.temp_dir) / "Test Movie"
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / "video.mp4").write_text("data")
+        with open(folder / "video.info.json", "w") as f:
+            json.dump({}, f)
+
+        self.app.process_movie_metadata(str(folder), "Test Movie", "job1")
+
+        nfo = folder / "movie.nfo"
+        with open(nfo) as f:
+            content = f.read()
+        self.assertIn("Real Movie", content)
+        self.assertIn("<genre>Drama</genre>", content)
+        mock_poster.assert_called_once()
+        renamed = folder / "Real Movie (2020) [tmdb1].mp4"
+        self.assertTrue(renamed.exists())
+
+    @patch("tubarr.tmdb.search_movie", return_value=None)
+    def test_process_movie_metadata_tmdb_fallback(self, mock_search):
+        self.app.config["tmdb_api_key"] = "token"
+        folder = Path(self.temp_dir) / "Test Movie"
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / "video.mp4").write_text("data")
+        info = {"description": "Desc", "upload_date": "20220101", "id": "abc"}
+        with open(folder / "video.info.json", "w") as f:
+            json.dump(info, f)
+
+        self.app.process_movie_metadata(str(folder), "Test Movie", "job1")
+
+        renamed = folder / "Test Movie (2022) [abc].mp4"
+        self.assertTrue(renamed.exists())
+
     def test_copy_movie_to_jellyfin(self):
         src_folder = Path(self.temp_dir) / "Test Movie"
         src_folder.mkdir(parents=True, exist_ok=True)

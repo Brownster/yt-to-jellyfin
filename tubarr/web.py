@@ -179,6 +179,7 @@ def config():
                 "jellyfin_host",
                 "jellyfin_port",
                 "jellyfin_api_key",
+                "tmdb_api_key",
                 "clean_filenames",
                 "update_checker_enabled",
                 "update_checker_interval",

@@ -504,6 +504,9 @@ def convert_video_files(app, folder: str, season_num: str, job_id: str) -> None:
         )
 
 
+from . import tmdb
+
+
 def process_movie_metadata(app, folder: str, movie_name: str, job_id: str) -> None:
     job = app.jobs.get(job_id)
     if job:
@@ -527,12 +530,44 @@ def process_movie_metadata(app, folder: str, movie_name: str, job_id: str) -> No
     upload_date = data.get("upload_date", "")
     year = upload_date[:4] if len(upload_date) >= 4 else ""
     video_id = data.get("id", "")
-    base_name = movie_name
-    if year:
-        base_name += f" ({year})"
-    if video_id:
-        base_name += f" [{video_id}]"
-    base_name = clean_filename(sanitize_name(base_name))
+
+    tmdb_data = None
+    api_key = app.config.get("tmdb_api_key")
+    if api_key:
+        search_title = tmdb.clean_title(movie_name)
+        try:
+            result = tmdb.search_movie(search_title, year, api_key)
+            if result:
+                tmdb_data = tmdb.fetch_movie_details(result["id"], api_key)
+        except Exception as e:  # network or api errors should not fail job
+            logger.error(f"TMDb lookup failed: {e}")
+
+    if tmdb_data:
+        title = tmdb_data.get("title", movie_name)
+        plot = tmdb_data.get("overview", description)
+        year = tmdb_data.get("release_date", "")[:4]
+        tmdb_id = tmdb_data.get("id")
+        poster_path = tmdb_data.get("poster_path")
+        genres = [g["name"] for g in tmdb_data.get("genres", [])]
+        actors = [c.get("name") for c in tmdb_data.get("credits", {}).get("cast", [])[:5]]
+        base_name = f"{title}"
+        if year:
+            base_name += f" ({year})"
+        if tmdb_id:
+            base_name += f" [tmdb{tmdb_id}]"
+        base_name = clean_filename(sanitize_name(base_name))
+    else:
+        title = movie_name
+        plot = description
+        tmdb_id = video_id
+        genres = []
+        actors = []
+        base_name = movie_name
+        if year:
+            base_name += f" ({year})"
+        if video_id:
+            base_name += f" [{video_id}]"
+        base_name = clean_filename(sanitize_name(base_name))
     video_file = None
     for ext in ["mp4", "mkv", "webm"]:
         files = list(Path(folder).glob(f"*.{ext}"))
@@ -544,17 +579,26 @@ def process_movie_metadata(app, folder: str, movie_name: str, job_id: str) -> No
         os.rename(video_file, new_file)
         if job:
             job.update(message=f"Renamed movie file to {new_file.name}")
+    if tmdb_data and poster_path:
+        try:
+            tmdb.download_poster(poster_path, str(Path(folder) / "poster.jpg"), api_key)
+        except Exception as e:
+            logger.error(f"Failed to download poster: {e}")
     nfo_content = (
         "<?xml version='1.0' encoding='UTF-8' standalone='yes'?>\n"
         "<movie>\n"
-        f"  <title>{movie_name}</title>\n"
-        f"  <plot>{description}</plot>\n"
+        f"  <title>{title}</title>\n"
+        f"  <plot>{plot}</plot>\n"
         f"  <studio>YouTube</studio>\n"
     )
     if year:
         nfo_content += f"  <year>{year}</year>\n"
-    if video_id:
-        nfo_content += f"  <id>{video_id}</id>\n"
+    if tmdb_id:
+        nfo_content += f"  <id>{tmdb_id}</id>\n"
+    for g in genres:
+        nfo_content += f"  <genre>{g}</genre>\n"
+    for actor in actors:
+        nfo_content += "  <actor>\n    <name>{}</name>\n  </actor>\n".format(actor)
     nfo_content += "</movie>\n"
     with open(Path(folder) / "movie.nfo", "w") as f:
         f.write(nfo_content)

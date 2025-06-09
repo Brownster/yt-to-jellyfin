@@ -27,6 +27,7 @@ class ConfigModel(BaseModel):
     jellyfin_host: str = ""
     jellyfin_port: int = Field(8096, ge=1, le=65535)
     jellyfin_api_key: str = ""
+    tmdb_api_key: str = ""
     clean_filenames: bool = True
     defaults: Optional[Dict[str, str]] = Field(default_factory=dict)
 
@@ -78,6 +79,7 @@ def _load_config() -> Dict:
         "jellyfin_host": os.environ.get("JELLYFIN_HOST", ""),
         "jellyfin_port": os.environ.get("JELLYFIN_PORT", "8096"),
         "jellyfin_api_key": os.environ.get("JELLYFIN_API_KEY", ""),
+        "tmdb_api_key": os.environ.get("TMDB_API_KEY", ""),
         "clean_filenames": os.environ.get("CLEAN_FILENAMES", "true").lower() == "true",
     }
 
@@ -151,6 +153,10 @@ def _load_config() -> Dict:
                             config["jellyfin_port"] = str(value)
                         elif key == "api_key":
                             config["jellyfin_api_key"] = value
+
+                if "tmdb" in file_config and isinstance(file_config["tmdb"], dict):
+                    if "api_key" in file_config["tmdb"]:
+                        config["tmdb_api_key"] = file_config["tmdb"]["api_key"]
 
                 if "update_checker" in file_config and isinstance(
                     file_config["update_checker"], dict
