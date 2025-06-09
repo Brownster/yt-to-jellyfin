@@ -818,56 +818,70 @@ function updateJobDetailModal(job) {
 }
 
 function loadMedia() {
-    fetch('/media')
-        .then(response => response.json())
-        .then(media => {
-            displayMediaLibrary(media);
+    Promise.all([
+        fetch('/media').then(r => r.json()),
+        fetch('/movies').then(r => r.json())
+    ])
+        .then(([media, movies]) => {
+            displayMediaLibrary(media, movies);
         })
         .catch(error => {
             console.error('Error fetching media:', error);
         });
 }
 
-function displayMediaLibrary(media) {
-    const mediaContainer = document.getElementById('media-container');
-    mediaContainer.innerHTML = '';
+function displayMediaLibrary(media, movies) {
+    const tvContainer = document.getElementById('media-tv-container');
+    tvContainer.innerHTML = '';
 
     if (media.length === 0) {
-        mediaContainer.innerHTML = '<div class="alert alert-info">No media found in library</div>';
-        return;
+        tvContainer.innerHTML = '<div class="alert alert-info">No TV shows found in library</div>';
+    } else {
+        const row = document.createElement('div');
+        row.className = 'row';
+
+        media.forEach(show => {
+            const showId = show.name.replace(/[^a-zA-Z0-9]/g, '_');
+            const totalEpisodes = show.episode_count || 0;
+            const posterUrl = show.poster ? `/media_files/${encodeURIComponent(show.poster)}` : null;
+
+            const col = document.createElement('div');
+            col.className = 'col-sm-6 col-md-4 col-lg-3 mb-4';
+            col.innerHTML = `
+                <div class="card h-100 show-card" data-show-id="${showId}">
+                    <div class="show-poster-container position-relative">
+                        ${posterUrl ? `<img src="${posterUrl}" class="show-poster" alt="${show.name}">` : `<div class="show-poster bg-secondary d-flex align-items-center justify-content-center"><i class="bi bi-tv text-white" style="font-size: 3rem;"></i></div>`}
+                        <span class="badge bg-primary position-absolute top-0 end-0 m-2">${totalEpisodes}</span>
+                    </div>
+                    <div class="card-body text-center">
+                        <h5 class="card-title">${show.name}</h5>
+                    </div>
+                </div>`;
+
+            const seasonsRow = document.createElement('div');
+            seasonsRow.className = 'col-12 d-none';
+            seasonsRow.id = `show-seasons-${showId}`;
+            seasonsRow.innerHTML = `<div class="row mt-2">${show.seasons.map(season => createSeasonCard(season)).join('')}</div>`;
+            row.appendChild(col);
+            row.appendChild(seasonsRow);
+        });
+
+        tvContainer.appendChild(row);
     }
 
-    const row = document.createElement('div');
-    row.className = 'row';
+    const movieContainer = document.getElementById('media-movie-container');
+    movieContainer.innerHTML = '';
 
-    media.forEach(show => {
-        const showId = show.name.replace(/[^a-zA-Z0-9]/g, '_');
-        const totalEpisodes = show.episode_count || 0;
-        const posterUrl = show.poster ? `/media_files/${encodeURIComponent(show.poster)}` : null;
-
-        const col = document.createElement('div');
-        col.className = 'col-sm-6 col-md-4 col-lg-3 mb-4';
-        col.innerHTML = `
-            <div class="card h-100 show-card" data-show-id="${showId}">
-                <div class="show-poster-container position-relative">
-                    ${posterUrl ? `<img src="${posterUrl}" class="show-poster" alt="${show.name}">` : `<div class="show-poster bg-secondary d-flex align-items-center justify-content-center"><i class="bi bi-tv text-white" style="font-size: 3rem;"></i></div>`}
-                    <span class="badge bg-primary position-absolute top-0 end-0 m-2">${totalEpisodes}</span>
-                </div>
-                <div class="card-body text-center">
-                    <h5 class="card-title">${show.name}</h5>
-                </div>
-            </div>`;
-
-        const seasonsRow = document.createElement('div');
-        seasonsRow.className = 'col-12 d-none';
-        seasonsRow.id = `show-seasons-${showId}`;
-        seasonsRow.innerHTML = `<div class="row mt-2">${show.seasons.map(season => createSeasonCard(season)).join('')}</div>`;
-
-        row.appendChild(col);
-        row.appendChild(seasonsRow);
-    });
-
-    mediaContainer.appendChild(row);
+    if (movies.length === 0) {
+        movieContainer.innerHTML = '<div class="alert alert-info">No movies found in library</div>';
+    } else {
+        const movieRow = document.createElement('div');
+        movieRow.className = 'row';
+        movies.forEach(movie => {
+            movieRow.innerHTML += createMovieCard(movie);
+        });
+        movieContainer.appendChild(movieRow);
+    }
 
     document.querySelectorAll('.show-card').forEach(card => {
         card.addEventListener('click', function() {
@@ -947,6 +961,25 @@ function createEpisodeRow(episode) {
             <td>${size}</td>
             <td>${formatDate(episode.modified)}</td>
         </tr>
+    `;
+}
+
+function createMovieCard(movie) {
+    const posterUrl = movie.poster ? `/media_files/${encodeURIComponent(movie.poster)}` : null;
+    const size = formatFileSize(movie.size);
+
+    return `
+        <div class="col-sm-6 col-md-4 col-lg-3 mb-4">
+            <div class="card movie-card h-100">
+                <div class="season-poster-container">
+                    ${posterUrl ? `<img src="${posterUrl}" class="season-poster" alt="${movie.name}">` : `<div class="season-poster bg-secondary d-flex align-items-center justify-content-center"><i class="bi bi-film text-white" style="font-size: 3rem;"></i></div>`}
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">${movie.name}</h5>
+                    <p class="card-text">${size}<br>${formatDate(movie.modified)}</p>
+                </div>
+            </div>
+        </div>
     `;
 }
 
