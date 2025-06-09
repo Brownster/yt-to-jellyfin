@@ -151,7 +151,7 @@ class TestFrontend(unittest.TestCase):
 
         # Check recent jobs table exists
         self.assertTrue(
-            self.driver.find_element(By.ID, "recent-jobs-table").is_displayed()
+            self.driver.find_element(By.ID, "recent-tv-jobs-table").is_displayed()
         )
 
     @unittest.skip("Requires webdriver to be installed and accessible")
