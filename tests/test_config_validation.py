@@ -57,6 +57,29 @@ class TestConfigValidation(unittest.TestCase):
             cfg = _load_config()
         self.assertEqual(cfg["tmdb_api_key"], "xyz")
 
+    def test_imdb_enabled_env(self):
+        env = {"IMDB_ENABLED": "true", "IMDB_API_KEY": "key"}
+        with patch.dict(os.environ, env, clear=True), patch(
+            "os.path.exists",
+            side_effect=lambda p: False if p == "config/config.yml" else True,
+        ), patch("os.access", return_value=True):
+            cfg = _load_config()
+        self.assertTrue(cfg["imdb_enabled"])
+        self.assertEqual(cfg["imdb_api_key"], "key")
+
+    def test_imdb_key_file(self):
+        env = {}
+        file_cfg = {"imdb": {"enabled": True, "api_key": "xyz"}}
+        with patch.dict(os.environ, env, clear=True), patch(
+            "os.path.exists",
+            return_value=True,
+        ), patch("builtins.open", mock_open(read_data=yaml.dump(file_cfg))), patch(
+            "os.access", return_value=True
+        ):
+            cfg = _load_config()
+        self.assertTrue(cfg["imdb_enabled"])
+        self.assertEqual(cfg["imdb_api_key"], "xyz")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -28,6 +28,8 @@ class ConfigModel(BaseModel):
     jellyfin_port: int = Field(8096, ge=1, le=65535)
     jellyfin_api_key: str = ""
     tmdb_api_key: str = ""
+    imdb_enabled: bool = False
+    imdb_api_key: str = ""
     clean_filenames: bool = True
     defaults: Optional[Dict[str, str]] = Field(default_factory=dict)
 
@@ -80,6 +82,9 @@ def _load_config() -> Dict:
         "jellyfin_port": os.environ.get("JELLYFIN_PORT", "8096"),
         "jellyfin_api_key": os.environ.get("JELLYFIN_API_KEY", ""),
         "tmdb_api_key": os.environ.get("TMDB_API_KEY", ""),
+        "imdb_enabled": os.environ.get("IMDB_ENABLED", "false").lower()
+        == "true",
+        "imdb_api_key": os.environ.get("IMDB_API_KEY", ""),
         "clean_filenames": os.environ.get("CLEAN_FILENAMES", "true").lower() == "true",
     }
 
@@ -161,6 +166,12 @@ def _load_config() -> Dict:
                 if "tmdb" in file_config and isinstance(file_config["tmdb"], dict):
                     if "api_key" in file_config["tmdb"]:
                         config["tmdb_api_key"] = file_config["tmdb"]["api_key"]
+
+                if "imdb" in file_config and isinstance(file_config["imdb"], dict):
+                    if "enabled" in file_config["imdb"]:
+                        config["imdb_enabled"] = file_config["imdb"]["enabled"]
+                    if "api_key" in file_config["imdb"]:
+                        config["imdb_api_key"] = file_config["imdb"]["api_key"]
 
                 if "update_checker" in file_config and isinstance(
                     file_config["update_checker"], dict

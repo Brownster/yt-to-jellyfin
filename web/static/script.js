@@ -214,16 +214,29 @@ document.addEventListener('DOMContentLoaded', function() {
     const settingsForm = document.getElementById('settings-form');
     if (settingsForm) {
         // Toggle Jellyfin settings visibility based on enabled state
-        const jellyfinEnabled = document.getElementById('jellyfin_enabled');
-        const jellyfinSettings = document.querySelectorAll('.jellyfin-settings');
+       const jellyfinEnabled = document.getElementById('jellyfin_enabled');
+       const jellyfinSettings = document.querySelectorAll('.jellyfin-settings');
+        const imdbEnabled = document.getElementById('imdb_enabled');
+        const imdbSettings = document.querySelectorAll('.imdb-settings');
         const autoCheck = document.getElementById('auto_check_updates');
         const updateSchedule = document.querySelector('.update-schedule-settings');
         const useH265 = document.getElementById('default_use_h265');
         const concurrencyRow = document.querySelector('.h265-concurrency');
 
-        function toggleJellyfinSettings() {
-            const isEnabled = jellyfinEnabled.checked;
-            jellyfinSettings.forEach(el => {
+       function toggleJellyfinSettings() {
+           const isEnabled = jellyfinEnabled.checked;
+           jellyfinSettings.forEach(el => {
+               if (isEnabled) {
+                   el.style.display = 'flex';
+               } else {
+                   el.style.display = 'none';
+               }
+           });
+       }
+
+        function toggleImdbSettings() {
+            const isEnabled = imdbEnabled.checked;
+            imdbSettings.forEach(el => {
                 if (isEnabled) {
                     el.style.display = 'flex';
                 } else {
@@ -249,14 +262,16 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Set initial state
-        toggleJellyfinSettings();
-        toggleUpdateSchedule();
-        toggleConcurrency();
+       toggleJellyfinSettings();
+        toggleImdbSettings();
+       toggleUpdateSchedule();
+       toggleConcurrency();
 
         // Add event listener for toggle
-        jellyfinEnabled.addEventListener('change', toggleJellyfinSettings);
-        autoCheck.addEventListener('change', toggleUpdateSchedule);
-        useH265.addEventListener('change', toggleConcurrency);
+       jellyfinEnabled.addEventListener('change', toggleJellyfinSettings);
+        imdbEnabled.addEventListener('change', toggleImdbSettings);
+       autoCheck.addEventListener('change', toggleUpdateSchedule);
+       useH265.addEventListener('change', toggleConcurrency);
         
         // Form submission handler
         settingsForm.addEventListener('submit', function(e) {
@@ -279,7 +294,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 jellyfin_tv_path: document.getElementById('jellyfin_tv_path').value,
                 jellyfin_host: document.getElementById('jellyfin_host').value,
                 jellyfin_port: document.getElementById('jellyfin_port').value,
-                jellyfin_api_key: document.getElementById('jellyfin_api_key').value
+                jellyfin_api_key: document.getElementById('jellyfin_api_key').value,
+                // IMDb settings
+                imdb_enabled: document.getElementById('imdb_enabled').checked,
+                imdb_api_key: document.getElementById('imdb_api_key').value
             };
             
             // Send request to update settings
@@ -1200,11 +1218,20 @@ function loadSettings() {
             document.getElementById('jellyfin_host').value = config.jellyfin_host || '';
             document.getElementById('jellyfin_port').value = config.jellyfin_port || '8096';
             document.getElementById('jellyfin_api_key').value = config.jellyfin_api_key || '';
-            
+
+            // IMDb settings
+            const imdbEnabled = document.getElementById('imdb_enabled');
+            imdbEnabled.checked = config.imdb_enabled === true;
+            document.getElementById('imdb_api_key').value = config.imdb_api_key || '';
+
             // Trigger the toggle to show/hide Jellyfin settings
             if (jellyfinEnabled) {
                 const event = new Event('change');
                 jellyfinEnabled.dispatchEvent(event);
+            }
+            if (imdbEnabled) {
+                const e2 = new Event('change');
+                imdbEnabled.dispatchEvent(e2);
             }
             if (autoCheck) {
                 const ev2 = new Event('change');
