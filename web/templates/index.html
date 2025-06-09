@@ -732,6 +732,25 @@
                                         <input type="number" class="form-control" id="update_interval" name="update_interval" min="5" value="60">
                                     </div>
                                 </div>
+
+                                <!-- Metadata Provider Settings -->
+                                <h6 class="mt-4 mb-3">Metadata Providers</h6>
+
+                                <div class="row mb-3">
+                                    <div class="col-lg-12">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="imdb_enabled" name="imdb_enabled">
+                                            <label class="form-check-label" for="imdb_enabled">Use IMDb for movie metadata</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3 imdb-settings">
+                                    <div class="col-lg-6">
+                                        <label for="imdb_api_key" class="form-label">IMDb API Key</label>
+                                        <input type="text" class="form-control" id="imdb_api_key" name="imdb_api_key">
+                                    </div>
+                                </div>
                                 
                                 <!-- Jellyfin Integration Settings -->
                                 <h6 class="mt-4 mb-3">Jellyfin Integration</h6>

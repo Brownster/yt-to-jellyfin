@@ -15,6 +15,7 @@ Tubarr is a Python application that downloads YouTube playlists and processes th
 - **H.265 Conversion**: Convert videos to H.265 for better compression and playback performance
 - **Artwork Generation**: Auto-generate show posters, season artwork, and episode thumbnails
 - **TMDb Movie Metadata**: Fetch movie details and posters from The Movie Database when an API key is provided
+- **IMDb Movie Metadata**: Retrieve movie info from IMDb when enabled
 - **Filename Cleaning**: Automatically replaces underscores with spaces in filenames for better readability
 - **Direct Jellyfin Integration**: Optional direct copy to Jellyfin TV library and library scan trigger
 - **Docker Support**: Run as a container in your arr stack or standalone
@@ -189,9 +190,13 @@ You can configure it by editing the `docker-compose.yml` file and the `config/co
 | JELLYFIN_PORT | Jellyfin server port | 8096 |
 | JELLYFIN_API_KEY | Jellyfin API key for triggering library scan (optional) | |
 | TMDB_API_KEY | TMDb API key for enhanced movie metadata (optional) | |
+| IMDB_ENABLED | Enable IMDb metadata provider | false |
+| IMDB_API_KEY | IMDb API key for movie metadata (optional) | |
 
 Set `TMDB_API_KEY` or configure `tmdb.api_key` in `config.yml` to enable
 automatic movie metadata and poster retrieval from The Movie Database.
+Enable IMDb metadata by setting `IMDB_ENABLED` and providing `IMDB_API_KEY` or
+editing the `imdb` section in `config.yml`.
 
 If `YTDLP_PATH` is not provided, Tubarr will search common locations
 (`/usr/local/bin/yt-dlp`, `/usr/bin/yt-dlp`) and fall back to simply

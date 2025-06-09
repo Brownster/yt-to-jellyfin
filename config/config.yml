@@ -39,6 +39,11 @@ jellyfin:
 tmdb:
   api_key: ""  # Optional TMDb API key for movie metadata
 
+# IMDb Integration
+imdb:
+  enabled: false  # Enable IMDb metadata lookups
+  api_key: ""     # Optional IMDb API key for movie metadata
+
 # Default startup options - override with command parameters
 defaults:
   playlist_url: ""
