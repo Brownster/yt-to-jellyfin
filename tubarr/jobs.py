@@ -179,8 +179,16 @@ def create_job(
             old_job = completed_jobs.pop(0)
             del app.jobs[old_job.job_id]
 
-    if start_thread:
-        threading.Thread(target=app.process_job, args=(job_id,)).start()
+        if len(app.active_jobs) < app.config.get("max_concurrent_jobs", 1):
+            app.active_jobs.append(job_id)
+            if start_thread:
+                threading.Thread(target=app.process_job, args=(job_id,)).start()
+        else:
+            app.job_queue.append(job_id)
+            job.update(message="Job queued")
+
+    # If start_thread is False and there is no active job, the caller is
+    # expected to process the job manually.
 
     return job_id
 

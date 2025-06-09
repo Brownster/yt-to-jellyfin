@@ -19,6 +19,7 @@ Tubarr is a Python application that downloads YouTube playlists and processes th
 - **Docker Support**: Run as a container in your arr stack or standalone
 - **Environment Configuration**: Easily customize behavior with environment variables
 - **Job Management**: Track download progress and manage multiple concurrent downloads
+- **Configurable Concurrency**: Limit how many playlists convert at once
 
 ![Screenshot_20250609_122703](https://github.com/user-attachments/assets/b969bcf5-a7a5-4fbf-bd29-6856f7af2047)
 
@@ -156,6 +157,7 @@ You can configure it by editing the `docker-compose.yml` file and the `config/co
 | WEB_PORT | Port for the web interface | 8000 |
 | WEB_HOST | Host for the web interface (0.0.0.0 for all interfaces) | 0.0.0.0 |
 | COMPLETED_JOBS_LIMIT | Number of completed jobs to keep in history | 10 |
+| MAX_CONCURRENT_JOBS | Number of playlists processed simultaneously | 1 |
 | UPDATE_CHECKER_ENABLED | Automatically check playlists for updates | false |
 | UPDATE_CHECKER_INTERVAL | Minutes between update checks | 60 |
 | CONFIG_FILE | Path to configuration file | config/config.yml |

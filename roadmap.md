@@ -10,7 +10,7 @@ The following are planned improvements and tasks for Tubarr:
 - Implement job cancellation/stop capability so background jobs can be aborted.
 - Provide real-time progress updates using WebSockets or Server-Sent Events instead of polling.
 - Refactor the large `app.py` by splitting logic into separate modules.
-- Add a configurable limit on the number of concurrent jobs.
+- Add a configurable limit on the number of concurrent jobs. **(done)**
 - Validate configuration values against a schema when loading.
 - Package the application so it can be installed with `pip`.
 - Increase test coverage for playlist update logic.

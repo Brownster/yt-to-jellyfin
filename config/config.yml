@@ -20,6 +20,7 @@ web:
 
 # Job Settings
 completed_jobs_limit: 10
+max_concurrent_jobs: 1
 
 # Playlist Update Checker
 update_checker:

@@ -23,6 +23,7 @@ class TestJobManagement(unittest.TestCase):
             "ytdlp_path": "yt-dlp",
             "cookies": "",
             "completed_jobs_limit": 3,
+            "max_concurrent_jobs": 1,
             "update_checker_enabled": False,
             "update_checker_interval": 60,
         }

@@ -63,6 +63,14 @@ document.addEventListener('DOMContentLoaded', function() {
             defaultCrfValue.textContent = this.value;
         });
     }
+
+    const concurrencySlider = document.getElementById('max_concurrent_jobs');
+    const concurrencyValue = document.getElementById('max-concurrent-value');
+    if (concurrencySlider && concurrencyValue) {
+        concurrencySlider.addEventListener('input', function() {
+            concurrencyValue.textContent = this.value;
+        });
+    }
     
     // New Job Form Submission
     const newJobForm = document.getElementById('new-job-form');
@@ -171,6 +179,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const jellyfinSettings = document.querySelectorAll('.jellyfin-settings');
         const autoCheck = document.getElementById('auto_check_updates');
         const updateSchedule = document.querySelector('.update-schedule-settings');
+        const useH265 = document.getElementById('default_use_h265');
+        const concurrencyRow = document.querySelector('.h265-concurrency');
 
         function toggleJellyfinSettings() {
             const isEnabled = jellyfinEnabled.checked;
@@ -190,14 +200,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateSchedule.style.display = 'none';
             }
         }
-        
+
+        function toggleConcurrency() {
+            if (useH265.checked) {
+                concurrencyRow.style.display = 'flex';
+            } else {
+                concurrencyRow.style.display = 'none';
+            }
+        }
+
         // Set initial state
         toggleJellyfinSettings();
         toggleUpdateSchedule();
+        toggleConcurrency();
 
         // Add event listener for toggle
         jellyfinEnabled.addEventListener('change', toggleJellyfinSettings);
         autoCheck.addEventListener('change', toggleUpdateSchedule);
+        useH265.addEventListener('change', toggleConcurrency);
         
         // Form submission handler
         settingsForm.addEventListener('submit', function(e) {
@@ -212,6 +232,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 crf: document.getElementById('default_crf').value,
                 web_port: document.getElementById('web_port').value,
                 completed_jobs_limit: document.getElementById('completed_jobs_limit').value,
+                max_concurrent_jobs: document.getElementById('max_concurrent_jobs').value,
                 auto_check_updates: document.getElementById('auto_check_updates').checked,
                 update_interval: document.getElementById('update_interval').value,
                 // Jellyfin settings
@@ -888,11 +909,14 @@ function loadSettings() {
             document.getElementById('output_dir').value = config.output_dir || '';
             document.getElementById('default_quality').value = config.quality || '1080';
             document.getElementById('default_use_h265').checked = config.use_h265 !== false;
+            const useH265Elem = document.getElementById('default_use_h265');
             document.getElementById('clean_filenames').checked = config.clean_filenames !== false;
             document.getElementById('default_crf').value = config.crf || 28;
             document.getElementById('default-crf-value').textContent = config.crf || 28;
             document.getElementById('web_port').value = config.web_port || 8000;
             document.getElementById('completed_jobs_limit').value = config.completed_jobs_limit || 10;
+            document.getElementById('max_concurrent_jobs').value = config.max_concurrent_jobs || 1;
+            document.getElementById('max-concurrent-value').textContent = config.max_concurrent_jobs || 1;
             document.getElementById('auto_check_updates').checked = config.update_checker_enabled === true;
             document.getElementById('update_interval').value = config.update_checker_interval || 60;
             
@@ -938,6 +962,10 @@ function loadSettings() {
             if (autoCheck) {
                 const ev2 = new Event('change');
                 autoCheck.dispatchEvent(ev2);
+            }
+            if (useH265Elem) {
+                const ev3 = new Event('change');
+                useH265Elem.dispatchEvent(ev3);
             }
         })
         .catch(error => {
