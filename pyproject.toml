@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tubarr"
+version = "0.1.0"
+description = "Download YouTube playlists and integrate with Jellyfin/Kodi."
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [{name = "Tubarr"}]
+license = {file = "LICENSE"}
+dependencies = [
+    "requests>=2.28.0",
+    "pyyaml>=6.0",
+    "flask>=2.2.0",
+    "gunicorn>=20.1.0",
+    "waitress>=2.1.2",
+    "pydantic>=2.1",
+]
+
+[project.scripts]
+tubarr = "tubarr.cli:main"
+
+[tool.setuptools]
+packages = ["tubarr"]
+py-modules = ["app"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+"tubarr" = []
+
+[tool.setuptools.data-files]
+"web/templates" = ["web/templates/*.html"]
+"web/static" = ["web/static/*"]
+"config" = ["config/*.yml"]
