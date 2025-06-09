@@ -3,6 +3,7 @@ import unittest
 import json
 import tempfile
 from unittest.mock import patch, MagicMock
+from unittest.mock import call
 
 from tubarr.web import app, ytj
 
@@ -265,6 +266,29 @@ class TestAPIEndpoints(unittest.TestCase):
         data = json.loads(response.data)
         self.assertEqual(data["job_id"], "m1")
         mock_create.assert_called_once_with("https://youtube.com/watch?v=abc", "My Movie")
+
+    @patch("app.ytj._is_playlist_url", return_value=True)
+    @patch("app.ytj.get_playlist_videos")
+    @patch("app.YTToJellyfin.create_movie_job")
+    def test_create_movie_from_playlist(self, mock_create, mock_get, mock_is):
+        mock_get.return_value = [
+            {"id": "abc", "title": "Video 1"},
+            {"id": "def", "title": "Video 2"},
+        ]
+        mock_create.side_effect = ["m1", "m2"]
+        response = self.client.post(
+            "/movies",
+            json={"video_url": "https://youtube.com/playlist?list=PL", "movie_name": "Ignore"},
+        )
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertEqual(data["job_ids"], ["m1", "m2"])
+        mock_get.assert_called_once_with("https://youtube.com/playlist?list=PL")
+        expected_calls = [
+            call("https://www.youtube.com/watch?v=abc", "Video 1"),
+            call("https://www.youtube.com/watch?v=def", "Video 2"),
+        ]
+        self.assertEqual(mock_create.call_args_list, expected_calls)
 
 
 if __name__ == "__main__":

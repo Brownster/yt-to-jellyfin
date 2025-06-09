@@ -75,8 +75,20 @@ def movies():
         movie_name = request.form.get("movie_name") or (request.json or {}).get("movie_name")
         if not video_url or not movie_name:
             return jsonify({"error": "Missing required parameters"}), 400
-        job_id = ytj.create_movie_job(video_url, movie_name)
-        return jsonify({"job_id": job_id})
+        if ytj._is_playlist_url(video_url):
+            videos = ytj.get_playlist_videos(video_url)
+            job_ids = []
+            for v in videos:
+                vid = v.get("id")
+                title = v.get("title") or movie_name
+                if not vid:
+                    continue
+                url = f"https://www.youtube.com/watch?v={vid}"
+                job_ids.append(ytj.create_movie_job(url, title))
+            return jsonify({"job_ids": job_ids})
+        else:
+            job_id = ytj.create_movie_job(video_url, movie_name)
+            return jsonify({"job_id": job_id})
     else:
         return jsonify(ytj.list_movies())
 

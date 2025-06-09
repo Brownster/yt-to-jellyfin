@@ -170,6 +170,45 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+
+    const newMovieForm = document.getElementById('new-movie-form');
+    if (newMovieForm) {
+        newMovieForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const startMovieBtn = document.getElementById('start-movie-btn');
+            const originalHTML = startMovieBtn ? startMovieBtn.innerHTML : '';
+            if (startMovieBtn) {
+                startMovieBtn.disabled = true;
+                startMovieBtn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Starting...`;
+            }
+
+            const formData = new FormData();
+            formData.append('video_url', document.getElementById('movie_url').value);
+            formData.append('movie_name', document.getElementById('movie_name').value);
+
+            fetch('/movies', {
+                method: 'POST',
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.job_id || data.job_ids) {
+                    showToast('Success', 'Movie download queued successfully');
+                    document.querySelector('[data-section="jobs"]').click();
+                } else {
+                    showToast('Error', data.error || 'Failed to start movie download');
+                }
+            })
+            .catch(() => showToast('Error', 'An error occurred while creating the movie job'))
+            .finally(() => {
+                if (startMovieBtn) {
+                    startMovieBtn.disabled = false;
+                    startMovieBtn.innerHTML = originalHTML;
+                }
+            });
+        });
+    }
     
     // Settings Form Submission
     const settingsForm = document.getElementById('settings-form');
