@@ -353,7 +353,17 @@ def generate_artwork(app, folder: str, show_name: str, season_num: str, job_id: 
         temp_posters = []
         for i, episode in enumerate(episodes[:1]):
             poster_file = os.path.join(app.temp_dir, f"tmp_poster_{i:03d}.jpg")
-            subprocess.run(["ffmpeg", "-i", str(episode), "-vf", "select='not(mod(n,1000))',scale=640:360", "-vframes", "3", poster_file], check=True, capture_output=True)
+            filter_str = "select=not(mod(n\,1000)),scale=640:360"
+            subprocess.run([
+                "ffmpeg",
+                "-i",
+                str(episode),
+                "-vf",
+                filter_str,
+                "-vframes",
+                "3",
+                poster_file,
+            ], check=True, capture_output=True)
             temp_posters.append(poster_file)
         if temp_posters:
             poster_path = os.path.join(show_folder, "poster.jpg")
