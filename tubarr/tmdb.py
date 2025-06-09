@@ -27,7 +27,11 @@ def search_movie(title: str, year: str, api_key: str) -> Optional[Dict]:
     best = None
     best_ratio = 0.0
     for movie in results:
-        ratio = SequenceMatcher(None, title.lower(), movie.get("title", "").lower()).ratio()
+        ratio = SequenceMatcher(
+            None,
+            title.lower(),
+            movie.get("title", "").lower(),
+        ).ratio()
         if ratio > best_ratio:
             best_ratio = ratio
             best = movie

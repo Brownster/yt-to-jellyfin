@@ -150,19 +150,31 @@ def copy_movie_to_jellyfin(app, movie_name: str, job_id: str) -> None:
         except OSError as e:
             logger.error(f"Failed to create Jellyfin movie folder: {e}")
             if job:
-                job.update(message=f"Error: Failed to create Jellyfin movie folder: {e}")
+                job.update(
+                    message=f"Error: Failed to create Jellyfin movie folder: {e}"
+                )
             return
     try:
         all_files = list(source_folder.glob("*"))
         total_files = len(all_files)
         if job:
-            job.update(total_files=total_files, processed_files=0, detailed_status=f"Copying {total_files} files to Jellyfin")
+            job.update(
+                total_files=total_files,
+                processed_files=0,
+                detailed_status=f"Copying {total_files} files to Jellyfin",
+            )
         for i, file_path in enumerate(all_files):
             dest_file = dest_folder / file_path.name
-            if os.path.exists(dest_file) and os.path.getsize(dest_file) == os.path.getsize(file_path):
+            if (
+                os.path.exists(dest_file)
+                and os.path.getsize(dest_file) == os.path.getsize(file_path)
+            ):
                 logger.info(f"Skipping {file_path.name} - already exists and same size")
                 if job:
-                    job.update(processed_files=i + 1, message=f"Skipped {file_path.name} - already exists")
+                    job.update(
+                        processed_files=i + 1,
+                        message=f"Skipped {file_path.name} - already exists",
+                    )
                 continue
             shutil.copy2(file_path, dest_file)
             logger.info(f"Copied {file_path.name} to Jellyfin")

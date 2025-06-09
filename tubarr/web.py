@@ -71,8 +71,14 @@ def jobs():
 @app.route("/movies", methods=["GET", "POST"])
 def movies():
     if request.method == "POST":
-        video_url = request.form.get("video_url") or (request.json or {}).get("video_url")
-        movie_name = request.form.get("movie_name") or (request.json or {}).get("movie_name")
+        video_url = (
+            request.form.get("video_url")
+            or (request.json or {}).get("video_url")
+        )
+        movie_name = (
+            request.form.get("movie_name")
+            or (request.json or {}).get("movie_name")
+        )
         if not video_url or not movie_name:
             return jsonify({"error": "Missing required parameters"}), 400
         if ytj._is_playlist_url(video_url):
