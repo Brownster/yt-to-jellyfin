@@ -507,7 +507,9 @@ def convert_video_files(app, folder: str, season_num: str, job_id: str) -> None:
 from . import tmdb
 
 
-def process_movie_metadata(app, folder: str, movie_name: str, job_id: str) -> None:
+def process_movie_metadata(
+    app, folder: str, movie_name: str, job_id: str, json_index: int = 0
+) -> None:
     job = app.jobs.get(job_id)
     if job:
         job.update(
@@ -518,13 +520,22 @@ def process_movie_metadata(app, folder: str, movie_name: str, job_id: str) -> No
             detailed_status="Processing movie metadata",
             message="Processing movie metadata",
         )
-    json_files = list(Path(folder).glob("*.info.json"))
+    json_files = sorted(Path(folder).glob("*.info.json"))
     if not json_files:
         if job:
             job.update(message="Warning: No JSON metadata file found")
         logger.warning("No JSON metadata file found")
         return
-    with open(json_files[0], "r") as f:
+    if len(json_files) > 1:
+        logger.warning("Multiple JSON metadata files found")
+        if job:
+            job.update(message="Warning: Multiple JSON metadata files found")
+    if json_index >= len(json_files) or json_index < -len(json_files):
+        logger.error("JSON metadata index out of range")
+        if job:
+            job.update(message="Error: JSON metadata index out of range")
+        return
+    with open(json_files[json_index], "r") as f:
         data = json.load(f)
     description = data.get("description", "").split("\n")[0] if data.get("description") else ""
     upload_date = data.get("upload_date", "")

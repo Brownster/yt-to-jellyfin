@@ -354,9 +354,9 @@ class YTToJellyfin:
         process_metadata(self, folder, show_name, season_num, episode_start, job_id)
 
     def process_movie_metadata(
-        self, folder: str, movie_name: str, job_id: str
+        self, folder: str, movie_name: str, job_id: str, json_index: int = 0
     ) -> None:
-        process_movie_metadata(self, folder, movie_name, job_id)
+        process_movie_metadata(self, folder, movie_name, job_id, json_index)
 
     def convert_video_files(self, folder: str, season_num: str, job_id: str) -> None:
         convert_video_files(self, folder, season_num, job_id)
