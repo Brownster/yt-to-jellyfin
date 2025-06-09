@@ -120,6 +120,7 @@ curl -X POST http://localhost:8000/movies \
 
 Open the **New Movie Download** section, enter the video or playlist URL and the
 movie name, then click **Start Download**.
+Movie files will be converted to H.265 if the feature is enabled, just like TV downloads.
 
 ### Managing Playlists and Updates
 

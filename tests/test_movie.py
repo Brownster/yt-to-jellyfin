@@ -261,6 +261,7 @@ class TestMovieWorkflow(unittest.TestCase):
 
     @patch("app.YTToJellyfin.copy_movie_to_jellyfin")
     @patch("app.YTToJellyfin.generate_movie_artwork")
+    @patch("app.YTToJellyfin.convert_movie_file")
     @patch("app.YTToJellyfin.process_movie_metadata")
     @patch("app.YTToJellyfin.download_playlist")
     @patch("app.YTToJellyfin.check_dependencies", return_value=True)
@@ -271,6 +272,7 @@ class TestMovieWorkflow(unittest.TestCase):
         mock_check,
         mock_download,
         mock_metadata,
+        mock_convert,
         mock_artwork,
         mock_copy,
     ):
@@ -294,6 +296,7 @@ class TestMovieWorkflow(unittest.TestCase):
             job_id,
         )
         mock_metadata.assert_called_once()
+        mock_convert.assert_called_once()
         mock_artwork.assert_called_once()
         mock_copy.assert_called_once_with("Test Movie", job_id)
 
@@ -329,6 +332,7 @@ class TestMovieWorkflow(unittest.TestCase):
                 side_effect=fake_download,
             ),
             patch.object(self.app, "process_movie_metadata"),
+            patch.object(self.app, "convert_movie_file"),
             patch.object(self.app, "copy_movie_to_jellyfin"),
             patch.object(
                 self.app,
