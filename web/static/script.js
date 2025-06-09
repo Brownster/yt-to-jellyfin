@@ -368,6 +368,16 @@ function loadDashboard() {
         .catch(error => {
             console.error('Error fetching media:', error);
         });
+
+    // Load movie data
+    fetch('/movies')
+        .then(response => response.json())
+        .then(movies => {
+            updateMovieStats(movies);
+        })
+        .catch(error => {
+            console.error('Error fetching movies:', error);
+        });
 }
 
 function loadJobs() {
@@ -1035,6 +1045,11 @@ function updateMediaStats(media) {
     document.getElementById('total-shows').textContent = totalShows;
     document.getElementById('total-episodes').textContent = totalEpisodes;
     document.getElementById('storage-used').textContent = formatFileSize(totalSize);
+}
+
+function updateMovieStats(movies) {
+    const totalMovies = movies.length;
+    document.getElementById('total-movies').textContent = totalMovies;
 }
 
 function updateRecentJobs(jobs) {
