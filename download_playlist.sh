@@ -46,7 +46,7 @@ create_tv_show_artwork() {
   [ -z "$first_episode" ] && return
 
   # Generate poster
-  ffmpeg -i "$first_episode" -vf "select='not(mod(n,1000))',scale=640:360" -vframes 3 "$TEMP_DIR/tmp_poster_%03d.jpg"
+  ffmpeg -i "$first_episode" -vf select=not(mod(n\,1000)),scale=640:360 -vframes 3 "$TEMP_DIR/tmp_poster_%03d.jpg"
   convert "$TEMP_DIR"/tmp_poster_*.jpg -gravity Center -background Black -resize 1000x1500^ -extent 1000x1500 \
     -pointsize 80 -fill white -gravity south -annotate +0+50 "$TV_SHOW" \
     "${TV_SHOW}/poster.jpg"

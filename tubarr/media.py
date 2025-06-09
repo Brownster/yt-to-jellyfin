@@ -8,7 +8,7 @@ from typing import List, Dict, Optional
 from datetime import datetime
 
 from .config import logger
-from .utils import sanitize_name, clean_filename
+from .utils import sanitize_name, clean_filename, run_subprocess
 
 
 def create_folder_structure(app, show_name: str, season_num: str) -> str:
@@ -312,49 +312,20 @@ def generate_artwork(app, folder: str, show_name: str, season_num: str, job_id: 
     if job:
         job.update(status="generating_artwork", message="Generating thumbnails and artwork")
     show_folder = str(Path(folder).parent)
-    videos = list(Path(folder).glob(f"*S{season_num}E*.mp4"))
-    for i, video in enumerate(videos):
-        video_base = str(video).rsplit(".", 1)[0]
-        basename = os.path.basename(video_base)
-        if app.config.get("clean_filenames", True):
-            basename = clean_filename(basename)
-        thumb_path = os.path.join(os.path.dirname(video_base), f"{basename}-thumb.jpg")
-        try:
-            subprocess.run([
-                "ffmpeg",
-                "-ss",
-                "00:01:30",
-                "-i",
-                str(video),
-                "-vframes",
-                "1",
-                "-q:v",
-                "2",
-                thumb_path,
-            ], check=True, capture_output=True)
-            logger.info(f"Generated thumbnail: {thumb_path}")
-            if job and videos:
-                progress = int((i + 1) / len(videos) * 30)
-                job.update(progress=progress, message=f"Generated thumbnail for {basename}")
-        except subprocess.CalledProcessError:
-            logger.error(f"Failed to generate thumbnail for {video}")
-            if job:
-                job.update(message=f"Failed to generate thumbnail for {os.path.basename(str(video))}")
-    show_folder_path = Path(show_folder)
+    episodes = list(Path(folder).glob(f"*S{season_num}E*.mp4"))
+    if not episodes:
+        logger.warning("No episodes found for artwork generation")
+        if job:
+            job.update(message="No episodes found for artwork generation")
+        return
     try:
-        episodes = list(Path(folder).glob(f"*S{season_num}E*.mp4"))
-        if not episodes:
-            logger.warning("No episodes found for artwork generation")
-            if job:
-                job.update(message="No episodes found for artwork generation")
-            return
         if job:
             job.update(progress=30, message="Creating show and season artwork")
         temp_posters = []
         for i, episode in enumerate(episodes[:1]):
             poster_file = os.path.join(app.temp_dir, f"tmp_poster_{i:03d}.jpg")
-            filter_str = "select=not(mod(n\,1000)),scale=640:360"
-            subprocess.run([
+            filter_str = r"select=not(mod(n\,1000)),scale=640:360"
+            run_subprocess([
                 "ffmpeg",
                 "-i",
                 str(episode),
@@ -367,7 +338,7 @@ def generate_artwork(app, folder: str, show_name: str, season_num: str, job_id: 
             temp_posters.append(poster_file)
         if temp_posters:
             poster_path = os.path.join(show_folder, "poster.jpg")
-            subprocess.run([
+            run_subprocess([
                 "convert",
                 *temp_posters,
                 "-gravity",
@@ -395,7 +366,7 @@ def generate_artwork(app, folder: str, show_name: str, season_num: str, job_id: 
         os.makedirs(season_frames_dir, exist_ok=True)
         for i, episode in enumerate(episodes[:6]):
             frame_file = os.path.join(season_frames_dir, f"frame_{i:03d}.jpg")
-            subprocess.run(["ffmpeg", "-i", str(episode), "-vf", "thumbnail", "-frames:v", "1", frame_file], check=True, capture_output=True)
+            run_subprocess(["ffmpeg", "-i", str(episode), "-vf", "thumbnail", "-frames:v", "1", frame_file], check=True, capture_output=True)
         season_frames = list(Path(season_frames_dir).glob("*.jpg"))
         if season_frames:
             montage_args = ["montage", "-geometry", "400x225+5+5", "-background", "black", "-tile", "3x2", *[str(f) for f in season_frames], "-"]
@@ -403,9 +374,33 @@ def generate_artwork(app, folder: str, show_name: str, season_num: str, job_id: 
             p1 = subprocess.Popen(montage_args, stdout=subprocess.PIPE)
             p2 = subprocess.Popen(convert_args, stdin=p1.stdout)
             p2.communicate()
-            subprocess.run(["convert", f"{folder}/season{season_num}-poster.jpg", "-resize", "1000x562!", f"{folder}/season{season_num}.jpg"], check=True)
+            run_subprocess(["convert", f"{folder}/season{season_num}-poster.jpg", "-resize", "1000x562!", f"{folder}/season{season_num}.jpg"], check=True)
             if job:
                 job.update(progress=100, message="Created season artwork")
+        for i, video in enumerate(episodes):
+            video_base = str(video).rsplit(".", 1)[0]
+            basename = os.path.basename(video_base)
+            if app.config.get("clean_filenames", True):
+                basename = clean_filename(basename)
+            thumb_path = os.path.join(os.path.dirname(video_base), f"{basename}-thumb.jpg")
+            try:
+                subprocess.run([
+                    "ffmpeg",
+                    "-ss",
+                    "00:01:30",
+                    "-i",
+                    str(video),
+                    "-vframes",
+                    "1",
+                    "-q:v",
+                    "2",
+                    thumb_path,
+                ], check=True, capture_output=True)
+                logger.info(f"Generated thumbnail: {thumb_path}")
+            except subprocess.CalledProcessError:
+                logger.error(f"Failed to generate thumbnail for {video}")
+                if job:
+                    job.update(message=f"Failed to generate thumbnail for {os.path.basename(str(video))}")
     except (subprocess.CalledProcessError, OSError) as e:
         logger.error(f"Error generating artwork: {e}")
         if job:

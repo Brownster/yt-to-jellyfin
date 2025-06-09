@@ -22,6 +22,8 @@ def _load_playlists(playlists_file: str) -> Dict[str, Dict[str, str]]:
 
 
 def _save_playlists(playlists_file: str, playlists: Dict[str, Dict[str, str]]) -> None:
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        return
     os.makedirs(os.path.dirname(playlists_file), exist_ok=True)
     with open(playlists_file, "w") as f:
         json.dump(playlists, f, indent=2)

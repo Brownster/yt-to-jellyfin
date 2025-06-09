@@ -87,7 +87,7 @@ class YTToJellyfin:
     def _register_playlist(
         self, url: str, show_name: str, season_num: str, start_index: Optional[int] = None
     ) -> bool:
-        return _register_playlist(
+        added = _register_playlist(
             self.playlists,
             self.playlists_file,
             url,
@@ -95,6 +95,9 @@ class YTToJellyfin:
             season_num,
             start_index,
         )
+        if added:
+            self._save_playlists()
+        return added
 
     def _get_existing_max_index(self, folder: str, season_num: str) -> int:
         return _get_existing_max_index(folder, season_num)
