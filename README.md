@@ -101,6 +101,25 @@ python app.py "https://youtube.com/playlist?list=PLtUoAptE--3xzuDjW-7nwVbinG3GyY
 - `--config`: Path to config file
 - `--check-updates`: Check saved playlists for new videos and queue jobs
 
+### Movie Downloads
+
+You can also download individual YouTube videos as movies.
+
+**CLI**
+
+Use `curl` to call the `/movies` endpoint:
+
+```bash
+curl -X POST http://localhost:8000/movies \
+  -F video_url="https://youtube.com/watch?v=VIDEO_ID" \
+  -F movie_name="My Movie"
+```
+
+**Web Interface**
+
+Open the **New Movie Download** section, enter the video or playlist URL and the
+movie name, then click **Start Download**.
+
 ### Managing Playlists and Updates
 
 When you start a download job, the playlist information is saved to
@@ -163,6 +182,7 @@ You can configure it by editing the `docker-compose.yml` file and the `config/co
 | CONFIG_FILE | Path to configuration file | config/config.yml |
 | JELLYFIN_ENABLED | Enable direct Jellyfin integration | false |
 | JELLYFIN_TV_PATH | Path to Jellyfin TV library folder | |
+| JELLYFIN_MOVIE_PATH | Path to Jellyfin movie library folder | |
 | JELLYFIN_HOST | Jellyfin server hostname/IP | |
 | JELLYFIN_PORT | Jellyfin server port | 8096 |
 | JELLYFIN_API_KEY | Jellyfin API key for triggering library scan (optional) | |
@@ -197,9 +217,10 @@ requests and successfully download restricted videos.
 Enable the direct Jellyfin integration feature to automatically copy files to your Jellyfin library:
 
 1. In the web interface, go to "Settings" and enable "Jellyfin integration"
-2. Set the "Jellyfin TV Library Path" to the path of your Jellyfin TV library folder
-3. Optionally provide Jellyfin server details to trigger a library scan after copy
-4. Start a new download job and files will be automatically copied to your Jellyfin library
+2. Set the **Jellyfin TV Library Path** to the path of your Jellyfin TV library folder
+3. Set the **Jellyfin Movie Library Path** (`jellyfin_movie_path` or `JELLYFIN_MOVIE_PATH`) to the path of your Jellyfin movie library folder
+4. Optionally provide Jellyfin server details to trigger a library scan after copy
+5. Start a new download job and files will be automatically copied to your Jellyfin library
 
 ### Method 2: Manual Integration
 
@@ -209,6 +230,22 @@ If you prefer to manage the files manually:
 2. In Jellyfin, add a new TV Shows library pointing to your output directory
 3. Set the metadata provider to "Local metadata only" to use the generated NFO files
 4. Scan the library, and your shows will appear with proper metadata and artwork
+
+### Example Folder Structure
+
+```
+media/
+├── My Show
+│   ├── tvshow.nfo
+│   ├── poster.jpg
+│   ├── fanart.jpg
+│   └── Season 01
+│       ├── Episode Title S01E01.mp4
+│       └── Episode Title S01E01.nfo
+└── My Movie (2024)
+    ├── My Movie (2024) [abcd1234].mp4
+    └── My Movie (2024).nfo
+```
 
 ## Packaging and Installation
 
