@@ -39,6 +39,8 @@ class TestMovieWorkflow(unittest.TestCase):
         with patch.object(YTToJellyfin, "_load_config", return_value=self.config), patch.object(YTToJellyfin, "_load_playlists", return_value={}):
             self.app = YTToJellyfin()
         self.job = DownloadJob("job1", "url", "", "", "", media_type="movie", movie_name="Test Movie")
+        # Mock update so tests can assert on calls
+        self.job.update = MagicMock()
         self.app.jobs["job1"] = self.job
 
     def tearDown(self):
@@ -172,6 +174,41 @@ class TestMovieWorkflow(unittest.TestCase):
         mock_metadata.assert_called_once()
         mock_artwork.assert_called_once()
         mock_copy.assert_called_once_with("Test Movie", job_id)
+
+    @patch("subprocess.run")
+    def test_process_movie_job_generates_poster(self, mock_run):
+        """process_movie_job should generate a poster via generate_movie_artwork."""
+
+        def run_side_effect(cmd, **kwargs):
+            if cmd[0] == "ffmpeg":
+                pattern = cmd[-1]
+                frames_dir = os.path.dirname(pattern)
+                os.makedirs(frames_dir, exist_ok=True)
+                with open(os.path.join(frames_dir, "frame_000.jpg"), "w"):
+                    pass
+            elif cmd[0] == "convert":
+                poster_path = cmd[-1]
+                with open(poster_path, "w"):
+                    pass
+            return MagicMock()
+
+        mock_run.side_effect = run_side_effect
+
+        def fake_download(url, folder, season, job_id):
+            os.makedirs(folder, exist_ok=True)
+            Path(folder, "Test Movie.mp4").touch()
+            return True
+
+        with patch.object(self.app, "check_dependencies", return_value=True), \
+            patch.object(self.app, "download_playlist", side_effect=fake_download), \
+            patch.object(self.app, "process_movie_metadata"), \
+            patch.object(self.app, "copy_movie_to_jellyfin"), \
+            patch.object(self.app, "generate_movie_artwork", wraps=self.app.generate_movie_artwork) as mock_artwork:
+            self.app.process_movie_job("job1")
+
+        poster = Path(self.temp_dir) / "Test Movie" / "poster.jpg"
+        self.assertTrue(poster.exists())
+        mock_artwork.assert_called_once()
 
 
 if __name__ == "__main__":
