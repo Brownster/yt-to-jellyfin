@@ -123,10 +123,14 @@ def _load_config() -> Dict:
                     config["defaults"] = file_config["defaults"]
 
                 if "completed_jobs_limit" in file_config:
-                    config["completed_jobs_limit"] = int(file_config["completed_jobs_limit"])
+                    config["completed_jobs_limit"] = int(
+                        file_config["completed_jobs_limit"]
+                    )
 
                 if "max_concurrent_jobs" in file_config:
-                    config["max_concurrent_jobs"] = int(file_config["max_concurrent_jobs"])
+                    config["max_concurrent_jobs"] = int(
+                        file_config["max_concurrent_jobs"]
+                    )
 
                 if "web" in file_config and isinstance(file_config["web"], dict):
                     for key, value in file_config["web"].items():

@@ -2,7 +2,7 @@ import os
 import unittest
 import tempfile
 import shutil
-from unittest.mock import patch, call
+from unittest.mock import patch
 
 # Add parent directory to path to import app.py
 from tubarr.core import YTToJellyfin
@@ -223,7 +223,7 @@ class TestIntegration(unittest.TestCase):
             )
 
         self.assertEqual(mock_thread.call_count, 2)
-        started = [call[1]["args"][0] for call in mock_thread.call_args_list]
+        started = [c[1]["args"][0] for c in mock_thread.call_args_list]
         self.assertEqual(started, job_ids[:2])
         self.assertEqual(self.app.job_queue, job_ids[2:])
 

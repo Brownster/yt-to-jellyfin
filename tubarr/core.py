@@ -191,7 +191,10 @@ class YTToJellyfin:
             if len(self.active_jobs) < self.config.get("max_concurrent_jobs", 1):
                 self.active_jobs.append(job_id)
                 if start_thread:
-                    threading.Thread(target=self.process_movie_job, args=(job_id,)).start()
+                    threading.Thread(
+                        target=self.process_movie_job,
+                        args=(job_id,),
+                    ).start()
             else:
                 self.job_queue.append(job_id)
                 job.update(message="Job queued")
@@ -304,9 +307,16 @@ class YTToJellyfin:
             self.generate_movie_artwork(folder, job_id)
             if job.status == "cancelled":
                 return
-            if self.config.get("jellyfin_enabled", False) and self.config.get("jellyfin_movie_path"):
+            if (
+                self.config.get("jellyfin_enabled", False)
+                and self.config.get("jellyfin_movie_path")
+            ):
                 self.copy_movie_to_jellyfin(job.movie_name, job_id)
-            job.update(status="completed", progress=100, message="Job completed successfully")
+            job.update(
+                status="completed",
+                progress=100,
+                message="Job completed successfully",
+            )
             logger.info(f"Job {job_id} completed successfully")
         except Exception as e:  # pragma: no cover - for unexpected errors
             logger.exception(f"Error processing job {job_id}: {e}")
@@ -319,10 +329,17 @@ class YTToJellyfin:
         with self.job_lock:
             if job_id in self.active_jobs:
                 self.active_jobs.remove(job_id)
-            while self.job_queue and len(self.active_jobs) < self.config.get("max_concurrent_jobs", 1):
+            while (
+                self.job_queue
+                and len(self.active_jobs)
+                < self.config.get("max_concurrent_jobs", 1)
+            ):
                 next_id = self.job_queue.pop(0)
                 self.active_jobs.append(next_id)
-                threading.Thread(target=self.process_job, args=(next_id,)).start()
+                threading.Thread(
+                    target=self.process_job,
+                    args=(next_id,),
+                ).start()
 
     # media functions
     def create_folder_structure(self, show_name: str, season_num: str) -> str:

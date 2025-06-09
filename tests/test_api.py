@@ -260,12 +260,18 @@ class TestAPIEndpoints(unittest.TestCase):
         mock_create.return_value = "m1"
         response = self.client.post(
             "/movies",
-            json={"video_url": "https://youtube.com/watch?v=abc", "movie_name": "My Movie"},
+            json={
+                "video_url": "https://youtube.com/watch?v=abc",
+                "movie_name": "My Movie",
+            },
         )
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.data)
         self.assertEqual(data["job_id"], "m1")
-        mock_create.assert_called_once_with("https://youtube.com/watch?v=abc", "My Movie")
+        mock_create.assert_called_once_with(
+            "https://youtube.com/watch?v=abc",
+            "My Movie",
+        )
 
     @patch("app.ytj._is_playlist_url", return_value=True)
     @patch("app.ytj.get_playlist_videos")
@@ -278,7 +284,10 @@ class TestAPIEndpoints(unittest.TestCase):
         mock_create.side_effect = ["m1", "m2"]
         response = self.client.post(
             "/movies",
-            json={"video_url": "https://youtube.com/playlist?list=PL", "movie_name": "Ignore"},
+            json={
+                "video_url": "https://youtube.com/playlist?list=PL",
+                "movie_name": "Ignore",
+            },
         )
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.data)

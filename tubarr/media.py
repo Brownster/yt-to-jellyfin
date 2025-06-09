@@ -8,6 +8,7 @@ from datetime import datetime
 
 from .config import logger
 from .utils import sanitize_name, clean_filename, run_subprocess
+from . import tmdb
 
 
 def create_folder_structure(app, show_name: str, season_num: str) -> str:
@@ -504,9 +505,6 @@ def convert_video_files(app, folder: str, season_num: str, job_id: str) -> None:
         )
 
 
-from . import tmdb
-
-
 def process_movie_metadata(
     app, folder: str, movie_name: str, job_id: str, json_index: int = 0
 ) -> None:
@@ -537,7 +535,9 @@ def process_movie_metadata(
         return
     with open(json_files[json_index], "r") as f:
         data = json.load(f)
-    description = data.get("description", "").split("\n")[0] if data.get("description") else ""
+    description = (
+        data.get("description", "").split("\n")[0] if data.get("description") else ""
+    )
     upload_date = data.get("upload_date", "")
     year = upload_date[:4] if len(upload_date) >= 4 else ""
     video_id = data.get("id", "")
@@ -560,7 +560,10 @@ def process_movie_metadata(
         tmdb_id = tmdb_data.get("id")
         poster_path = tmdb_data.get("poster_path")
         genres = [g["name"] for g in tmdb_data.get("genres", [])]
-        actors = [c.get("name") for c in tmdb_data.get("credits", {}).get("cast", [])[:5]]
+        actors = [
+            c.get("name")
+            for c in tmdb_data.get("credits", {}).get("cast", [])[:5]
+        ]
         base_name = f"{title}"
         if year:
             base_name += f" ({year})"
@@ -658,7 +661,12 @@ def generate_movie_artwork(app, folder: str, job_id: str) -> None:
         if frame_files:
             poster_path = Path(folder) / "poster.jpg"
             run_subprocess(
-                ["convert", *[str(f) for f in frame_files], "-append", str(poster_path)],
+                [
+                    "convert",
+                    *[str(f) for f in frame_files],
+                    "-append",
+                    str(poster_path),
+                ],
                 check=True,
             )
             if job:
@@ -943,7 +951,10 @@ def list_movies(app) -> List[Dict]:
     for movie_dir in output_dir.iterdir():
         if not movie_dir.is_dir():
             continue
-        if any(sd.is_dir() and sd.name.startswith("Season ") for sd in movie_dir.iterdir()):
+        if any(
+            sd.is_dir() and sd.name.startswith("Season ")
+            for sd in movie_dir.iterdir()
+        ):
             continue
         movie_file = None
         for ext in ["mp4"]:
@@ -957,7 +968,9 @@ def list_movies(app) -> List[Dict]:
                     "name": movie_dir.name,
                     "path": str(movie_file),
                     "size": movie_file.stat().st_size,
-                    "modified": datetime.fromtimestamp(movie_file.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
+                    "modified": datetime.fromtimestamp(
+                        movie_file.stat().st_mtime
+                    ).strftime("%Y-%m-%d %H:%M:%S"),
                 }
             )
     return movies

@@ -36,9 +36,25 @@ class TestMovieWorkflow(unittest.TestCase):
             "update_checker_enabled": False,
             "update_checker_interval": 60,
         }
-        with patch.object(YTToJellyfin, "_load_config", return_value=self.config), patch.object(YTToJellyfin, "_load_playlists", return_value={}):
+        with patch.object(
+            YTToJellyfin,
+            "_load_config",
+            return_value=self.config,
+        ), patch.object(
+            YTToJellyfin,
+            "_load_playlists",
+            return_value={},
+        ):
             self.app = YTToJellyfin()
-        self.job = DownloadJob("job1", "url", "", "", "", media_type="movie", movie_name="Test Movie")
+        self.job = DownloadJob(
+            "job1",
+            "url",
+            "",
+            "",
+            "",
+            media_type="movie",
+            movie_name="Test Movie",
+        )
         # Mock update so tests can assert on calls
         self.job.update = MagicMock()
         self.app.jobs["job1"] = self.job
@@ -49,7 +65,10 @@ class TestMovieWorkflow(unittest.TestCase):
 
     def test_create_movie_job(self):
         with patch("threading.Thread") as mock_thread:
-            job_id = self.app.create_movie_job("https://youtube.com/watch?v=abc", "My Movie")
+            job_id = self.app.create_movie_job(
+                "https://youtube.com/watch?v=abc",
+                "My Movie",
+            )
             self.assertIn(job_id, self.app.jobs)
             job = self.app.jobs[job_id]
             self.assertEqual(job.media_type, "movie")
@@ -64,7 +83,7 @@ class TestMovieWorkflow(unittest.TestCase):
         info = {"description": "Desc", "upload_date": "20220101", "id": "abc"}
         with open(folder / "video.info.json", "w") as f:
             json.dump(info, f)
-        with patch("subprocess.run") as mock_run:
+        with patch("subprocess.run") as _:
             self.app.process_movie_metadata(str(folder), "Test Movie", "job1")
         nfo = folder / "movie.nfo"
         self.assertTrue(nfo.exists())
@@ -151,7 +170,17 @@ class TestMovieWorkflow(unittest.TestCase):
         (src_folder / "Test Movie.mp4").touch()
         (src_folder / "movie.nfo").touch()
         dest_folder = Path(self.jellyfin_dir) / "Test Movie"
-        with patch("os.path.exists", side_effect=lambda p: False if str(p).startswith(str(dest_folder)) else os.path.exists(p)), patch("os.makedirs") as mock_mkdir, patch("shutil.copy2") as mock_copy2, patch.object(self.app, "trigger_jellyfin_scan") as mock_scan:
+        with (
+            patch(
+                "os.path.exists",
+                side_effect=lambda p: False
+                if str(p).startswith(str(dest_folder))
+                else os.path.exists(p),
+            ),
+            patch("os.makedirs") as mock_mkdir,
+            patch("shutil.copy2") as mock_copy2,
+            patch.object(self.app, "trigger_jellyfin_scan") as mock_scan,
+        ):
             jellyfin_mod.copy_movie_to_jellyfin(self.app, "Test Movie", "job1")
             mock_mkdir.assert_called_with(dest_folder, exist_ok=True)
             expected_calls = [
@@ -179,12 +208,19 @@ class TestMovieWorkflow(unittest.TestCase):
             return []
 
         mock_run.return_value = MagicMock()
-
         with patch("pathlib.Path.glob", new=glob_side_effect), patch("os.makedirs"):
             self.app.generate_movie_artwork(str(folder), "job1")
 
-        ffmpeg_calls = [c for c in mock_run.call_args_list if c.args[0][0] == "ffmpeg"]
-        convert_calls = [c for c in mock_run.call_args_list if c.args[0][0] == "convert"]
+        ffmpeg_calls = [
+            c
+            for c in mock_run.call_args_list
+            if c.args[0][0] == "ffmpeg"
+        ]
+        convert_calls = [
+            c
+            for c in mock_run.call_args_list
+            if c.args[0][0] == "convert"
+        ]
         self.assertTrue(ffmpeg_calls)
         self.assertTrue(convert_calls)
         self.job.update.assert_any_call(
@@ -205,7 +241,6 @@ class TestMovieWorkflow(unittest.TestCase):
         self.job.update.assert_any_call(
             message="No movie file found for artwork generation"
         )
-
 
     @patch("app.YTToJellyfin.copy_movie_to_jellyfin")
     @patch("app.YTToJellyfin.generate_movie_artwork")
@@ -269,11 +304,21 @@ class TestMovieWorkflow(unittest.TestCase):
             Path(folder, "Test Movie.mp4").touch()
             return True
 
-        with patch.object(self.app, "check_dependencies", return_value=True), \
-            patch.object(self.app, "download_playlist", side_effect=fake_download), \
-            patch.object(self.app, "process_movie_metadata"), \
-            patch.object(self.app, "copy_movie_to_jellyfin"), \
-            patch.object(self.app, "generate_movie_artwork", wraps=self.app.generate_movie_artwork) as mock_artwork:
+        with (
+            patch.object(self.app, "check_dependencies", return_value=True),
+            patch.object(
+                self.app,
+                "download_playlist",
+                side_effect=fake_download,
+            ),
+            patch.object(self.app, "process_movie_metadata"),
+            patch.object(self.app, "copy_movie_to_jellyfin"),
+            patch.object(
+                self.app,
+                "generate_movie_artwork",
+                wraps=self.app.generate_movie_artwork,
+            ) as mock_artwork,
+        ):
             self.app.process_movie_job("job1")
 
         poster = Path(self.temp_dir) / "Test Movie" / "poster.jpg"
