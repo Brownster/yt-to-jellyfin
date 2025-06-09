@@ -4,7 +4,15 @@ import logging
 from typing import Dict, Optional
 from pydantic import BaseModel, Field, ValidationError, validator
 
+# Configure root logger if not already set
+if not logging.getLogger().handlers:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+    )
+
 logger = logging.getLogger("yt-to-jellyfin")
+logger.setLevel(logging.INFO)
 
 
 class ConfigModel(BaseModel):
