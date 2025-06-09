@@ -31,6 +31,7 @@ from .media import (
     process_movie_metadata,
     convert_video_files,
     generate_artwork,
+    generate_movie_artwork,
     create_nfo_files,
     list_media,
     list_movies,
@@ -361,6 +362,9 @@ class YTToJellyfin:
         self, folder: str, show_name: str, season_num: str, job_id: str
     ) -> None:
         generate_artwork(self, folder, show_name, season_num, job_id)
+
+    def generate_movie_artwork(self, folder: str, job_id: str) -> None:
+        generate_movie_artwork(self, folder, job_id)
 
     def create_nfo_files(
         self, folder: str, show_name: str, season_num: str, job_id: str

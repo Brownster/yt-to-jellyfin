@@ -90,6 +90,50 @@ class TestMovieWorkflow(unittest.TestCase):
                 self.assertIn(c, mock_copy2.call_args_list)
             mock_scan.assert_not_called()
 
+    @patch("subprocess.run")
+    def test_generate_movie_artwork_invokes_tools(self, mock_run):
+        folder = Path(self.temp_dir) / "Test Movie"
+        movie_file = folder / "Test Movie.mp4"
+        frames_dir = os.path.join(self.app.temp_dir, "movie_frames")
+
+        def glob_side_effect(self, pattern):
+            p = str(self)
+            if p == str(folder) and pattern == "*.mp4":
+                return [movie_file]
+            if p == str(folder) and pattern != "*.mp4":
+                return []
+            if p == frames_dir and pattern == "frame_*.jpg":
+                return [Path(os.path.join(frames_dir, "frame_000.jpg"))]
+            return []
+
+        mock_run.return_value = MagicMock()
+
+        with patch("pathlib.Path.glob", new=glob_side_effect), patch("os.makedirs"):
+            self.app.generate_movie_artwork(str(folder), "job1")
+
+        ffmpeg_calls = [c for c in mock_run.call_args_list if c.args[0][0] == "ffmpeg"]
+        convert_calls = [c for c in mock_run.call_args_list if c.args[0][0] == "convert"]
+        self.assertTrue(ffmpeg_calls)
+        self.assertTrue(convert_calls)
+        self.job.update.assert_any_call(
+            status="generating_artwork", message="Generating movie artwork"
+        )
+
+    @patch("subprocess.run")
+    def test_generate_movie_artwork_handles_no_movie(self, mock_run):
+        folder = Path(self.temp_dir) / "Test Movie"
+
+        def glob_side_effect(self, pattern):
+            return []
+
+        with patch("pathlib.Path.glob", new=glob_side_effect), patch("os.makedirs"):
+            self.app.generate_movie_artwork(str(folder), "job1")
+
+        mock_run.assert_not_called()
+        self.job.update.assert_any_call(
+            message="No movie file found for artwork generation"
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
