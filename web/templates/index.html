@@ -26,7 +26,12 @@
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="#" data-section="new-job">
-                                <i class="bi bi-plus-circle me-2"></i> New Download
+                                <i class="bi bi-plus-circle me-2"></i> New TV Download
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-section="new-movie">
+                                <i class="bi bi-file-play me-2"></i> New Movie Download
                             </a>
                         </li>
                         <li class="nav-item">
@@ -219,7 +224,7 @@
                 <!-- New Job Section -->
                 <section id="new-job" class="content-section d-none">
                     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                        <h1 class="h2">New Download</h1>
+                        <h1 class="h2">New TV Download</h1>
                     </div>
                     
                     <div class="card shadow mb-4">
@@ -296,6 +301,34 @@
                                 
                                 <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                                     <button type="submit" class="btn btn-primary" id="start-download-btn">Start Download</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- New Movie Section -->
+                <section id="new-movie" class="content-section d-none">
+                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                        <h1 class="h2">New Movie Download</h1>
+                    </div>
+
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold">Add Movie from YouTube</h6>
+                        </div>
+                        <div class="card-body">
+                            <form id="new-movie-form">
+                                <div class="mb-3">
+                                    <label for="movie_url" class="form-label">Movie or Playlist URL <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="movie_url" name="movie_url" placeholder="https://youtube.com/watch?v=..." required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="movie_name" class="form-label">Movie Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="movie_name" name="movie_name" placeholder="Movie Name" required>
+                                </div>
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <button type="submit" class="btn btn-primary" id="start-movie-btn">Start Download</button>
                                 </div>
                             </form>
                         </div>
