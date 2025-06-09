@@ -29,6 +29,7 @@ from .media import (
     download_playlist,
     process_metadata,
     process_movie_metadata,
+    convert_movie_file,
     convert_video_files,
     generate_artwork,
     generate_movie_artwork,
@@ -304,6 +305,9 @@ class YTToJellyfin:
             self.process_movie_metadata(folder, job.movie_name, job_id)
             if job.status == "cancelled":
                 return
+            self.convert_movie_file(folder, job_id)
+            if job.status == "cancelled":
+                return
             self.generate_movie_artwork(folder, job_id)
             if job.status == "cancelled":
                 return
@@ -374,6 +378,9 @@ class YTToJellyfin:
         self, folder: str, movie_name: str, job_id: str, json_index: int = 0
     ) -> None:
         process_movie_metadata(self, folder, movie_name, job_id, json_index)
+
+    def convert_movie_file(self, folder: str, job_id: str) -> None:
+        convert_movie_file(self, folder, job_id)
 
     def convert_video_files(self, folder: str, season_num: str, job_id: str) -> None:
         convert_video_files(self, folder, season_num, job_id)

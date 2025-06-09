@@ -505,6 +505,188 @@ def convert_video_files(app, folder: str, season_num: str, job_id: str) -> None:
         )
 
 
+def convert_movie_file(app, folder: str, job_id: str) -> None:
+    """Convert a downloaded movie to H.265 if enabled."""
+    if not app.config["use_h265"]:
+        logger.info("H.265 conversion disabled, skipping")
+        job = app.jobs.get(job_id)
+        if job:
+            job.update(
+                message="H.265 conversion disabled, skipping",
+                detailed_status="H.265 conversion disabled",
+            )
+        return
+
+    job = app.jobs.get(job_id)
+    if job:
+        job.update(
+            status="converting",
+            stage="converting",
+            progress=0,
+            stage_progress=0,
+            detailed_status="Preparing movie conversion to H.265",
+            message="Starting movie conversion to H.265",
+        )
+
+    video_file = None
+    for ext in ["webm", "mp4", "mkv"]:
+        files = list(Path(folder).glob(f"*.{ext}"))
+        if files:
+            video_file = files[0]
+            break
+
+    if not video_file:
+        if job:
+            job.update(
+                message="No movie file found for conversion",
+                detailed_status="No movie file to convert",
+            )
+        logger.warning("No movie file found for conversion")
+        return
+
+    ext = video_file.suffix.lower()[1:]
+    if ext == "mp4":
+        probe_cmd = [
+            "ffprobe",
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=codec_name",
+            "-of",
+            "json",
+            str(video_file),
+        ]
+        result = subprocess.run(probe_cmd, capture_output=True, text=True)
+        codec = json.loads(result.stdout).get("streams", [{}])[0].get("codec_name", "")
+        if codec in ["hevc", "h265"]:
+            logger.info(f"Skipping already H.265 encoded file: {video_file}")
+            if job:
+                job.update(
+                    processed_files=1,
+                    message=f"Skipping already H.265 encoded file: {video_file.name}",
+                )
+            return
+
+    base = str(video_file).rsplit(".", 1)[0]
+    temp_file = f"{base}.temp.mp4"
+    cmd = [
+        "ffmpeg",
+        "-i",
+        str(video_file),
+        "-c:v",
+        "libx265",
+        "-preset",
+        "medium",
+        "-crf",
+        str(app.config["crf"]),
+        "-tag:v",
+        "hvc1",
+        "-c:a",
+        "aac",
+        "-b:a",
+        "128k",
+        temp_file,
+    ]
+    filename = video_file.name
+    if job:
+        job.update(
+            file_name=filename,
+            processed_files=1,
+            detailed_status="Converting movie to H.265",
+            message=f"Converting {filename} to H.265",
+        )
+    logger.info(f"Converting {video_file} to H.265")
+    try:
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            universal_newlines=True,
+        )
+        if job:
+            job.process = process
+        for line in process.stdout:
+            if job and job.status == "cancelled":
+                process.terminate()
+                break
+            logger.debug(line.strip())
+            if job and "time=" in line:
+                try:
+                    time_str = re.search(r"time=(\d+:\d+:\d+\.\d+)", line)
+                    if time_str:
+                        time_parts = time_str.group(1).split(":")
+                        seconds = (
+                            float(time_parts[0]) * 3600
+                            + float(time_parts[1]) * 60
+                            + float(time_parts[2])
+                        )
+                        duration_cmd = [
+                            "ffprobe",
+                            "-v",
+                            "error",
+                            "-show_entries",
+                            "format=duration",
+                            "-of",
+                            "default=noprint_wrappers=1:nokey=1",
+                            str(video_file),
+                        ]
+                        duration_result = subprocess.run(
+                            duration_cmd, capture_output=True, text=True, check=True
+                        )
+                        duration = float(duration_result.stdout.strip())
+                        if duration > 0:
+                            file_progress = min(100, int(seconds / duration * 100))
+                            if job:
+                                job.update(
+                                    progress=file_progress,
+                                    stage_progress=file_progress,
+                                    detailed_status=f"Converting {filename}: {file_progress}%",
+                                )
+                except Exception as e:
+                    logger.error(f"Error parsing progress: {e}")
+        process.wait()
+        if job:
+            job.process = None
+        if process.returncode == 0:
+            os.rename(temp_file, f"{base}.mp4")
+            if str(video_file) != f"{base}.mp4":
+                os.remove(video_file)
+            logger.info(f"Converted: {video_file} → {base}.mp4")
+            if job:
+                job.update(
+                    progress=100,
+                    stage_progress=100,
+                    message=f"Successfully converted {filename} to H.265",
+                    detailed_status="Movie conversion completed",
+                )
+        else:
+            logger.error(
+                f"Failed to convert {video_file}, return code: {process.returncode}"
+            )
+            if job:
+                job.update(
+                    message=(
+                        f"Failed to convert {filename}, return code: {process.returncode}"
+                    ),
+                    detailed_status=f"Error converting {filename}",
+                )
+            if os.path.exists(temp_file):
+                os.remove(temp_file)
+    except subprocess.SubprocessError as e:
+        logger.error(f"Failed to convert {video_file}: {e}")
+        if job:
+            job.process = None
+            job.update(
+                message=f"Failed to convert {filename}: {str(e)}",
+                detailed_status=f"Error converting {filename}",
+            )
+        if os.path.exists(temp_file):
+            os.remove(temp_file)
+
+
+
 def process_movie_metadata(
     app, folder: str, movie_name: str, job_id: str, json_index: int = 0
 ) -> None:
@@ -1018,6 +1200,7 @@ __all__ = [
     "download_playlist",
     "process_metadata",
     "process_movie_metadata",
+    "convert_movie_file",
     "convert_video_files",
     "generate_movie_artwork",
     "generate_artwork",

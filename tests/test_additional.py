@@ -98,6 +98,14 @@ class TestConversionWorkflow(unittest.TestCase):
             "H.265 conversion disabled", job.update.call_args.kwargs.get("message")
         )
 
+    def test_convert_movie_file_disabled(self):
+        self.yt.convert_movie_file(self.temp_dir, "job")
+        job = self.yt.jobs["job"]
+        job.update.assert_called()
+        self.assertIn(
+            "H.265 conversion disabled", job.update.call_args.kwargs.get("message")
+        )
+
 
 class TestAPIExtensions(unittest.TestCase):
     def setUp(self):
