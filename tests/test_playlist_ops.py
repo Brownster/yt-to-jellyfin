@@ -1,13 +1,10 @@
 import os
-import sys
 import unittest
 import tempfile
 import json
 import subprocess
 from unittest.mock import patch, MagicMock
 from pathlib import Path
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from tubarr.core import YTToJellyfin, DownloadJob
 
@@ -189,9 +186,9 @@ class TestPlaylistOperations(unittest.TestCase):
             YTToJellyfin, "check_playlist_updates"
         ) as mock_check, patch(
             "threading.Thread", side_effect=fake_thread
-        ) as mock_thread, patch(
+        ), patch(
             "threading.Event", return_value=event
-        ) as mock_event:
+        ):
             ytj = YTToJellyfin()
             ytj.stop_update_checker()
 

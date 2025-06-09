@@ -1,12 +1,8 @@
 import os
-import sys
 import unittest
 import json
 import tempfile
 from unittest.mock import patch, MagicMock
-
-# Add parent directory to path to import app.py
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from tubarr.web import app, ytj
 
@@ -113,10 +109,38 @@ class TestAPIEndpoints(unittest.TestCase):
     def test_history_endpoint(self):
         """Test that /history returns only finished jobs"""
         ytj.jobs = {
-            "job1": MagicMock(status="completed", to_dict=lambda **_: {"job_id": "job1", "status": "completed", "created_at": "2023-01-01 00:00:00"}),
-            "job2": MagicMock(status="in_progress", to_dict=lambda **_: {"job_id": "job2", "status": "in_progress", "created_at": "2023-01-02 00:00:00"}),
-            "job3": MagicMock(status="failed", to_dict=lambda **_: {"job_id": "job3", "status": "failed", "created_at": "2023-01-03 00:00:00"}),
-            "job4": MagicMock(status="cancelled", to_dict=lambda **_: {"job_id": "job4", "status": "cancelled", "created_at": "2023-01-04 00:00:00"}),
+            "job1": MagicMock(
+                status="completed",
+                to_dict=lambda **_: {
+                    "job_id": "job1",
+                    "status": "completed",
+                    "created_at": "2023-01-01 00:00:00",
+                },
+            ),
+            "job2": MagicMock(
+                status="in_progress",
+                to_dict=lambda **_: {
+                    "job_id": "job2",
+                    "status": "in_progress",
+                    "created_at": "2023-01-02 00:00:00",
+                },
+            ),
+            "job3": MagicMock(
+                status="failed",
+                to_dict=lambda **_: {
+                    "job_id": "job3",
+                    "status": "failed",
+                    "created_at": "2023-01-03 00:00:00",
+                },
+            ),
+            "job4": MagicMock(
+                status="cancelled",
+                to_dict=lambda **_: {
+                    "job_id": "job4",
+                    "status": "cancelled",
+                    "created_at": "2023-01-04 00:00:00",
+                },
+            ),
         }
 
         response = self.client.get("/history")

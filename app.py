@@ -7,7 +7,9 @@ import argparse
 
 from tubarr.web import app, ytj
 from tubarr.core import YTToJellyfin, DownloadJob, logger
+
 __all__ = ["app", "ytj", "YTToJellyfin", "DownloadJob", "main"]
+
 
 def main():
     """Parse command line arguments and execute the application."""

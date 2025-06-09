@@ -72,12 +72,15 @@ def check_dependencies(ytdlp_path: str, extra: List[str] = None) -> bool:
 
     for cmd in dependencies:
         try:
-            result = subprocess.run(["which", cmd], check=True, capture_output=True, text=True)
+            result = subprocess.run(
+                ["which", cmd], check=True, capture_output=True, text=True
+            )
             logger.info(f"Found dependency {cmd} at: {result.stdout.strip()}")
         except subprocess.CalledProcessError:
             logger.error(f"Required dependency not found: {cmd}")
             return False
     return True
+
 
 __all__ = [
     "sanitize_name",

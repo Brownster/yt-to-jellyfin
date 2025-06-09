@@ -87,7 +87,11 @@ class YTToJellyfin:
         return _is_playlist_url(url)
 
     def _register_playlist(
-        self, url: str, show_name: str, season_num: str, start_index: Optional[int] = None
+        self,
+        url: str,
+        show_name: str,
+        season_num: str,
+        start_index: Optional[int] = None,
     ) -> bool:
         added = _register_playlist(
             self.playlists,

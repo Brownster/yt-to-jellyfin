@@ -31,7 +31,9 @@ class ConfigModel(BaseModel):
     @validator("jellyfin_tv_path", always=True)
     def validate_jellyfin_tv_path(cls, v, values):
         if values.get("jellyfin_enabled") and not v:
-            raise ValueError("jellyfin_tv_path is required when Jellyfin integration is enabled")
+            raise ValueError(
+                "jellyfin_tv_path is required when Jellyfin integration is enabled"
+            )
         return v
 
 
@@ -61,9 +63,13 @@ def _load_config() -> Dict:
         "web_enabled": os.environ.get("WEB_ENABLED", "true").lower() == "true",
         "web_port": int(os.environ.get("WEB_PORT", "8000")),
         "web_host": os.environ.get("WEB_HOST", "0.0.0.0"),
-        "update_checker_enabled": os.environ.get("UPDATE_CHECKER_ENABLED", "false").lower() == "true",
+        "update_checker_enabled": os.environ.get(
+            "UPDATE_CHECKER_ENABLED", "false"
+        ).lower()
+        == "true",
         "update_checker_interval": int(os.environ.get("UPDATE_CHECKER_INTERVAL", "60")),
-        "jellyfin_enabled": os.environ.get("JELLYFIN_ENABLED", "false").lower() == "true",
+        "jellyfin_enabled": os.environ.get("JELLYFIN_ENABLED", "false").lower()
+        == "true",
         "jellyfin_tv_path": os.environ.get("JELLYFIN_TV_PATH", ""),
         "jellyfin_host": os.environ.get("JELLYFIN_HOST", ""),
         "jellyfin_port": os.environ.get("JELLYFIN_PORT", "8096"),
@@ -101,9 +107,13 @@ def _load_config() -> Dict:
                     if os.path.exists(cookies_path):
                         config["cookies"] = cookies_path
                     else:
-                        logger.warning(f"Cookies file not found at {cookies_path}, ignoring")
+                        logger.warning(
+                            f"Cookies file not found at {cookies_path}, ignoring"
+                        )
 
-                if "defaults" in file_config and isinstance(file_config["defaults"], dict):
+                if "defaults" in file_config and isinstance(
+                    file_config["defaults"], dict
+                ):
                     config["defaults"] = file_config["defaults"]
 
                 if "web" in file_config and isinstance(file_config["web"], dict):
@@ -115,7 +125,9 @@ def _load_config() -> Dict:
                         elif key == "host":
                             config["web_host"] = value
 
-                if "jellyfin" in file_config and isinstance(file_config["jellyfin"], dict):
+                if "jellyfin" in file_config and isinstance(
+                    file_config["jellyfin"], dict
+                ):
                     for key, value in file_config["jellyfin"].items():
                         if key == "enabled":
                             config["jellyfin_enabled"] = value
@@ -128,7 +140,9 @@ def _load_config() -> Dict:
                         elif key == "api_key":
                             config["jellyfin_api_key"] = value
 
-                if "update_checker" in file_config and isinstance(file_config["update_checker"], dict):
+                if "update_checker" in file_config and isinstance(
+                    file_config["update_checker"], dict
+                ):
                     uc = file_config["update_checker"]
                     if "enabled" in uc:
                         config["update_checker_enabled"] = uc["enabled"]
@@ -140,7 +154,8 @@ def _load_config() -> Dict:
     if not config["output_dir"]:
         raise ValueError("output_dir is required")
 
-    # Ensure output_dir is absolute so file serving works regardless of current working directory
+    # Ensure output_dir is absolute so file serving works regardless of the
+    # current working directory
     config["output_dir"] = os.path.abspath(config["output_dir"])
 
     try:
@@ -154,5 +169,6 @@ def _load_config() -> Dict:
         result["quality"] = str(validated.quality)
     logger.info(f"Configuration loaded: {result}")
     return result
+
 
 __all__ = ["_load_config", "logger"]

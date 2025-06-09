@@ -1,13 +1,9 @@
 import os
-import sys
 import unittest
 import tempfile
 import shutil
 import json
-from unittest.mock import patch, MagicMock, call
-
-# Add parent directory to path to import app.py
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from unittest.mock import patch, MagicMock
 
 from tubarr.core import YTToJellyfin, DownloadJob
 
