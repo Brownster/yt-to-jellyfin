@@ -15,6 +15,7 @@ class ConfigModel(BaseModel):
     ytdlp_path: str = Field(..., min_length=1)
     cookies: str = ""
     completed_jobs_limit: int = Field(..., ge=1)
+    max_concurrent_jobs: int = Field(1, ge=1)
     web_enabled: bool = True
     web_port: int = Field(..., ge=1, le=65535)
     web_host: str = Field(..., min_length=1)
@@ -60,6 +61,7 @@ def _load_config() -> Dict:
         "ytdlp_path": os.environ.get("YTDLP_PATH", ytdlp_default),
         "cookies": "",
         "completed_jobs_limit": int(os.environ.get("COMPLETED_JOBS_LIMIT", "10")),
+        "max_concurrent_jobs": int(os.environ.get("MAX_CONCURRENT_JOBS", "1")),
         "web_enabled": os.environ.get("WEB_ENABLED", "true").lower() == "true",
         "web_port": int(os.environ.get("WEB_PORT", "8000")),
         "web_host": os.environ.get("WEB_HOST", "0.0.0.0"),
@@ -115,6 +117,12 @@ def _load_config() -> Dict:
                     file_config["defaults"], dict
                 ):
                     config["defaults"] = file_config["defaults"]
+
+                if "completed_jobs_limit" in file_config:
+                    config["completed_jobs_limit"] = int(file_config["completed_jobs_limit"])
+
+                if "max_concurrent_jobs" in file_config:
+                    config["max_concurrent_jobs"] = int(file_config["max_concurrent_jobs"])
 
                 if "web" in file_config and isinstance(file_config["web"], dict):
                     for key, value in file_config["web"].items():

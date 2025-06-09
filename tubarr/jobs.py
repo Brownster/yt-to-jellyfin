@@ -179,8 +179,8 @@ def create_job(
             old_job = completed_jobs.pop(0)
             del app.jobs[old_job.job_id]
 
-        if app.active_job_id is None:
-            app.active_job_id = job_id
+        if len(app.active_jobs) < app.config.get("max_concurrent_jobs", 1):
+            app.active_jobs.append(job_id)
             if start_thread:
                 threading.Thread(target=app.process_job, args=(job_id,)).start()
         else:

@@ -147,6 +147,7 @@ def config():
                 "crf",
                 "web_port",
                 "completed_jobs_limit",
+                "max_concurrent_jobs",
                 "jellyfin_enabled",
                 "jellyfin_tv_path",
                 "jellyfin_host",
@@ -172,6 +173,7 @@ def config():
                         "crf",
                         "web_port",
                         "completed_jobs_limit",
+                        "max_concurrent_jobs",
                         "update_checker_interval",
                     ]:
                         ytj.config[key] = int(new_config[key])

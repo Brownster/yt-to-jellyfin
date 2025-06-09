@@ -20,6 +20,7 @@ class TestPlaylistOperations(unittest.TestCase):
             "ytdlp_path": "yt-dlp",
             "cookies": "",
             "completed_jobs_limit": 3,
+            "max_concurrent_jobs": 1,
             "web_enabled": False,
             "web_port": 8000,
             "web_host": "0.0.0.0",

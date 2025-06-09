@@ -2,7 +2,7 @@ import os
 import unittest
 import tempfile
 import shutil
-from unittest.mock import patch
+from unittest.mock import patch, call
 
 # Add parent directory to path to import app.py
 from tubarr.core import YTToJellyfin
@@ -31,6 +31,7 @@ class TestIntegration(unittest.TestCase):
             "ytdlp_path": "yt-dlp",
             "cookies": "",
             "completed_jobs_limit": 3,
+            "max_concurrent_jobs": 1,
             "update_checker_enabled": False,
             "update_checker_interval": 60,
         }
@@ -178,8 +179,8 @@ class TestIntegration(unittest.TestCase):
         self.assertIn("Invalid episode start", job.messages[-1]["text"])
 
     @patch("threading.Thread")
-    def test_concurrent_jobs(self, mock_thread):
-        """Test that multiple jobs can be created and run concurrently"""
+    def test_queue_when_limit_reached(self, mock_thread):
+        """Jobs beyond the concurrency limit should be queued"""
         # Create multiple jobs
         job_ids = []
         for i in range(3):
@@ -204,6 +205,27 @@ class TestIntegration(unittest.TestCase):
 
         # Remaining jobs should be queued
         self.assertEqual(self.app.job_queue, job_ids[1:])
+
+    @patch("threading.Thread")
+    def test_multiple_active_jobs_respect_limit(self, mock_thread):
+        """When limit >1, that many jobs start immediately"""
+        self.app.config["max_concurrent_jobs"] = 2
+        job_ids = []
+        for i in range(3):
+            job_ids.append(
+                self.app.create_job(
+                    f"https://youtube.com/playlist?list=TEST{i}",
+                    f"Test Show {i}",
+                    "01",
+                    "01",
+                    playlist_start=None,
+                )
+            )
+
+        self.assertEqual(mock_thread.call_count, 2)
+        started = [call[1]["args"][0] for call in mock_thread.call_args_list]
+        self.assertEqual(started, job_ids[:2])
+        self.assertEqual(self.app.job_queue, job_ids[2:])
 
 
 if __name__ == "__main__":

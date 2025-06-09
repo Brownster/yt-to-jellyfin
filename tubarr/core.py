@@ -57,7 +57,7 @@ class YTToJellyfin:
         self.jobs: Dict[str, DownloadJob] = {}
         self.job_lock = threading.Lock()
         self.job_queue: List[str] = []
-        self.active_job_id: Optional[str] = None
+        self.active_jobs: List[str] = []
         self.playlists_file = os.path.join("config", "playlists.json")
         self.playlists = self._load_playlists()
         self.episodes_file = os.path.join("config", "episodes.json")
@@ -241,15 +241,16 @@ class YTToJellyfin:
             logger.exception(f"Error processing job {job_id}: {e}")
             job.update(status="failed", message=f"Error: {str(e)}")
         finally:
-            self._on_job_complete()
+            self._on_job_complete(job_id)
 
-    def _on_job_complete(self) -> None:
+    def _on_job_complete(self, job_id: str) -> None:
         """Start the next queued job if available."""
         with self.job_lock:
-            self.active_job_id = None
-            if self.job_queue:
+            if job_id in self.active_jobs:
+                self.active_jobs.remove(job_id)
+            while self.job_queue and len(self.active_jobs) < self.config.get("max_concurrent_jobs", 1):
                 next_id = self.job_queue.pop(0)
-                self.active_job_id = next_id
+                self.active_jobs.append(next_id)
                 threading.Thread(target=self.process_job, args=(next_id,)).start()
 
     # media functions
