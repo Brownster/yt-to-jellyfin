@@ -56,6 +56,8 @@ class YTToJellyfin:
         self.config = self._load_config()
         self.jobs: Dict[str, DownloadJob] = {}
         self.job_lock = threading.Lock()
+        self.job_queue: List[str] = []
+        self.active_job_id: Optional[str] = None
         self.playlists_file = os.path.join("config", "playlists.json")
         self.playlists = self._load_playlists()
         self.episodes_file = os.path.join("config", "episodes.json")
@@ -238,6 +240,17 @@ class YTToJellyfin:
         except Exception as e:  # pragma: no cover - for unexpected errors
             logger.exception(f"Error processing job {job_id}: {e}")
             job.update(status="failed", message=f"Error: {str(e)}")
+        finally:
+            self._on_job_complete()
+
+    def _on_job_complete(self) -> None:
+        """Start the next queued job if available."""
+        with self.job_lock:
+            self.active_job_id = None
+            if self.job_queue:
+                next_id = self.job_queue.pop(0)
+                self.active_job_id = next_id
+                threading.Thread(target=self.process_job, args=(next_id,)).start()
 
     # media functions
     def create_folder_structure(self, show_name: str, season_num: str) -> str:

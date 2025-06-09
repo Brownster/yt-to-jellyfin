@@ -195,13 +195,15 @@ class TestIntegration(unittest.TestCase):
         # Verify all jobs were created
         self.assertEqual(len(self.app.jobs), 3)
 
-        # Verify that threads were started for each job
-        self.assertEqual(mock_thread.call_count, 3)
-        for i, job_id in enumerate(job_ids):
-            thread_call = mock_thread.call_args_list[i]
-            self.assertEqual(thread_call[1]["target"], self.app.process_job)
-            self.assertEqual(thread_call[1]["args"], (job_id,))
-            mock_thread.return_value.start.assert_called()
+        # Only the first job should start immediately
+        self.assertEqual(mock_thread.call_count, 1)
+        thread_call = mock_thread.call_args_list[0]
+        self.assertEqual(thread_call[1]["target"], self.app.process_job)
+        self.assertEqual(thread_call[1]["args"], (job_ids[0],))
+        mock_thread.return_value.start.assert_called_once()
+
+        # Remaining jobs should be queued
+        self.assertEqual(self.app.job_queue, job_ids[1:])
 
 
 if __name__ == "__main__":
