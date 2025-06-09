@@ -41,6 +41,17 @@ def clean_filename(name: str) -> str:
     return result
 
 
+def run_subprocess(cmd: List[str], **kwargs) -> subprocess.CompletedProcess:
+    """Run subprocess command ensuring any nested lists are flattened."""
+    flattened: List[str] = []
+    for part in cmd:
+        if isinstance(part, list):
+            flattened.extend(part)
+        else:
+            flattened.append(part)
+    return subprocess.run(flattened, **kwargs)
+
+
 def check_dependencies(ytdlp_path: str, extra: List[str] = None) -> bool:
     """Check if all required dependencies are installed."""
     dependencies = ["ffmpeg", "convert", "montage"]
@@ -68,4 +79,10 @@ def check_dependencies(ytdlp_path: str, extra: List[str] = None) -> bool:
             return False
     return True
 
-__all__ = ["sanitize_name", "clean_filename", "check_dependencies", "logger"]
+__all__ = [
+    "sanitize_name",
+    "clean_filename",
+    "check_dependencies",
+    "run_subprocess",
+    "logger",
+]

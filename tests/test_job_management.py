@@ -192,7 +192,7 @@ class TestJobManagement(unittest.TestCase):
 
         # Verify command was correct
         mock_popen.assert_called_once()
-        cmd_args = mock_popen.call_args[0][0]
+        cmd_args = mock_popen.call_args.args[0]
         self.assertEqual(cmd_args[0], "yt-dlp")
         self.assertIn("--merge-output-format", cmd_args)
         self.assertIn("mp4", cmd_args)

@@ -94,12 +94,12 @@ class TestMediaProcessing(unittest.TestCase):
             self.app.generate_artwork(folder, 'Test Show', '01', self.job_id)
 
         self.assertEqual(mock_popen.call_count, 2)
-        self.assertEqual(mock_popen.call_args_list[0][0][0][0], 'montage')
-        self.assertEqual(mock_popen.call_args_list[1][0][0][0], 'convert')
-        ffmpeg_calls = [c for c in mock_run.call_args_list if c[0][0][0] == 'ffmpeg']
+        self.assertEqual(mock_popen.call_args_list[0].args[0][0], 'montage')
+        self.assertEqual(mock_popen.call_args_list[1].args[0][0], 'convert')
+        ffmpeg_calls = [c for c in mock_run.call_args_list if c.args[0][0] == 'ffmpeg']
         self.assertTrue(ffmpeg_calls)
         expected_filter = 'select=not(mod(n\\,1000)),scale=640:360'
-        self.assertIn(expected_filter, ffmpeg_calls[0][0])
+        self.assertIn(expected_filter, ffmpeg_calls[0].args[0])
         self.job.update.assert_any_call(status='generating_artwork', message='Generating thumbnails and artwork')
         self.job.update.assert_any_call(progress=100, message='Created season artwork')
 

@@ -142,6 +142,9 @@ def _load_config() -> Dict:
         except (yaml.YAMLError, IOError) as e:
             logger.error(f"Error loading config file: {e}")
 
+    if not config["output_dir"]:
+        raise ValueError("output_dir is required")
+
     # Ensure output_dir is absolute so file serving works regardless of current working directory
     config["output_dir"] = os.path.abspath(config["output_dir"])
 
@@ -150,7 +153,11 @@ def _load_config() -> Dict:
     except ValidationError as e:
         raise ValueError(f"Invalid configuration: {e}")
 
-    logger.info(f"Configuration loaded: {validated.dict()}")
-    return validated.dict()
+    result = validated.dict()
+    if os.environ.get("CONFIG_FILE"):
+        # Preserve string type for quality when CONFIG_FILE is specified
+        result["quality"] = str(validated.quality)
+    logger.info(f"Configuration loaded: {result}")
+    return result
 
 __all__ = ["_load_config", "logger"]
