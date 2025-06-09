@@ -88,6 +88,15 @@ main {
     box-shadow: 0 0.5rem 2rem 0 rgba(58, 59, 69, 0.3);
 }
 
+.movie-card {
+    transition: all 0.3s ease;
+}
+
+.movie-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 2rem 0 rgba(58, 59, 69, 0.3);
+}
+
 .season-card {
     cursor: pointer;
 }
