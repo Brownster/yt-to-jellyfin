@@ -564,6 +564,56 @@ def process_movie_metadata(app, folder: str, movie_name: str, job_id: str) -> No
         os.remove(jf)
 
 
+def generate_movie_artwork(app, folder: str, job_id: str) -> None:
+    """Generate a simple poster for a movie from extracted frames."""
+    job = app.jobs.get(job_id)
+    if job:
+        job.update(status="generating_artwork", message="Generating movie artwork")
+
+    video_files = []
+    for ext in ["mp4", "mkv", "webm"]:
+        video_files.extend(Path(folder).glob(f"*.{ext}"))
+
+    if not video_files:
+        logger.warning("No movie file found for artwork generation")
+        if job:
+            job.update(message="No movie file found for artwork generation")
+        return
+
+    movie_file = video_files[0]
+    try:
+        frames_dir = os.path.join(app.temp_dir, "movie_frames")
+        os.makedirs(frames_dir, exist_ok=True)
+        frame_pattern = os.path.join(frames_dir, "frame_%03d.jpg")
+        run_subprocess(
+            [
+                "ffmpeg",
+                "-i",
+                str(movie_file),
+                "-vf",
+                r"select=not(mod(n\,1000)),scale=640:360",
+                "-vframes",
+                "3",
+                frame_pattern,
+            ],
+            check=True,
+            capture_output=True,
+        )
+        frame_files = sorted(Path(frames_dir).glob("frame_*.jpg"))
+        if frame_files:
+            poster_path = Path(folder) / "poster.jpg"
+            run_subprocess(
+                ["convert", *[str(f) for f in frame_files], "-append", str(poster_path)],
+                check=True,
+            )
+            if job:
+                job.update(progress=100, message="Created movie poster")
+    except (subprocess.CalledProcessError, OSError) as e:
+        logger.error(f"Error generating movie artwork: {e}")
+        if job:
+            job.update(message=f"Error generating movie artwork: {str(e)}")
+
+
 def generate_artwork(
     app, folder: str, show_name: str, season_num: str, job_id: str
 ) -> None:
@@ -891,6 +941,7 @@ __all__ = [
     "process_metadata",
     "process_movie_metadata",
     "convert_video_files",
+    "generate_movie_artwork",
     "generate_artwork",
     "create_nfo_files",
     "list_media",
