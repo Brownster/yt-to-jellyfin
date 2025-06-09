@@ -301,6 +301,9 @@ class YTToJellyfin:
             self.process_movie_metadata(folder, job.movie_name, job_id)
             if job.status == "cancelled":
                 return
+            self.generate_movie_artwork(folder, job_id)
+            if job.status == "cancelled":
+                return
             if self.config.get("jellyfin_enabled", False) and self.config.get("jellyfin_movie_path"):
                 self.copy_movie_to_jellyfin(job.movie_name, job_id)
             job.update(status="completed", progress=100, message="Job completed successfully")
