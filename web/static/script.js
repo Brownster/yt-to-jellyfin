@@ -384,7 +384,10 @@ function loadJobs() {
     fetch('/jobs')
         .then(response => response.json())
         .then(jobs => {
-            updateJobsTable(jobs);
+            const tvJobs = jobs.filter(j => j.media_type !== 'movie');
+            const movieJobs = jobs.filter(j => j.media_type === 'movie');
+            updateJobsTable(tvJobs);
+            updateMovieJobsTable(movieJobs);
         })
         .catch(error => {
             console.error('Error fetching jobs:', error);
@@ -395,8 +398,11 @@ function updateJobsData() {
     fetch('/jobs')
         .then(response => response.json())
         .then(jobs => {
+            const tvJobs = jobs.filter(j => j.media_type !== 'movie');
+            const movieJobs = jobs.filter(j => j.media_type === 'movie');
             if (document.querySelector('#jobs:not(.d-none)')) {
-                updateJobsTable(jobs);
+                updateJobsTable(tvJobs);
+                updateMovieJobsTable(movieJobs);
             }
             if (document.querySelector('#dashboard:not(.d-none)')) {
                 updateDashboardStats(jobs);
@@ -607,11 +613,99 @@ function updateJobsTable(jobs) {
     });
 }
 
+function updateMovieJobsTable(jobs) {
+    const table = document.getElementById('movie-jobs-table').querySelector('tbody');
+    table.innerHTML = '';
+
+    if (jobs.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = '<td colspan="6" class="text-center">No jobs found</td>';
+        table.appendChild(row);
+        return;
+    }
+
+    jobs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    jobs.forEach(job => {
+        const row = document.createElement('tr');
+        const shortId = job.job_id.substring(0, 8);
+        const statusClass = getStatusBadgeClass(job.status);
+
+        let progressDisplay = `
+            <div class="progress">
+                <div class="progress-bar" role="progressbar" style="width: ${job.progress}%"
+                    aria-valuenow="${job.progress}" aria-valuemin="0" aria-valuemax="100">
+                    ${Math.round(job.progress)}%
+                </div>
+            </div>`;
+
+        if (job.current_file && job.status !== 'completed' && job.status !== 'failed') {
+            progressDisplay += `
+                <small class="d-block text-truncate" style="max-width: 200px;" title="${job.current_file}">
+                    ${job.current_file}
+                </small>
+            `;
+        }
+
+        const canCancel = !['completed', 'failed', 'cancelled'].includes(job.status);
+        const cancelBtn = canCancel ? `
+                <button class="btn btn-sm btn-danger cancel-job" data-job-id="${job.job_id}">
+                    <i class="bi bi-x-circle"></i>
+                </button>` : '';
+
+        row.innerHTML = `
+            <td title="${job.job_id}">${shortId}...</td>
+            <td>${job.movie_name}</td>
+            <td><span class="badge ${statusClass}">${job.status}</span></td>
+            <td>${progressDisplay}</td>
+            <td>${formatDate(job.created_at)}</td>
+            <td>
+                <button class="btn btn-sm btn-info view-job" data-job-id="${job.job_id}">
+                    <i class="bi bi-eye"></i>
+                </button>
+                ${cancelBtn}
+            </td>
+        `;
+
+        table.appendChild(row);
+    });
+
+    document.querySelectorAll('#movie-jobs-table .view-job').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const jobId = this.getAttribute('data-job-id');
+            showJobDetails(jobId);
+        });
+    });
+
+    document.querySelectorAll('#movie-jobs-table .cancel-job').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const jobId = this.getAttribute('data-job-id');
+            if (confirm('Cancel this job?')) {
+                fetch(`/jobs/${jobId}`, { method: 'DELETE' })
+                    .then(r => {
+                        if (r.ok) {
+                            showToast('Success', 'Job cancelled');
+                            updateJobsData();
+                        } else {
+                            r.json().then(d => {
+                                showToast('Error', d.error || 'Failed to cancel job');
+                            });
+                        }
+                    })
+                    .catch(() => showToast('Error', 'Failed to cancel job'));
+            }
+        });
+    });
+}
+
 function loadHistory() {
     fetch('/history')
         .then(response => response.json())
         .then(jobs => {
-            updateHistoryTable(jobs);
+            const tvJobs = jobs.filter(j => j.media_type !== 'movie');
+            const movieJobs = jobs.filter(j => j.media_type === 'movie');
+            updateHistoryTable(tvJobs);
+            updateMovieHistoryTable(movieJobs);
         })
         .catch(error => {
             console.error('Error fetching history:', error);
@@ -660,6 +754,54 @@ function updateHistoryTable(jobs) {
     });
 
     document.querySelectorAll('#history-table .view-job').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const jobId = this.getAttribute('data-job-id');
+            showJobDetails(jobId);
+        });
+    });
+}
+
+function updateMovieHistoryTable(jobs) {
+    const table = document.getElementById('movie-history-table').querySelector('tbody');
+    table.innerHTML = '';
+
+    if (jobs.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = '<td colspan="6" class="text-center">No jobs found</td>';
+        table.appendChild(row);
+        return;
+    }
+
+    jobs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    jobs.forEach(job => {
+        const row = document.createElement('tr');
+        const shortId = job.job_id.substring(0, 8);
+        const statusClass = getStatusBadgeClass(job.status);
+        let progressDisplay = `
+            <div class="progress">
+                <div class="progress-bar" role="progressbar" style="width: ${job.progress}%"
+                    aria-valuenow="${job.progress}" aria-valuemin="0" aria-valuemax="100">
+                    ${Math.round(job.progress)}%
+                </div>
+            </div>`;
+
+        row.innerHTML = `
+            <td title="${job.job_id}">${shortId}...</td>
+            <td>${job.movie_name}</td>
+            <td><span class="badge ${statusClass}">${job.status}</span></td>
+            <td>${progressDisplay}</td>
+            <td>${formatDate(job.created_at)}</td>
+            <td>
+                <button class="btn btn-sm btn-info view-job" data-job-id="${job.job_id}">
+                    <i class="bi bi-eye"></i>
+                </button>
+            </td>`;
+
+        table.appendChild(row);
+    });
+
+    document.querySelectorAll('#movie-history-table .view-job').forEach(btn => {
         btn.addEventListener('click', function() {
             const jobId = this.getAttribute('data-job-id');
             showJobDetails(jobId);
