@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 from .config import logger
+from .utils import terminate_process
 
 
 class DownloadJob:
@@ -216,12 +217,8 @@ def cancel_job(app, job_id: str) -> bool:
     process = getattr(job, "process", None)
     if process and process.poll() is None:
         try:
-            process.terminate()
-            try:
-                process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                process.kill()
-        except Exception as e:
+            terminate_process(process)
+        except Exception as e:  # pragma: no cover - best effort cleanup
             logger.error(f"Failed to terminate process for job {job_id}: {e}")
     job.process = None
     job.update(status="cancelled", message="Job cancelled")

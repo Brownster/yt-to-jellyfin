@@ -2,6 +2,7 @@ import os
 import re
 import subprocess
 import logging
+import signal
 from typing import List
 
 logger = logging.getLogger("yt-to-jellyfin")
@@ -52,6 +53,25 @@ def run_subprocess(cmd: List[str], **kwargs) -> subprocess.CompletedProcess:
     return subprocess.run(flattened, **kwargs)
 
 
+def terminate_process(process: subprocess.Popen) -> None:
+    """Terminate a subprocess and its child processes."""
+    try:
+        if process.poll() is None:
+            if hasattr(os, "killpg"):
+                os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+            else:
+                process.terminate()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                if hasattr(os, "killpg"):
+                    os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+                else:
+                    process.kill()
+    except Exception as exc:  # pragma: no cover - best effort cleanup
+        logger.error(f"Failed to terminate process: {exc}")
+
+
 def check_dependencies(ytdlp_path: str, extra: List[str] = None) -> bool:
     """Check if all required dependencies are installed."""
     dependencies = ["ffmpeg", "convert", "montage"]
@@ -87,5 +107,6 @@ __all__ = [
     "clean_filename",
     "check_dependencies",
     "run_subprocess",
+    "terminate_process",
     "logger",
 ]

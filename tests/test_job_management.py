@@ -321,10 +321,11 @@ class TestJobManagement(unittest.TestCase):
         job.process = proc
         self.app.jobs[job_id] = job
 
-        result = self.app.cancel_job(job_id)
+        with patch("tubarr.jobs.terminate_process") as mock_term:
+            result = self.app.cancel_job(job_id)
 
         self.assertTrue(result)
-        proc.terminate.assert_called_once()
+        mock_term.assert_called_once_with(proc)
         self.assertEqual(job.status, "cancelled")
         self.assertIsNone(job.process)
 
