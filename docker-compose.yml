@@ -2,7 +2,10 @@ version: '3'
 
 services:
   yt-to-jellyfin:
-    build: .
+    # Use pre-built image from GitHub Container Registry
+    image: ghcr.io/brownster/yt-to-jellyfin:latest
+    # For local development, comment above and uncomment below:
+    # build: .
     container_name: yt-to-jellyfin
     volumes:
       - ./media:/media
