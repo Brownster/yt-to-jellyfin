@@ -26,9 +26,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Show the correct section
             contentSections.forEach(section => {
-                section.classList.add('d-none');
+                section.classList.remove('active');
                 if (section.id === sectionId) {
-                    section.classList.remove('d-none');
+                    section.classList.add('active');
                 }
             });
             
@@ -576,21 +576,29 @@ document.addEventListener('DOMContentLoaded', function() {
     if (checkSubscriptionsBtn) {
         checkSubscriptionsBtn.addEventListener('click', triggerUpdateCheck);
     }
-    
+
+    // Header new download button
+    const headerNewDownloadBtn = document.getElementById('header-new-download');
+    if (headerNewDownloadBtn) {
+        headerNewDownloadBtn.addEventListener('click', function() {
+            document.querySelector('[data-section="new-job"]').click();
+        });
+    }
+
     // Load dashboard data by default
     loadDashboard();
     
     // Setup polling for active jobs
     setInterval(function() {
-        if (document.querySelector('#jobs:not(.d-none)') ||
-            document.querySelector('#dashboard:not(.d-none)') ||
-            document.querySelector('#history:not(.d-none)')) {
+        if (document.querySelector('#jobs.active') ||
+            document.querySelector('#dashboard.active') ||
+            document.querySelector('#history.active')) {
             updateJobsData();
         }
-        if (document.querySelector('#playlists:not(.d-none)')) {
+        if (document.querySelector('#playlists.active')) {
             loadPlaylists();
         }
-        if (document.querySelector('#subscriptions:not(.d-none)')) {
+        if (document.querySelector('#subscriptions.active')) {
             loadSubscriptions();
         }
     }, 5000);
@@ -783,43 +791,148 @@ function loadSubscriptions() {
 }
 
 function updateSubscriptionsTable(data) {
-    const tbody = document.querySelector('#subscriptions-table tbody');
-    if (!tbody) {
+    const container = document.getElementById('subscriptions-container');
+    if (!container) {
         return;
     }
-    tbody.innerHTML = '';
+    container.innerHTML = '';
     if (!data || data.length === 0) {
-        const row = document.createElement('tr');
-        row.innerHTML = '<td colspan="6" class="text-center">No channel subscriptions</td>';
-        tbody.appendChild(row);
+        container.innerHTML = '<p class="text-gray-400 text-center py-4">No channel subscriptions</p>';
         return;
     }
 
     data.forEach(sub => {
-        const row = document.createElement('tr');
-        const showCell = escapeHtml(sub.show_name || '');
-        const urlCell = escapeHtml(sub.url || '');
-        const retentionCell = formatRetention(sub.retention);
+        const showName = escapeHtml(sub.show_name || '');
+        const channelUrl = escapeHtml(sub.url || '');
+        const retentionText = formatRetention(sub.retention);
         const lastEpisode = sub.last_episode || 0;
         const enabled = sub.enabled !== false;
-        const statusBadge = enabled
-            ? '<span class="badge bg-success">Active</span>'
-            : '<span class="badge bg-secondary">Paused</span>';
+        const statusText = enabled ? 'Active' : 'Paused';
+        const statusColor = enabled ? 'text-green-400' : 'text-gray-400';
         const safeHref = encodeURI(sub.url || '');
-        const actions = `
-            <div class="btn-group btn-group-sm" role="group">
-                <button type="button" class="btn btn-outline-primary" data-action="edit" data-id="${sub.id}" title="Edit subscription"><i class="bi bi-pencil"></i></button>
-                <button type="button" class="btn btn-outline-${enabled ? 'warning' : 'success'}" data-action="toggle" data-id="${sub.id}" title="${enabled ? 'Pause downloads' : 'Resume downloads'}"><i class="bi ${enabled ? 'bi-pause-circle' : 'bi-play-circle'}"></i></button>
-                <button type="button" class="btn btn-outline-danger" data-action="delete" data-id="${sub.id}" title="Remove subscription"><i class="bi bi-trash"></i></button>
-            </div>`;
-        row.innerHTML = `
-            <td>${showCell}</td>
-            <td><a href="${safeHref}" target="_blank" rel="noopener noreferrer">${urlCell}</a></td>
-            <td>${escapeHtml(retentionCell)}</td>
-            <td>${lastEpisode}</td>
-            <td>${statusBadge}</td>
-            <td class="text-end">${actions}</td>`;
-        tbody.appendChild(row);
+
+        const card = document.createElement('div');
+        card.className = 'subscription-card';
+        card.innerHTML = `
+            <div class="subscription-header">
+                <div class="flex-1">
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <h3 class="subscription-name mb-0">${showName}</h3>
+                    </div>
+                    <p class="subscription-channel mb-2"><a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="text-gray-400">${channelUrl}</a></p>
+                    <div class="d-flex align-items-center gap-3 text-sm text-gray-400">
+                        <span>Last Episode: ${lastEpisode}</span>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn-icon" data-action="edit" data-id="${sub.id}" title="Edit subscription">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button type="button" class="btn-icon" data-action="delete" data-id="${sub.id}" title="Delete subscription">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="subscription-stats">
+                <div class="stat-item">
+                    <div class="stat-label">Retention</div>
+                    <div class="stat-value">${escapeHtml(retentionText)}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Auto Download</div>
+                    <div class="stat-value">${enabled ? 'Enabled' : 'Disabled'}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Status</div>
+                    <div class="stat-value ${statusColor}">${statusText}</div>
+                </div>
+            </div>
+
+            <div class="subscription-actions">
+                <button type="button" class="btn btn-secondary btn-action" data-action="check" data-id="${sub.id}">
+                    <i class="bi bi-arrow-clockwise"></i>
+                    Check Now
+                </button>
+                <button type="button" class="btn btn-primary btn-action" data-action="toggle" data-id="${sub.id}">
+                    <i class="bi ${enabled ? 'bi-pause-circle' : 'bi-play-circle'}"></i>
+                    ${enabled ? 'Pause' : 'Resume'}
+                </button>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+
+    // Attach event listeners to all buttons
+    container.addEventListener('click', function(event) {
+        const button = event.target.closest('button[data-action]');
+        if (!button) return;
+
+        const action = button.getAttribute('data-action');
+        const id = button.getAttribute('data-id');
+        const subscription = subscriptionsCache.find(s => s.id === id);
+        if (!subscription) return;
+
+        if (action === 'edit') {
+            const editRetentionControls = { select: document.getElementById('edit_retention_type'), input: document.getElementById('edit_retention_value') };
+            if (!editRetentionControls.select || !editRetentionControls.input) return;
+
+            window.editingSubscriptionId = id;
+            document.getElementById('edit_subscription_show_name').value = subscription.show_name || '';
+            const mode = (subscription.retention && subscription.retention.mode) || 'all';
+            let selectValue = 'keep_all';
+            if (mode === 'episodes') selectValue = 'keep_episodes';
+            else if (mode === 'days') selectValue = 'keep_days';
+
+            editRetentionControls.select.value = selectValue;
+            editRetentionControls.select.dispatchEvent(new Event('change'));
+            if (selectValue !== 'keep_all') {
+                editRetentionControls.input.value = subscription.retention && subscription.retention.value ? subscription.retention.value : '';
+            }
+            document.getElementById('edit_subscription_enabled').checked = subscription.enabled !== false;
+            new bootstrap.Modal(document.getElementById('subscriptionEditModal')).show();
+        } else if (action === 'toggle') {
+            const payload = { enabled: !(subscription.enabled !== false) };
+            fetch(`/subscriptions/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('Success', payload.enabled ? 'Subscription resumed' : 'Subscription paused');
+                        loadSubscriptions();
+                    } else {
+                        showToast('Error', data.error || 'Failed to update subscription');
+                    }
+                })
+                .catch(() => showToast('Error', 'Failed to update subscription'));
+        } else if (action === 'delete') {
+            if (!confirm('Remove this subscription?')) return;
+            fetch(`/subscriptions/${id}`, { method: 'DELETE' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('Success', 'Subscription removed');
+                        loadSubscriptions();
+                    } else {
+                        showToast('Error', data.error || 'Failed to remove subscription');
+                    }
+                })
+                .catch(() => showToast('Error', 'Failed to remove subscription'));
+        } else if (action === 'check') {
+            fetch('/playlists/check', { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.created_jobs && data.created_jobs.length > 0) {
+                        showToast('Updates', `Created ${data.created_jobs.length} jobs`);
+                    } else {
+                        showToast('Info', 'No updates found');
+                    }
+                })
+                .catch(() => showToast('Error', 'Failed to check for updates'));
+        }
     });
 }
 
@@ -1587,50 +1700,49 @@ function updateMovieStats(movies) {
 }
 
 function updateRecentTvJobs(jobs) {
-    const recentJobsTable = document.getElementById('recent-tv-jobs-table').querySelector('tbody');
-    recentJobsTable.innerHTML = '';
-    
+    const container = document.getElementById('recent-activity-jobs');
+    if (!container) return;
+
+    container.innerHTML = '';
+
     if (jobs.length === 0) {
-        const row = document.createElement('tr');
-        row.innerHTML = '<td colspan="4" class="text-center">No jobs found</td>';
-        recentJobsTable.appendChild(row);
+        container.innerHTML = '<p class="text-gray-400 text-center py-3">No jobs found</p>';
         return;
     }
-    
-    // Sort jobs by creation date, newest first
+
+    // Sort jobs by creation date, newest first and take only first 5
     jobs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    
-    // Take only first 5
     const recentJobs = jobs.slice(0, 5);
-    
+
     recentJobs.forEach(job => {
-        const row = document.createElement('tr');
-        
-        // Status badge
         const statusClass = getStatusBadgeClass(job.status);
-        
-        row.innerHTML = `
-            <td>${job.show_name}</td>
-            <td>${job.season_num}</td>
-            <td><span class="badge ${statusClass}">${job.status}</span></td>
-            <td>${formatDate(job.created_at)}</td>
+        const item = document.createElement('div');
+        item.className = 'activity-item';
+        item.innerHTML = `
+            <div class="flex-1">
+                <p class="item-title">${escapeHtml(job.show_name)}</p>
+                <p class="item-subtitle">Season ${escapeHtml(job.season_num)}</p>
+            </div>
+            <div class="text-end">
+                <span class="badge ${statusClass}">${escapeHtml(job.status)}</span>
+                <p class="item-meta mt-1">${formatDate(job.created_at)}</p>
+            </div>
         `;
-        
-        recentJobsTable.appendChild(row);
+        container.appendChild(item);
     });
 }
 
 function updateRecentTvMedia(media) {
-    const recentMediaTable = document.getElementById('recent-tv-media-table').querySelector('tbody');
-    recentMediaTable.innerHTML = '';
-    
+    const container = document.getElementById('recent-activity-media');
+    if (!container) return;
+
+    container.innerHTML = '';
+
     if (media.length === 0) {
-        const row = document.createElement('tr');
-        row.innerHTML = '<td colspan="4" class="text-center">No media found</td>';
-        recentMediaTable.appendChild(row);
+        container.innerHTML = '<p class="text-gray-400 text-center py-3">No media found</p>';
         return;
     }
-    
+
     // Flatten all seasons
     let allSeasons = [];
     media.forEach(show => {
@@ -1641,34 +1753,33 @@ function updateRecentTvMedia(media) {
             });
         });
     });
-    
+
     // Sort by latest modified episode
     allSeasons.sort((a, b) => {
-        const aLatest = a.episodes.length > 0 ? 
+        const aLatest = a.episodes.length > 0 ?
             Math.max(...a.episodes.map(e => new Date(e.modified).getTime())) : 0;
-        const bLatest = b.episodes.length > 0 ? 
+        const bLatest = b.episodes.length > 0 ?
             Math.max(...b.episodes.map(e => new Date(e.modified).getTime())) : 0;
         return bLatest - aLatest;
     });
-    
+
     // Take only first 5
     const recentSeasons = allSeasons.slice(0, 5);
-    
+
     recentSeasons.forEach(season => {
-        const row = document.createElement('tr');
-        
-        // Find latest episode modified date
         const latestDate = season.episodes.length > 0 ?
             Math.max(...season.episodes.map(e => new Date(e.modified).getTime())) : 0;
-        
-        row.innerHTML = `
-            <td>${season.show}</td>
-            <td>${season.name}</td>
-            <td>${season.episodes.length}</td>
-            <td>${latestDate ? formatDate(new Date(latestDate).toISOString()) : 'N/A'}</td>
+
+        const item = document.createElement('div');
+        item.className = 'activity-item';
+        item.innerHTML = `
+            <div class="flex-1">
+                <p class="item-title">${escapeHtml(season.show)}</p>
+                <p class="item-subtitle">${escapeHtml(season.name)} • ${season.episodes.length} episode${season.episodes.length > 1 ? 's' : ''}</p>
+            </div>
+            <p class="item-meta">${latestDate ? formatDate(new Date(latestDate).toISOString()) : 'N/A'}</p>
         `;
-        
-    recentMediaTable.appendChild(row);
+        container.appendChild(item);
     });
 }
 

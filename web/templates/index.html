@@ -3,449 +3,306 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tubarr</title>
+    <title>Tubarr - YouTube to Jellyfin Manager</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
 </head>
 <body>
+    <!-- Header -->
+    <header class="app-header">
+        <div class="container-fluid py-3 px-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="logo-container">
+                    <div class="logo-icon">
+                        <i class="bi bi-play-fill"></i>
+                    </div>
+                    <div class="logo-text">
+                        <h1>TUBARR</h1>
+                        <p>YouTube to Jellyfin Manager</p>
+                    </div>
+                </div>
+                <button class="btn-new-download" id="header-new-download">
+                    <i class="bi bi-plus-lg"></i>
+                    New Download
+                </button>
+            </div>
+        </div>
+    </header>
+
     <div class="container-fluid">
         <div class="row">
             <!-- Sidebar -->
-            <nav class="col-md-3 col-lg-2 d-md-block bg-dark sidebar collapse">
-                <div class="position-sticky pt-3">
-                    <div class="text-center mb-4">
-                        <img src="{{ url_for('static', filename='logo.png') }}" alt="Tubarr" class="img-fluid" style="max-width: 150px;">
-                    </div>
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link active" href="#" data-section="dashboard">
-                                <i class="bi bi-speedometer2 me-2"></i> Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#" data-section="new-job">
-                                <i class="bi bi-plus-circle me-2"></i> New TV Download
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#" data-section="new-movie">
-                                <i class="bi bi-file-play me-2"></i> New Movie Download
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#" data-section="jobs">
-                                <i class="bi bi-list-task me-2"></i> Jobs
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#" data-section="history">
-                                <i class="bi bi-clock-history me-2"></i> History
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#" data-section="playlists">
-                                <i class="bi bi-journal-text me-2"></i> Playlists
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#" data-section="subscriptions">
-                                <i class="bi bi-bell me-2"></i> Channel Subscriptions
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#" data-section="media">
-                                <i class="bi bi-collection-play me-2"></i> Media Library
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#" data-section="settings">
-                                <i class="bi bi-gear me-2"></i> Settings
-                            </a>
-                        </li>
-                    </ul>
-                </div>
+            <nav class="col-md-3 col-lg-2 sidebar">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#" data-section="dashboard">
+                            <i class="bi bi-house-door"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-section="new-job">
+                            <i class="bi bi-tv"></i>
+                            <span>New TV Download</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-section="new-movie">
+                            <i class="bi bi-film"></i>
+                            <span>New Movie Download</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-section="jobs">
+                            <i class="bi bi-list-task"></i>
+                            <span>Jobs</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-section="history">
+                            <i class="bi bi-clock-history"></i>
+                            <span>History</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-section="subscriptions">
+                            <i class="bi bi-bell"></i>
+                            <span>Subscriptions</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-section="media">
+                            <i class="bi bi-collection-play"></i>
+                            <span>Media Library</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-section="settings">
+                            <i class="bi bi-gear"></i>
+                            <span>Settings</span>
+                        </a>
+                    </li>
+                </ul>
             </nav>
 
-            <!-- Main content -->
+            <!-- Main Content -->
             <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
                 <!-- Dashboard Section -->
-                <section id="dashboard" class="content-section">
-                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                        <h1 class="h2">Dashboard</h1>
+                <section id="dashboard" class="content-section active">
+                    <h2>Dashboard</h2>
+
+                    <!-- Stats Grid -->
+                    <div class="row mb-4">
+                        <div class="dashboard-col col-md-6 col-lg mb-3">
+                            <div class="stat-card">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="stat-label">Total Shows</div>
+                                        <div class="stat-value" id="total-shows">0</div>
+                                    </div>
+                                    <div class="stat-icon bg-blue">
+                                        <i class="bi bi-tv"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="dashboard-col col-md-6 col-lg mb-3">
+                            <div class="stat-card">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="stat-label">Total Episodes</div>
+                                        <div class="stat-value" id="total-episodes">0</div>
+                                    </div>
+                                    <div class="stat-icon bg-green">
+                                        <i class="bi bi-film"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="dashboard-col col-md-6 col-lg mb-3">
+                            <div class="stat-card">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="stat-label">Total Movies</div>
+                                        <div class="stat-value" id="total-movies">0</div>
+                                    </div>
+                                    <div class="stat-icon bg-purple">
+                                        <i class="bi bi-collection-play"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="dashboard-col col-md-6 col-lg mb-3">
+                            <div class="stat-card">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="stat-label">Active Jobs</div>
+                                        <div class="stat-value" id="active-jobs">0</div>
+                                    </div>
+                                    <div class="stat-icon bg-cyan">
+                                        <i class="bi bi-arrow-repeat"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="dashboard-col col-md-6 col-lg mb-3">
+                            <div class="stat-card">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="stat-label">Storage Used</div>
+                                        <div class="stat-value" id="storage-used">0 GB</div>
+                                    </div>
+                                    <div class="stat-icon bg-yellow">
+                                        <i class="bi bi-hdd"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    
+
+                    <!-- Recent Activity -->
                     <div class="row">
-                        <div class="dashboard-col col-md-6 mb-4">
-                            <div class="card border-left-primary shadow h-100 py-2">
-                                <div class="card-body">
-                                    <div class="row no-gutters align-items-center">
-                                        <div class="col mr-2">
-                                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                                Total Shows</div>
-                                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="total-shows">0</div>
-                                        </div>
-                                        <div class="col-auto">
-                                            <i class="bi bi-tv fs-2 text-gray-300"></i>
-                                        </div>
-                                    </div>
+                        <div class="col-lg-6 mb-4">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h6 class="m-0">Recent Jobs</h6>
+                                    <a href="#" data-section="jobs" class="btn btn-sm btn-primary">View All</a>
                                 </div>
-                            </div>
-                        </div>
-                        
-                        <div class="dashboard-col col-md-6 mb-4">
-                            <div class="card border-left-success shadow h-100 py-2">
                                 <div class="card-body">
-                                    <div class="row no-gutters align-items-center">
-                                        <div class="col mr-2">
-                                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                                Total Episodes</div>
-                                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="total-episodes">0</div>
-                                        </div>
-                                        <div class="col-auto">
-                                            <i class="bi bi-film fs-2 text-gray-300"></i>
-                                        </div>
+                                    <div id="recent-activity-jobs">
+                                        <!-- Populated by JavaScript -->
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="dashboard-col col-md-6 mb-4">
-                            <div class="card border-left-secondary shadow h-100 py-2">
-                                <div class="card-body">
-                                    <div class="row no-gutters align-items-center">
-                                        <div class="col mr-2">
-                                            <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">
-                                                Total Movies</div>
-                                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="total-movies">0</div>
-                                        </div>
-                                        <div class="col-auto">
-                                            <i class="bi bi-collection-play fs-2 text-gray-300"></i>
-                                        </div>
-                                    </div>
+                        <div class="col-lg-6 mb-4">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h6 class="m-0">Recent Media</h6>
+                                    <a href="#" data-section="media" class="btn btn-sm btn-primary">View All</a>
                                 </div>
-                            </div>
-                        </div>
-                        
-                        <div class="dashboard-col col-md-6 mb-4">
-                            <div class="card border-left-info shadow h-100 py-2">
                                 <div class="card-body">
-                                    <div class="row no-gutters align-items-center">
-                                        <div class="col mr-2">
-                                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                                Active Jobs</div>
-                                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="active-jobs">0</div>
-                                        </div>
-                                        <div class="col-auto">
-                                            <i class="bi bi-arrow-repeat fs-2 text-gray-300"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="dashboard-col col-md-6 mb-4">
-                            <div class="card border-left-warning shadow h-100 py-2">
-                                <div class="card-body">
-                                    <div class="row no-gutters align-items-center">
-                                        <div class="col mr-2">
-                                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                                Storage Used</div>
-                                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="storage-used">0 GB</div>
-                                        </div>
-                                        <div class="col-auto">
-                                            <i class="bi bi-hdd fs-2 text-gray-300"></i>
-                                        </div>
+                                    <div id="recent-activity-media">
+                                        <!-- Populated by JavaScript -->
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="row mt-4">
-                        <div class="col-lg-6">
-                            <div class="card shadow mb-4">
-                                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                                    <h6 class="m-0 font-weight-bold">Recent TV Jobs</h6>
-                                    <a href="#" data-section="jobs" class="btn btn-sm btn-primary">View All</a>
-                                </div>
-                                <div class="card-body">
-                                    <div class="table-responsive">
-                                        <table class="table table-hover" id="recent-tv-jobs-table">
-                                            <thead>
-                                                <tr>
-                                                    <th>Show</th>
-                                                    <th>Season</th>
-                                                    <th>Status</th>
-                                                    <th>Created</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <!-- Will be populated by JavaScript -->
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="col-lg-6">
-                            <div class="card shadow mb-4">
-                                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                                    <h6 class="m-0 font-weight-bold">Recent TV Media</h6>
-                                    <a href="#" data-section="media" class="btn btn-sm btn-primary">View All</a>
-                                </div>
-                                <div class="card-body">
-                                    <div class="table-responsive">
-                                        <table class="table table-hover" id="recent-tv-media-table">
-                                            <thead>
-                                                <tr>
-                                                    <th>Show</th>
-                                                    <th>Season</th>
-                                                    <th>Episodes</th>
-                                                    <th>Modified</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <!-- Will be populated by JavaScript -->
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                </div>
-            </div>
+                </section>
 
-                    <div class="row mt-4">
-                        <div class="col-lg-6">
-                            <div class="card shadow mb-4">
-                                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                                    <h6 class="m-0 font-weight-bold">Recent Movie Jobs</h6>
-                                    <a href="#" data-section="jobs" class="btn btn-sm btn-primary">View All</a>
-                                </div>
-                                <div class="card-body">
-                                    <div class="table-responsive">
-                                        <table class="table table-hover" id="recent-movie-jobs-table">
-                                            <thead>
-                                                <tr>
-                                                    <th>Movie</th>
-                                                    <th>Status</th>
-                                                    <th>Created</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <!-- Will be populated by JavaScript -->
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
+                <!-- Subscriptions Section -->
+                <section id="subscriptions" class="content-section">
+                    <div class="d-flex justify-content-between align-items-start mb-4">
+                        <div>
+                            <h2>Subscriptions</h2>
+                            <p class="text-gray-400">Manage channel subscriptions with automated downloads and retention</p>
                         </div>
-
-                        <div class="col-lg-6">
-                            <div class="card shadow mb-4">
-                                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                                    <h6 class="m-0 font-weight-bold">Recent Movie Media</h6>
-                                    <a href="#" data-section="media" class="btn btn-sm btn-primary">View All</a>
-                                </div>
-                                <div class="card-body">
-                                    <div class="table-responsive">
-                                        <table class="table table-hover" id="recent-movie-media-table">
-                                            <thead>
-                                                <tr>
-                                                    <th>Movie</th>
-                                                    <th>Size</th>
-                                                    <th>Modified</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <!-- Will be populated by JavaScript -->
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <button class="btn btn-secondary" id="check-subscriptions">
+                            <i class="bi bi-arrow-clockwise"></i>
+                            Check All for Updates
+                        </button>
                     </div>
-        </section>
 
-        <!-- Playlists Section -->
-        <section id="playlists" class="content-section d-none">
-            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                <h1 class="h2">Playlists</h1>
-                <button class="btn btn-sm btn-outline-secondary" id="check-playlists">
-                    <i class="bi bi-arrow-clockwise"></i> Check Updates
-                </button>
-            </div>
-            <div class="table-responsive">
-                <table class="table table-hover" id="playlists-table">
-                    <thead>
-                        <tr>
-                            <th>Show</th>
-                            <th>Season</th>
-                            <th>Last Episode</th>
-                            <th>Playlist URL</th>
-                            <th>Tracking</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-        </section>
+                    <div id="subscriptions-container">
+                        <!-- Populated by JavaScript with subscription cards -->
+                    </div>
 
-        <section id="subscriptions" class="content-section d-none">
-            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                <h1 class="h2">Channel Subscriptions</h1>
-                <div class="d-flex gap-2">
-                    <button class="btn btn-sm btn-outline-secondary" id="check-subscriptions">
-                        <i class="bi bi-arrow-clockwise"></i> Check Now
-                    </button>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-lg-5">
-                    <div class="card shadow mb-4">
-                        <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold">Subscribe to Channel</h6>
+                    <!-- Add Subscription Form -->
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h6 class="m-0">Subscribe to Channel</h6>
                         </div>
                         <div class="card-body">
                             <form id="subscription-form">
-                                <div class="mb-3">
-                                    <label for="channel_url" class="form-label">YouTube Channel URL <span class="text-danger">*</span>
-                                        <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="URL of the YouTube channel to monitor"></i>
-                                    </label>
-                                    <input type="text" class="form-control" id="channel_url" name="channel_url" placeholder="https://youtube.com/@channel" required>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label for="channel_url" class="form-label">YouTube Channel URL</label>
+                                        <input type="text" class="form-control" id="channel_url" placeholder="https://youtube.com/@channel" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="subscription_show_name" class="form-label">TV Show Name</label>
+                                        <input type="text" class="form-control" id="subscription_show_name" placeholder="Show Name" required>
+                                    </div>
                                 </div>
-                                <div class="mb-3">
-                                    <label for="subscription_show_name" class="form-label">TV Show Name <span class="text-danger">*</span>
-                                        <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Show name used for Season 00 episodes"></i>
-                                    </label>
-                                    <input type="text" class="form-control" id="subscription_show_name" name="subscription_show_name" placeholder="Show Name" required>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label for="retention_type" class="form-label">Retention Policy</label>
+                                        <select class="form-select" id="retention_type">
+                                            <option value="keep_all" selected>Keep all episodes</option>
+                                            <option value="keep_episodes">Keep last X episodes</option>
+                                            <option value="keep_days">Keep episodes from last X days</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="retention_value" class="form-label">Retention Value</label>
+                                        <input type="number" class="form-control" id="retention_value" min="1" disabled>
+                                    </div>
                                 </div>
-                                <div class="mb-3">
-                                    <label for="retention_type" class="form-label">Retention Policy
-                                        <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Choose how long to keep downloaded episodes"></i>
-                                    </label>
-                                    <select class="form-select" id="retention_type" name="retention_type">
-                                        <option value="keep_all" selected>Keep all episodes</option>
-                                        <option value="keep_episodes">Keep last X episodes</option>
-                                        <option value="keep_days">Keep episodes from last X days</option>
-                                    </select>
-                                </div>
-                                <div class="mb-3" id="retention-value-group">
-                                    <label for="retention_value" class="form-label">Retention Value</label>
-                                    <input type="number" class="form-control" id="retention_value" name="retention_value" min="1" disabled>
-                                    <div class="form-text" id="retention-value-help">Enter how many episodes or days to keep.</div>
-                                </div>
-                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                                    <button type="submit" class="btn btn-primary" id="create-subscription-btn">Subscribe</button>
+                                <div class="text-end">
+                                    <button type="submit" class="btn btn-primary">Subscribe</button>
                                 </div>
                             </form>
                         </div>
                     </div>
-                </div>
-                <div class="col-lg-7">
-                    <div class="card shadow mb-4">
-                        <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold">Active Subscriptions</h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-hover" id="subscriptions-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Show</th>
-                                            <th>Channel URL</th>
-                                            <th>Retention</th>
-                                            <th>Last Episode</th>
-                                            <th>Status</th>
-                                            <th></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody></tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
+                </section>
 
-                <!-- New Job Section -->
-                <section id="new-job" class="content-section d-none">
-                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                        <h1 class="h2">New TV Download</h1>
-                    </div>
-                    
-                    <div class="card shadow mb-4">
-                        <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold">Add New YouTube Playlist</h6>
+                <!-- New TV Download Section -->
+                <section id="new-job" class="content-section">
+                    <h2>New TV Download</h2>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="m-0">Add New YouTube Playlist</h6>
                         </div>
                         <div class="card-body">
                             <form id="new-job-form">
                                 <div class="row mb-3">
                                     <div class="col-lg-10">
-                                        <label for="playlist_url" class="form-label">YouTube Playlist URL <span class="text-danger">*</span>
-                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Full URL of the playlist to download"></i>
-                                        </label>
-                                        <input type="text" class="form-control" id="playlist_url" name="playlist_url" placeholder="https://youtube.com/playlist?list=..." required>
+                                        <label for="playlist_url" class="form-label">YouTube Playlist URL</label>
+                                        <input type="text" class="form-control" id="playlist_url" placeholder="https://youtube.com/playlist?list=..." required>
                                     </div>
                                     <div class="col-lg-2 d-flex align-items-end">
-                                        <button type="button" class="btn btn-secondary w-100" id="select-start-btn" data-bs-toggle="tooltip" title="Pick which playlist item to start from">Choose Start Video</button>
+                                        <button type="button" class="btn btn-secondary w-100" id="select-start-btn">Choose Start Video</button>
                                     </div>
                                 </div>
-                                <input type="hidden" id="playlist_start" name="playlist_start">
-                                
+                                <input type="hidden" id="playlist_start">
+
                                 <div class="row mb-3">
                                     <div class="col-lg-4">
-                                        <label for="show_name" class="form-label">TV Show Name <span class="text-danger">*</span>
-                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Name of the show to create in your library"></i>
-                                        </label>
-                                        <input type="text" class="form-control" id="show_name" name="show_name" placeholder="Show Name" required>
+                                        <label for="show_name" class="form-label">TV Show Name</label>
+                                        <input type="text" class="form-control" id="show_name" placeholder="Show Name" required>
                                     </div>
                                     <div class="col-lg-4">
-                                        <label for="season_num" class="form-label">Season Number <span class="text-danger">*</span>
-                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Season folder to place these episodes in"></i>
-                                        </label>
-                                        <input type="text" class="form-control" id="season_num" name="season_num" placeholder="01" pattern="[0-9]+" required>
+                                        <label for="season_num" class="form-label">Season Number</label>
+                                        <input type="text" class="form-control" id="season_num" placeholder="01" pattern="[0-9]+" required>
                                     </div>
                                     <div class="col-lg-4">
-                                        <label for="episode_start" class="form-label">Episode Start Number <span class="text-danger">*</span>
-                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Number of the first episode in this download"></i>
-                                        </label>
-                                        <input type="text" class="form-control" id="episode_start" name="episode_start" placeholder="01" pattern="[0-9]+" required>
+                                        <label for="episode_start" class="form-label">Episode Start Number</label>
+                                        <input type="text" class="form-control" id="episode_start" placeholder="01" pattern="[0-9]+" required>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="track_playlist" checked>
+                                        <label class="form-check-label" for="track_playlist">Track playlist for updates</label>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="use_h265" checked>
+                                        <label class="form-check-label" for="use_h265">Convert to H.265 (Recommended for smaller file size)</label>
                                     </div>
                                 </div>
 
                                 <div class="row mb-3">
-                                    <div class="col-lg-12">
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" type="checkbox" id="track_playlist" checked>
-                                            <label class="form-check-label" for="track_playlist">Track playlist for updates
-                                                <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Automatically queue new videos as they are added"></i>
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="row mb-3">
-                                    <div class="col-lg-12">
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" type="checkbox" id="use_h265" checked>
-                                            <label class="form-check-label" for="use_h265">Convert to H.265 (Recommended for smaller file size)
-                                                <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Enable video conversion to efficient H.265 format"></i>
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="row mb-3">
-                                    <div class="col-lg-4">
-                                        <label for="quality" class="form-label">Maximum Video Quality
-                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Highest resolution to download"></i>
-                                        </label>
+                                    <div class="col-lg-6">
+                                        <label for="quality" class="form-label">Maximum Video Quality</label>
                                         <select class="form-select" id="quality">
                                             <option value="2160">4K (2160p)</option>
                                             <option value="1440">QHD (1440p)</option>
@@ -454,21 +311,18 @@
                                             <option value="480">SD (480p)</option>
                                         </select>
                                     </div>
-                                    <div class="col-lg-4">
-                                        <label for="crf" class="form-label">H.265 Quality (CRF)
-                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Lower values give better quality but bigger files"></i>
-                                        </label>
+                                    <div class="col-lg-6">
+                                        <label for="crf" class="form-label">H.265 Quality (CRF): <span id="crf-value">28</span></label>
                                         <input type="range" class="form-range" min="18" max="32" step="1" id="crf" value="28">
                                         <div class="d-flex justify-content-between">
                                             <small>Higher Quality</small>
-                                            <small id="crf-value">28</small>
                                             <small>Smaller Size</small>
                                         </div>
                                     </div>
                                 </div>
-                                
-                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                                    <button type="submit" class="btn btn-primary" id="start-download-btn">Start Download</button>
+
+                                <div class="text-end">
+                                    <button type="submit" class="btn btn-primary">Start Download</button>
                                 </div>
                             </form>
                         </div>
@@ -476,109 +330,42 @@
                 </section>
 
                 <!-- New Movie Section -->
-                <section id="new-movie" class="content-section d-none">
-                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                        <h1 class="h2">New Movie Download</h1>
-                    </div>
+                <section id="new-movie" class="content-section">
+                    <h2>New Movie Download</h2>
 
-                    <div class="card shadow mb-4">
-                        <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold">Add Movie from YouTube</h6>
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="m-0">Add Movie from YouTube</h6>
                         </div>
                         <div class="card-body">
                             <form id="new-movie-form">
                                 <div class="mb-3">
-                                    <label for="movie_url" class="form-label">Movie or Playlist URL <span class="text-danger">*</span>
-                                        <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Link to the movie or playlist"></i>
-                                    </label>
-                                    <input type="text" class="form-control" id="movie_url" name="movie_url" placeholder="https://youtube.com/watch?v=..." required>
+                                    <label for="movie_url" class="form-label">Movie or Playlist URL</label>
+                                    <input type="text" class="form-control" id="movie_url" placeholder="https://youtube.com/watch?v=..." required>
                                 </div>
                                 <div class="mb-3">
-                                    <label for="movie_name" class="form-label">Movie Name <span class="text-danger">*</span>
-                                        <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Title to save the movie as"></i>
-                                    </label>
-                                    <input type="text" class="form-control" id="movie_name" name="movie_name" placeholder="Movie Name" required>
+                                    <label for="movie_name" class="form-label">Movie Name</label>
+                                    <input type="text" class="form-control" id="movie_name" placeholder="Movie Name" required>
                                 </div>
-                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                                    <button type="submit" class="btn btn-primary" id="start-movie-btn">Start Download</button>
+                                <div class="text-end">
+                                    <button type="submit" class="btn btn-primary">Start Download</button>
                                 </div>
                             </form>
                         </div>
                     </div>
                 </section>
 
-                <!-- History Section -->
-                <section id="history" class="content-section d-none">
-                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                        <h1 class="h2">History</h1>
-                    </div>
-
-                    <div class="card shadow mb-4">
-                        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                            <h6 class="m-0 font-weight-bold">Past Jobs</h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-hover" id="history-table">
-                                    <thead>
-                                        <tr>
-                                            <th>ID</th>
-                                            <th>Show</th>
-                                            <th>Season</th>
-                                            <th>Status</th>
-                                            <th>Progress</th>
-                                            <th>Created</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <!-- Will be populated by JavaScript -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="card shadow mb-4">
-                        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                            <h6 class="m-0 font-weight-bold">Movie History</h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-hover" id="movie-history-table">
-                                    <thead>
-                                        <tr>
-                                            <th>ID</th>
-                                            <th>Movie</th>
-                                            <th>Status</th>
-                                            <th>Progress</th>
-                                            <th>Created</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <!-- Will be populated by JavaScript -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
-                </section>
-
                 <!-- Jobs Section -->
-                <section id="jobs" class="content-section d-none">
-                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                        <h1 class="h2">Download Jobs</h1>
-                    </div>
-                    
-                    <div class="card shadow mb-4">
-                        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                            <h6 class="m-0 font-weight-bold">All Jobs</h6>
+                <section id="jobs" class="content-section">
+                    <h2>Download Jobs</h2>
+
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h6 class="m-0">Active TV Jobs</h6>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
-                                <table class="table table-hover" id="jobs-table">
+                                <table class="table" id="jobs-table">
                                     <thead>
                                         <tr>
                                             <th>ID</th>
@@ -590,21 +377,19 @@
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        <!-- Will be populated by JavaScript -->
-                                    </tbody>
+                                    <tbody></tbody>
                                 </table>
                             </div>
                         </div>
                     </div>
 
-                    <div class="card shadow mb-4">
-                        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                            <h6 class="m-0 font-weight-bold">Movie Jobs</h6>
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="m-0">Active Movie Jobs</h6>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
-                                <table class="table table-hover" id="movie-jobs-table">
+                                <table class="table" id="movie-jobs-table">
                                     <thead>
                                         <tr>
                                             <th>ID</th>
@@ -615,41 +400,253 @@
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        <!-- Will be populated by JavaScript -->
-                                    </tbody>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- History Section -->
+                <section id="history" class="content-section">
+                    <h2>History</h2>
+
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h6 class="m-0">Past TV Jobs</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table" id="history-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Show</th>
+                                            <th>Season</th>
+                                            <th>Status</th>
+                                            <th>Progress</th>
+                                            <th>Created</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
                                 </table>
                             </div>
                         </div>
                     </div>
 
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="m-0">Movie History</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table" id="movie-history-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Movie</th>
+                                            <th>Status</th>
+                                            <th>Progress</th>
+                                            <th>Created</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </section>
 
-                <!-- Playlist Start Modal -->
-                <div class="modal fade" id="playlistStartModal" tabindex="-1" aria-labelledby="playlistStartModalLabel" aria-hidden="true">
-                    <div class="modal-dialog modal-lg">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="playlistStartModalLabel">Select Starting Video</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body">
-                                <div id="playlist-videos-container" style="max-height:400px; overflow-y:auto;"></div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-primary" id="confirm-start-video">Confirm</button>
-                            </div>
+                <!-- Media Library Section -->
+                <section id="media" class="content-section">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2 class="mb-0">Media Library</h2>
+                        <button class="btn btn-secondary" id="refresh-media">
+                            <i class="bi bi-arrow-clockwise"></i> Refresh
+                        </button>
+                    </div>
+
+                    <h3 class="mt-4 mb-3">TV Shows</h3>
+                    <div id="media-tv-container"></div>
+
+                    <h3 class="mt-4 mb-3">Movies</h3>
+                    <div id="media-movie-container"></div>
+                </section>
+
+                <!-- Settings Section -->
+                <section id="settings" class="content-section">
+                    <h2>Settings</h2>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="m-0">Application Settings</h6>
+                        </div>
+                        <div class="card-body">
+                            <form id="settings-form">
+                                <div class="row mb-3">
+                                    <div class="col-lg-6">
+                                        <label for="output_dir" class="form-label">Output Directory</label>
+                                        <input type="text" class="form-control" id="output_dir">
+                                    </div>
+                                    <div class="col-lg-6">
+                                        <label for="cookies_path" class="form-label">Cookies File Path</label>
+                                        <input type="text" class="form-control" id="cookies_path">
+                                        <div class="form-text">Optional: Path to cookies file for authenticated content</div>
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-lg-6">
+                                        <label for="default_quality" class="form-label">Default Video Quality</label>
+                                        <select class="form-select" id="default_quality">
+                                            <option value="2160">4K (2160p)</option>
+                                            <option value="1440">QHD (1440p)</option>
+                                            <option value="1080" selected>FHD (1080p)</option>
+                                            <option value="720">HD (720p)</option>
+                                            <option value="480">SD (480p)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-lg-6">
+                                        <label for="default_crf" class="form-label">Default H.265 Quality (CRF): <span id="default-crf-value">28</span></label>
+                                        <input type="range" class="form-range" min="18" max="32" step="1" id="default_crf" value="28">
+                                        <div class="d-flex justify-content-between">
+                                            <small>Higher Quality</small>
+                                            <small>Smaller Size</small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-lg-6">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="default_use_h265" checked>
+                                            <label class="form-check-label" for="default_use_h265">Convert to H.265 by default</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-6">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="clean_filenames" checked>
+                                            <label class="form-check-label" for="clean_filenames">Clean filenames</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-lg-6">
+                                        <label for="max_concurrent_jobs" class="form-label">Concurrent Transcodes: <span id="max-concurrent-value">1</span></label>
+                                        <input type="range" class="form-range" min="1" max="4" step="1" id="max_concurrent_jobs" value="1">
+                                    </div>
+                                    <div class="col-lg-6">
+                                        <label for="web_port" class="form-label">Web Interface Port</label>
+                                        <input type="number" class="form-control" id="web_port" min="1" max="65535" value="8000">
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-lg-6">
+                                        <label for="completed_jobs_limit" class="form-label">Completed Jobs to Keep</label>
+                                        <input type="number" class="form-control" id="completed_jobs_limit" min="1" max="100" value="10">
+                                    </div>
+                                    <div class="col-lg-6">
+                                        <label for="update_interval" class="form-label">Check Interval (minutes)</label>
+                                        <input type="number" class="form-control" id="update_interval" min="5" value="60">
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="auto_check_updates">
+                                        <label class="form-check-label" for="auto_check_updates">Automatically check playlists for updates</label>
+                                    </div>
+                                </div>
+
+                                <h6 class="mt-4 mb-3">Metadata Providers</h6>
+
+                                <div class="mb-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="imdb_enabled">
+                                        <label class="form-check-label" for="imdb_enabled">Use IMDb for movie metadata</label>
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3 imdb-settings">
+                                    <div class="col-lg-6">
+                                        <label for="imdb_api_key" class="form-label">IMDb API Key</label>
+                                        <input type="text" class="form-control" id="imdb_api_key">
+                                    </div>
+                                </div>
+
+                                <h6 class="mt-4 mb-3">Jellyfin Integration</h6>
+
+                                <div class="mb-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="jellyfin_enabled">
+                                        <label class="form-check-label" for="jellyfin_enabled">Enable Jellyfin integration</label>
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3 jellyfin-settings">
+                                    <div class="col-lg-12">
+                                        <label for="jellyfin_tv_path" class="form-label">Jellyfin TV Library Path</label>
+                                        <input type="text" class="form-control" id="jellyfin_tv_path" placeholder="/path/to/jellyfin/tv">
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3 jellyfin-settings">
+                                    <div class="col-lg-4">
+                                        <label for="jellyfin_host" class="form-label">Jellyfin Host</label>
+                                        <input type="text" class="form-control" id="jellyfin_host" placeholder="localhost">
+                                    </div>
+                                    <div class="col-lg-4">
+                                        <label for="jellyfin_port" class="form-label">Jellyfin Port</label>
+                                        <input type="text" class="form-control" id="jellyfin_port" value="8096">
+                                    </div>
+                                    <div class="col-lg-4">
+                                        <label for="jellyfin_api_key" class="form-label">API Key</label>
+                                        <input type="text" class="form-control" id="jellyfin_api_key">
+                                    </div>
+                                </div>
+
+                                <div class="text-end">
+                                    <button type="submit" class="btn btn-primary">Save Settings</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <!-- Playlist Start Modal -->
+    <div class="modal fade" id="playlistStartModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Select Starting Video</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="playlist-videos-container" style="max-height:400px; overflow-y:auto;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirm-start-video">Confirm</button>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- Subscription Edit Modal -->
-        <div class="modal fade" id="subscriptionEditModal" tabindex="-1" aria-labelledby="subscriptionEditModalLabel" aria-hidden="true">
-            <div class="modal-dialog">
-                <form class="modal-content" id="subscription-edit-form">
+    <!-- Subscription Edit Modal -->
+    <div class="modal fade" id="subscriptionEditModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="subscription-edit-form">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="subscriptionEditModalLabel">Edit Subscription</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <h5 class="modal-title">Edit Subscription</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
                         <div class="mb-3">
@@ -667,7 +664,6 @@
                         <div class="mb-3">
                             <label for="edit_retention_value" class="form-label">Retention Value</label>
                             <input type="number" class="form-control" id="edit_retention_value" min="1" disabled>
-                            <div class="form-text" id="edit-retention-help">Enter how many episodes or days to keep.</div>
                         </div>
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="edit_subscription_enabled" checked>
@@ -675,316 +671,93 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary" id="update-subscription-btn">Save Changes</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
                     </div>
                 </form>
             </div>
         </div>
+    </div>
 
-        <!-- Job Detail Modal -->
-        <div class="modal fade" id="jobDetailModal" tabindex="-1" aria-labelledby="jobDetailModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="jobDetailModalLabel">Job Details</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <!-- Job Detail Modal -->
+    <div class="modal fade" id="jobDetailModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Job Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <p><strong>Show:</strong> <span id="detail-show-name"></span></p>
+                            <p><strong>Season:</strong> <span id="detail-season"></span></p>
+                            <p><strong>Episode Start:</strong> <span id="detail-episode-start"></span></p>
+                            <p id="detail-movie-field" style="display:none;"><strong>Movie:</strong> <span id="detail-movie-name"></span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Status:</strong> <span id="detail-status" class="badge"></span></p>
+                            <p><strong>Created:</strong> <span id="detail-created"></span></p>
+                            <p><strong>Updated:</strong> <span id="detail-updated"></span></p>
+                        </div>
                     </div>
-                    <div class="modal-body">
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <p><strong>Show:</strong> <span id="detail-show-name"></span></p>
-                                <p><strong>Season:</strong> <span id="detail-season"></span></p>
-                                <p><strong>Episode Start:</strong> <span id="detail-episode-start"></span></p>
-                                <p id="detail-movie-field"><strong>Movie:</strong> <span id="detail-movie-name"></span></p>
-                            </div>
-                            <div class="col-md-6">
-                                <p><strong>Status:</strong> <span id="detail-status" class="badge"></span></p>
-                                <p><strong>Created:</strong> <span id="detail-created"></span></p>
-                                <p><strong>Updated:</strong> <span id="detail-updated"></span></p>
-                            </div>
-                        </div>
 
-                        <div class="row mb-3">
-                            <div class="col-12">
-                                <p><strong>Playlist URL:</strong> <a href="#" id="detail-url" target="_blank"></a></p>
-                            </div>
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <p><strong>Playlist URL:</strong> <a href="#" id="detail-url" target="_blank"></a></p>
                         </div>
+                    </div>
 
-                        <!-- Detailed status -->
-                        <div class="alert alert-info mb-3">
-                            <div class="d-flex align-items-center">
-                                <div class="me-3">
-                                    <span id="detail-stage-icon" class="fs-4">
-                                        <i class="bi bi-arrow-repeat"></i>
-                                    </span>
-                                </div>
-                                <div class="flex-grow-1">
-                                    <h6 class="mb-0"><span id="detail-stage-name">Processing</span></h6>
-                                    <div id="detail-status-text">Working on files...</div>
-                                    <div class="d-flex justify-content-between align-items-center mt-1">
-                                        <div>
-                                            <span id="detail-file-progress">0</span> / <span id="detail-file-total">0</span> files
-                                        </div>
-                                        <div id="detail-current-file"></div>
+                    <div class="alert alert-info mb-3">
+                        <div class="d-flex align-items-center">
+                            <div class="me-3">
+                                <span id="detail-stage-icon" class="fs-4">
+                                    <i class="bi bi-arrow-repeat"></i>
+                                </span>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-0"><span id="detail-stage-name">Processing</span></h6>
+                                <div id="detail-status-text">Working on files...</div>
+                                <div class="d-flex justify-content-between align-items-center mt-1">
+                                    <div>
+                                        <span id="detail-file-progress">0</span> / <span id="detail-file-total">0</span> files
                                     </div>
-                                    <div id="detail-queue" class="small text-muted mt-1"></div>
+                                    <div id="detail-current-file"></div>
                                 </div>
+                                <div id="detail-queue" class="small text-muted mt-1"></div>
                             </div>
                         </div>
-
-                        <!-- Overall progress -->
-                        <div class="mb-2">Overall progress:</div>
-                        <div class="progress mb-3">
-                            <div id="detail-progress-bar" class="progress-bar" role="progressbar" style="width: 0%" aria-valuemin="0" aria-valuemax="100">0%</div>
-                        </div>
-
-                        <!-- Stage progress -->
-                        <div class="mb-2">Stage progress:</div>
-                        <div class="progress mb-4">
-                            <div id="detail-stage-progress-bar" class="progress-bar bg-info" role="progressbar" style="width: 0%" aria-valuemin="0" aria-valuemax="100">0%</div>
-                        </div>
-
-                        <h6>Log Messages:</h6>
-                        <div class="log-container border rounded p-2 bg-light">
-                            <pre id="detail-log" class="m-0" style="max-height: 300px; overflow-y: auto;"></pre>
-                        </div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="button" class="btn btn-danger" id="cancel-job-btn">Cancel Job</button>
+
+                    <div class="mb-2">Overall progress:</div>
+                    <div class="progress mb-3">
+                        <div id="detail-progress-bar" class="progress-bar" role="progressbar" style="width: 0%">0%</div>
                     </div>
+
+                    <div class="mb-2">Stage progress:</div>
+                    <div class="progress mb-4">
+                        <div id="detail-stage-progress-bar" class="progress-bar bg-info" role="progressbar" style="width: 0%">0%</div>
+                    </div>
+
+                    <h6>Log Messages:</h6>
+                    <div class="log-container">
+                        <pre id="detail-log" class="m-0"></pre>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-danger" id="cancel-job-btn">Cancel Job</button>
                 </div>
             </div>
         </div>
-
-        <!-- Media Library Section -->
-        <section id="media" class="content-section d-none">
-                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                        <h1 class="h2">Media Library</h1>
-                        <button class="btn btn-sm btn-outline-secondary" id="refresh-media">
-                            <i class="bi bi-arrow-clockwise"></i> Refresh
-                        </button>
-                    </div>
-                    
-                    <h3 class="mt-4">TV Shows</h3>
-                    <div id="media-tv-container">
-                        <!-- Will be populated by JavaScript -->
-                    </div>
-
-                    <h3 class="mt-4">Movies</h3>
-                    <div id="media-movie-container">
-                        <!-- Will be populated by JavaScript -->
-                    </div>
-                </section>
-                
-                <!-- Settings Section -->
-                <section id="settings" class="content-section d-none">
-                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                        <h1 class="h2">Settings</h1>
-                    </div>
-                    
-                    <div class="card shadow mb-4">
-                        <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold">Application Settings</h6>
-                        </div>
-                        <div class="card-body">
-                            <form id="settings-form">
-                                <div class="row mb-3">
-                                    <div class="col-lg-6">
-                                        <label for="output_dir" class="form-label">Output Directory
-                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Where processed videos and metadata are saved"></i>
-                                        </label>
-                                        <input type="text" class="form-control" id="output_dir" name="output_dir">
-                                    </div>
-                                    <div class="col-lg-6">
-                                        <label for="cookies_path" class="form-label">Cookies File Path
-                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Path to cookies.txt for authenticated downloads"></i>
-                                        </label>
-                                        <input type="text" class="form-control" id="cookies_path" name="cookies_path">
-                                        <div class="form-text">Optional: Path to cookies file for authenticated content</div>
-                                    </div>
-                                </div>
-                                
-                                <div class="row mb-3">
-                                    <div class="col-lg-6">
-                                        <label for="default_quality" class="form-label">Default Video Quality
-                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Preferred resolution for new downloads"></i>
-                                        </label>
-                                        <select class="form-select" id="default_quality" name="default_quality">
-                                            <option value="2160">4K (2160p)</option>
-                                            <option value="1440">QHD (1440p)</option>
-                                            <option value="1080" selected>FHD (1080p)</option>
-                                            <option value="720">HD (720p)</option>
-                                            <option value="480">SD (480p)</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-lg-6">
-                                        <label for="default_crf" class="form-label">Default H.265 Quality (CRF)
-                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Lower values give better quality but larger files"></i>
-                                        </label>
-                                        <input type="range" class="form-range" min="18" max="32" step="1" id="default_crf" name="default_crf" value="28">
-                                        <div class="d-flex justify-content-between">
-                                            <small>Higher Quality</small>
-                                            <small id="default-crf-value">28</small>
-                                            <small>Smaller Size</small>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="row mb-3">
-                                    <div class="col-lg-6">
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" type="checkbox" id="default_use_h265" name="default_use_h265" checked>
-                                            <label class="form-check-label" for="default_use_h265">Convert to H.265 by default
-                                                <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Use H.265 for all new jobs unless changed"></i>
-                                            </label>
-                                        </div>
-                                    </div>
-                                    <div class="col-lg-6">
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" type="checkbox" id="clean_filenames" name="clean_filenames" checked>
-                                            <label class="form-check-label" for="clean_filenames">Clean filenames (spaces instead of underscores)
-                                                <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Replace _ with spaces when naming files"></i>
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="row mb-3 h265-concurrency">
-                                    <div class="col-lg-6">
-                                        <label for="max_concurrent_jobs" class="form-label">Concurrent Transcodes
-                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Number of H.265 conversions to run at once"></i>
-                                        </label>
-                                        <input type="range" class="form-range" min="1" max="4" step="1" id="max_concurrent_jobs" name="max_concurrent_jobs" value="1">
-                                        <div class="d-flex justify-content-between">
-                                            <small>1</small>
-                                            <small id="max-concurrent-value">1</small>
-                                            <small>4</small>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="row mb-3">
-                                    <div class="col-lg-6">
-                                        <label for="web_port" class="form-label">Web Interface Port
-                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Port number used for the web dashboard"></i>
-                                        </label>
-                                        <input type="number" class="form-control" id="web_port" name="web_port" min="1" max="65535" value="8000">
-                                    </div>
-                                    <div class="col-lg-6">
-                                        <label for="completed_jobs_limit" class="form-label">Number of completed jobs to keep
-                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="History entries to retain"></i>
-                                        </label>
-                                        <input type="number" class="form-control" id="completed_jobs_limit" name="completed_jobs_limit" min="1" max="100" value="10">
-                                    </div>
-                                </div>
-
-                                <div class="row mb-3">
-                                    <div class="col-lg-6">
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" type="checkbox" id="auto_check_updates" name="auto_check_updates">
-                                            <label class="form-check-label" for="auto_check_updates">Automatically check playlists for updates
-                                                <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Run background scans for new videos"></i>
-                                            </label>
-                                        </div>
-                                    </div>
-                                    <div class="col-lg-6 update-schedule-settings">
-                                        <label for="update_interval" class="form-label">Check interval (minutes)
-                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="How often to check playlists for new videos"></i>
-                                        </label>
-                                        <input type="number" class="form-control" id="update_interval" name="update_interval" min="5" value="60">
-                                    </div>
-                                </div>
-
-                                <!-- Metadata Provider Settings -->
-                                <h6 class="mt-4 mb-3">Metadata Providers</h6>
-
-                                <div class="row mb-3">
-                                    <div class="col-lg-12">
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" type="checkbox" id="imdb_enabled" name="imdb_enabled">
-                                            <label class="form-check-label" for="imdb_enabled">Use IMDb for movie metadata
-                                                <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Pull movie info from IMDb"></i>
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="row mb-3 imdb-settings">
-                                    <div class="col-lg-6">
-                                        <label for="imdb_api_key" class="form-label">IMDb API Key
-                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Required when using IMDb metadata"></i>
-                                        </label>
-                                        <input type="text" class="form-control" id="imdb_api_key" name="imdb_api_key">
-                                    </div>
-                                </div>
-                                
-                                <!-- Jellyfin Integration Settings -->
-                                <h6 class="mt-4 mb-3">Jellyfin Integration</h6>
-                                
-                                <div class="row mb-3">
-                                    <div class="col-lg-12">
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" type="checkbox" id="jellyfin_enabled" name="jellyfin_enabled">
-                                            <label class="form-check-label" for="jellyfin_enabled">Enable Jellyfin integration
-                                                <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Copy files to Jellyfin and trigger library scan"></i>
-                                            </label>
-                                        </div>
-                                        <div class="form-text">Copy processed files to Jellyfin TV folder structure</div>
-                                    </div>
-                                </div>
-                                
-                                <div class="row mb-3 jellyfin-settings">
-                                    <div class="col-lg-12">
-                                        <label for="jellyfin_tv_path" class="form-label">Jellyfin TV Library Path
-                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Folder where Jellyfin stores TV shows"></i>
-                                        </label>
-                                        <input type="text" class="form-control" id="jellyfin_tv_path" name="jellyfin_tv_path" placeholder="/path/to/jellyfin/tv">
-                                        <div class="form-text">Full path to Jellyfin TV library folder</div>
-                                    </div>
-                                </div>
-                                
-                                <div class="row mb-3 jellyfin-settings">
-                                    <div class="col-lg-4">
-                                        <label for="jellyfin_host" class="form-label">Jellyfin Host
-                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Hostname of your Jellyfin server"></i>
-                                        </label>
-                                        <input type="text" class="form-control" id="jellyfin_host" name="jellyfin_host" placeholder="localhost">
-                                    </div>
-                                    <div class="col-lg-4">
-                                        <label for="jellyfin_port" class="form-label">Jellyfin Port
-                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Port where Jellyfin is reachable"></i>
-                                        </label>
-                                        <input type="text" class="form-control" id="jellyfin_port" name="jellyfin_port" value="8096">
-                                    </div>
-                                    <div class="col-lg-4">
-                                        <label for="jellyfin_api_key" class="form-label">API Key (Optional)
-                                            <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Used to trigger Jellyfin library scan after copying"></i>
-                                        </label>
-                                        <input type="text" class="form-control" id="jellyfin_api_key" name="jellyfin_api_key">
-                                    </div>
-                                    <div class="col-12 mt-1">
-                                        <div class="form-text">Optional: Provide Jellyfin server details to trigger library scan after file copy</div>
-                                    </div>
-                                </div>
-                                
-                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                                    <button type="submit" class="btn btn-primary">Save Settings</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </section>
-            </main>
-        </div>
     </div>
-    
+
+    <!-- Toast Notifications -->
     <div class="toast-container position-fixed bottom-0 end-0 p-3">
-        <div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div id="liveToast" class="toast" role="alert">
             <div class="toast-header">
                 <strong class="me-auto" id="toast-title">Notification</strong>
-                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
             </div>
             <div class="toast-body" id="toast-message"></div>
         </div>
