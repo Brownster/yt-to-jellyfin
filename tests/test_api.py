@@ -44,14 +44,20 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertEqual(data["job_id"], "test-job-id")
 
         # Verify create_job was called with correct parameters
-        mock_create_job.assert_called_once_with(
-            "https://youtube.com/playlist?list=TEST",
-            "Test Show",
-            "01",
-            "01",
-            playlist_start=None,
-            track_playlist=True,
+        mock_create_job.assert_called_once()
+        args, kwargs = mock_create_job.call_args
+        self.assertEqual(
+            args,
+            (
+                "https://youtube.com/playlist?list=TEST",
+                "Test Show",
+                "01",
+                "01",
+            ),
         )
+        self.assertIsNone(kwargs.get("playlist_start"))
+        self.assertTrue(kwargs.get("track_playlist", True))
+        self.assertIsNone(kwargs.get("subscription_id"))
 
         # Test missing parameters
         response = self.client.post(

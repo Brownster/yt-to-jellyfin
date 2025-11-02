@@ -132,6 +132,55 @@ def playlists():
     return jsonify(ytj.list_playlists())
 
 
+@app.route("/subscriptions", methods=["GET", "POST"])
+def subscriptions():
+    """List subscriptions or create a new subscription."""
+    if request.method == "POST":
+        data = request.get_json(silent=True) or request.form
+        channel_url = data.get("channel_url")
+        show_name = data.get("show_name")
+        retention_type = data.get("retention_type", "keep_all")
+        retention_value = data.get("retention_value")
+        try:
+            subscription_id = ytj.create_subscription(
+                channel_url, show_name, retention_type, retention_value
+            )
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+        return jsonify({"subscription_id": subscription_id})
+    return jsonify(ytj.list_subscriptions())
+
+
+@app.route("/subscriptions/<sid>", methods=["PUT", "DELETE"])
+def subscription_modify(sid):
+    """Update or remove a subscription."""
+    if request.method == "DELETE":
+        if ytj.remove_subscription(sid):
+            return jsonify({"success": True})
+        return jsonify({"error": "Subscription not found"}), 404
+
+    data = request.get_json() or {}
+    show_name = data.get("show_name")
+    retention_type = data.get("retention_type")
+    retention_value = data.get("retention_value")
+    enabled = data.get("enabled")
+    if isinstance(enabled, str):
+        enabled = enabled.lower() in {"true", "1", "yes", "on"}
+    try:
+        updated = ytj.update_subscription(
+            sid,
+            show_name=show_name,
+            retention_type=retention_type,
+            retention_value=retention_value,
+            enabled=enabled,
+        )
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    if not updated:
+        return jsonify({"error": "Subscription not found"}), 404
+    return jsonify({"success": True})
+
+
 @app.route("/playlists/<pid>", methods=["PUT", "DELETE"])
 def playlist_modify(pid):
     """Enable/disable or remove a playlist."""

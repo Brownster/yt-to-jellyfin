@@ -109,7 +109,14 @@ class TestPlaylistOperations(unittest.TestCase):
 
     def test_process_success_and_failure(self):
         def fake_create_job(
-            url, show, season, episode_start, playlist_start=None, start_thread=True
+            url,
+            show,
+            season,
+            episode_start,
+            playlist_start=None,
+            track_playlist=True,
+            subscription_id=None,
+            start_thread=True,
         ):
             job = DownloadJob("job-1", url, show, season, episode_start)
             job.status = "completed"
@@ -124,7 +131,14 @@ class TestPlaylistOperations(unittest.TestCase):
             mock_cleanup.assert_called()
 
         def fake_create_job_fail(
-            url, show, season, episode_start, playlist_start=None, start_thread=True
+            url,
+            show,
+            season,
+            episode_start,
+            playlist_start=None,
+            track_playlist=True,
+            subscription_id=None,
+            start_thread=True,
         ):
             job = DownloadJob("job-2", url, show, season, episode_start)
             job.status = "failed"

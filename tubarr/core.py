@@ -51,6 +51,15 @@ from .episodes import (
     get_last_episode,
     update_last_episode,
 )
+from .subscriptions import (
+    _load_subscriptions,
+    create_subscription as _create_subscription,
+    update_subscription as _update_subscription,
+    remove_subscription as _remove_subscription,
+    list_subscriptions as _list_subscriptions,
+    check_subscription_updates as _check_subscription_updates,
+    apply_retention_policy,
+)
 
 
 class YTToJellyfin:
@@ -73,6 +82,8 @@ class YTToJellyfin:
         self.playlists = self._load_playlists()
         self.episodes_file = os.path.join("config", "episodes.json")
         self.episode_tracker = _load_episode_tracker(self.episodes_file)
+        self.subscriptions_file = os.path.join("config", "subscriptions.json")
+        self.subscriptions = _load_subscriptions(self.subscriptions_file)
         self.update_thread: Optional[threading.Thread] = None
         self.update_stop_event: Optional[threading.Event] = None
         if self.config.get("update_checker_enabled"):
@@ -140,13 +151,57 @@ class YTToJellyfin:
         )
 
     def check_playlist_updates(self) -> List[str]:
-        return check_playlist_updates(self)
+        jobs = check_playlist_updates(self)
+        jobs.extend(self.check_subscription_updates())
+        return jobs
 
     def start_update_checker(self) -> None:
         start_update_checker(self)
 
     def stop_update_checker(self) -> None:
         stop_update_checker(self)
+
+    def create_subscription(
+        self,
+        channel_url: str,
+        show_name: str,
+        retention_type: str,
+        retention_value: Optional[str] = None,
+    ) -> str:
+        return _create_subscription(
+            self, channel_url, show_name, retention_type, retention_value
+        )
+
+    def update_subscription(
+        self,
+        subscription_id: str,
+        *,
+        show_name: Optional[str] = None,
+        retention_type: Optional[str] = None,
+        retention_value: Optional[str] = None,
+        enabled: Optional[bool] = None,
+    ) -> bool:
+        updated = _update_subscription(
+            self,
+            subscription_id,
+            show_name=show_name,
+            retention_type=retention_type,
+            retention_value=retention_value,
+            enabled=enabled,
+        )
+        return updated
+
+    def remove_subscription(self, subscription_id: str) -> bool:
+        return _remove_subscription(self, subscription_id)
+
+    def list_subscriptions(self) -> List[Dict]:
+        return _list_subscriptions(self)
+
+    def check_subscription_updates(self) -> List[str]:
+        return _check_subscription_updates(self)
+
+    def apply_subscription_retention(self, subscription_id: str) -> None:
+        apply_retention_policy(self, subscription_id)
 
     # job helpers
     def create_job(
@@ -263,6 +318,8 @@ class YTToJellyfin:
                 status="completed", progress=100, message="Job completed successfully"
             )
             log_job(job_id, logging.INFO, "Job completed successfully")
+            if job.subscription_id:
+                self.apply_subscription_retention(job.subscription_id)
             try:
                 pid = self._get_playlist_id(job.playlist_url)
                 info = self.playlists.get(pid)

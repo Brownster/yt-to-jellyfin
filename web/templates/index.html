@@ -50,6 +50,11 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link" href="#" data-section="subscriptions">
+                                <i class="bi bi-bell me-2"></i> Channel Subscriptions
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link" href="#" data-section="media">
                                 <i class="bi bi-collection-play me-2"></i> Media Library
                             </a>
@@ -289,7 +294,85 @@
                 </table>
             </div>
         </section>
-                
+
+        <section id="subscriptions" class="content-section d-none">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">Channel Subscriptions</h1>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-secondary" id="check-subscriptions">
+                        <i class="bi bi-arrow-clockwise"></i> Check Now
+                    </button>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-lg-5">
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold">Subscribe to Channel</h6>
+                        </div>
+                        <div class="card-body">
+                            <form id="subscription-form">
+                                <div class="mb-3">
+                                    <label for="channel_url" class="form-label">YouTube Channel URL <span class="text-danger">*</span>
+                                        <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="URL of the YouTube channel to monitor"></i>
+                                    </label>
+                                    <input type="text" class="form-control" id="channel_url" name="channel_url" placeholder="https://youtube.com/@channel" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="subscription_show_name" class="form-label">TV Show Name <span class="text-danger">*</span>
+                                        <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Show name used for Season 00 episodes"></i>
+                                    </label>
+                                    <input type="text" class="form-control" id="subscription_show_name" name="subscription_show_name" placeholder="Show Name" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="retention_type" class="form-label">Retention Policy
+                                        <i class="bi bi-question-circle ms-1" data-bs-toggle="tooltip" title="Choose how long to keep downloaded episodes"></i>
+                                    </label>
+                                    <select class="form-select" id="retention_type" name="retention_type">
+                                        <option value="keep_all" selected>Keep all episodes</option>
+                                        <option value="keep_episodes">Keep last X episodes</option>
+                                        <option value="keep_days">Keep episodes from last X days</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3" id="retention-value-group">
+                                    <label for="retention_value" class="form-label">Retention Value</label>
+                                    <input type="number" class="form-control" id="retention_value" name="retention_value" min="1" disabled>
+                                    <div class="form-text" id="retention-value-help">Enter how many episodes or days to keep.</div>
+                                </div>
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <button type="submit" class="btn btn-primary" id="create-subscription-btn">Subscribe</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-7">
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold">Active Subscriptions</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover" id="subscriptions-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Show</th>
+                                            <th>Channel URL</th>
+                                            <th>Retention</th>
+                                            <th>Last Episode</th>
+                                            <th>Status</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
                 <!-- New Job Section -->
                 <section id="new-job" class="content-section d-none">
                     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
@@ -557,6 +640,45 @@
                                 <button type="button" class="btn btn-primary" id="confirm-start-video">Confirm</button>
                             </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Subscription Edit Modal -->
+        <div class="modal fade" id="subscriptionEditModal" tabindex="-1" aria-labelledby="subscriptionEditModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <form class="modal-content" id="subscription-edit-form">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="subscriptionEditModalLabel">Edit Subscription</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="edit_subscription_show_name" class="form-label">TV Show Name</label>
+                            <input type="text" class="form-control" id="edit_subscription_show_name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit_retention_type" class="form-label">Retention Policy</label>
+                            <select class="form-select" id="edit_retention_type">
+                                <option value="keep_all">Keep all episodes</option>
+                                <option value="keep_episodes">Keep last X episodes</option>
+                                <option value="keep_days">Keep episodes from last X days</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit_retention_value" class="form-label">Retention Value</label>
+                            <input type="number" class="form-control" id="edit_retention_value" min="1" disabled>
+                            <div class="form-text" id="edit-retention-help">Enter how many episodes or days to keep.</div>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="edit_subscription_enabled" checked>
+                            <label class="form-check-label" for="edit_subscription_enabled">Download new episodes</label>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="update-subscription-btn">Save Changes</button>
+                    </div>
+                </form>
             </div>
         </div>
 
