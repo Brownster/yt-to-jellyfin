@@ -87,6 +87,7 @@ class TestJobManagement(unittest.TestCase):
         self.assertEqual(job_dict["show_name"], "show")
         self.assertEqual(job_dict["season_num"], "01")
         self.assertEqual(job_dict["episode_start"], "01")
+        self.assertIsNone(job_dict["subscription_id"])
         self.assertEqual(job_dict["status"], "downloading")
         self.assertEqual(job_dict["progress"], 30)
         self.assertEqual(len(job_dict["messages"]), 1)

@@ -22,6 +22,7 @@ class DownloadJob:
         playlist_start=None,
         media_type="tv",
         movie_name="",
+        subscription_id=None,
     ):
         self.job_id = job_id
         self.playlist_url = playlist_url
@@ -31,6 +32,7 @@ class DownloadJob:
         self.playlist_start = playlist_start
         self.media_type = media_type
         self.movie_name = movie_name
+        self.subscription_id = subscription_id
         self.status = "queued"
         self.progress = 0
         self.messages = []
@@ -110,6 +112,7 @@ class DownloadJob:
             "playlist_start": self.playlist_start,
             "media_type": self.media_type,
             "movie_name": self.movie_name,
+            "subscription_id": self.subscription_id,
             "status": self.status,
             "progress": self.progress,
             "messages": messages,
@@ -136,12 +139,19 @@ def create_job(
     episode_start: str,
     playlist_start: Optional[int] = None,
     track_playlist: bool = True,
+    subscription_id: Optional[str] = None,
     *,
     start_thread: bool = True,
 ) -> str:
     job_id = str(uuid.uuid4())
     job = DownloadJob(
-        job_id, playlist_url, show_name, season_num, episode_start, playlist_start
+        job_id,
+        playlist_url,
+        show_name,
+        season_num,
+        episode_start,
+        playlist_start,
+        subscription_id=subscription_id,
     )
 
     try:

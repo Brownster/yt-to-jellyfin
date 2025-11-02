@@ -1,5 +1,7 @@
 // Tubarr Frontend Script
 
+let subscriptionsCache = [];
+
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize Bootstrap components
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
@@ -39,6 +41,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 loadMedia();
             } else if (sectionId === 'playlists') {
                 loadPlaylists();
+            } else if (sectionId === 'subscriptions') {
+                loadSubscriptions();
             } else if (sectionId === 'settings') {
                 loadSettings();
             } else if (sectionId === 'dashboard') {
@@ -69,6 +73,52 @@ document.addEventListener('DOMContentLoaded', function() {
     if (concurrencySlider && concurrencyValue) {
         concurrencySlider.addEventListener('input', function() {
             concurrencyValue.textContent = this.value;
+        });
+    }
+
+    const subscriptionsTableBody = document.querySelector('#subscriptions-table tbody');
+    const subscriptionEditModalEl = document.getElementById('subscriptionEditModal');
+    let editingSubscriptionId = null;
+
+    function configureRetentionControls(selectId, inputId, helpId) {
+        const select = document.getElementById(selectId);
+        const input = document.getElementById(inputId);
+        const help = helpId ? document.getElementById(helpId) : null;
+        if (!select || !input) {
+            return null;
+        }
+
+        const updateState = () => {
+            const mode = select.value;
+            if (mode === 'keep_all') {
+                input.disabled = true;
+                input.value = '';
+                if (help) {
+                    help.textContent = 'Keep every downloaded episode.';
+                }
+            } else if (mode === 'keep_episodes') {
+                input.disabled = false;
+                input.placeholder = 'e.g. 10';
+                if (help) {
+                    help.textContent = 'Keep only the most recent number of episodes.';
+                }
+            } else if (mode === 'keep_days') {
+                input.disabled = false;
+                input.placeholder = 'e.g. 10';
+                if (help) {
+                    help.textContent = 'Remove episodes older than the specified number of days.';
+                }
+            }
+        };
+
+        select.addEventListener('change', updateState);
+        updateState();
+        return { select, input };
+    }
+
+    if (subscriptionEditModalEl) {
+        subscriptionEditModalEl.addEventListener('hidden.bs.modal', () => {
+            editingSubscriptionId = null;
         });
     }
     
@@ -209,6 +259,178 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+
+    const subscriptionRetentionControls = configureRetentionControls('retention_type', 'retention_value', 'retention-value-help');
+    const editRetentionControls = configureRetentionControls('edit_retention_type', 'edit_retention_value', 'edit-retention-help');
+
+    const subscriptionForm = document.getElementById('subscription-form');
+    if (subscriptionForm) {
+        subscriptionForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const submitBtn = document.getElementById('create-subscription-btn');
+            const originalHTML = submitBtn ? submitBtn.innerHTML : '';
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Subscribing...`;
+            }
+
+            const payload = {
+                channel_url: document.getElementById('channel_url').value.trim(),
+                show_name: document.getElementById('subscription_show_name').value.trim(),
+                retention_type: document.getElementById('retention_type').value
+            };
+            const retentionVal = document.getElementById('retention_value');
+            if (retentionVal && !retentionVal.disabled && retentionVal.value) {
+                payload.retention_value = retentionVal.value.trim();
+            }
+
+            fetch('/subscriptions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.subscription_id) {
+                        showToast('Success', 'Channel subscribed successfully');
+                        subscriptionForm.reset();
+                        if (subscriptionRetentionControls) {
+                            subscriptionRetentionControls.select.value = 'keep_all';
+                            subscriptionRetentionControls.select.dispatchEvent(new Event('change'));
+                        }
+                        loadSubscriptions();
+                    } else {
+                        showToast('Error', data.error || 'Failed to create subscription');
+                    }
+                })
+                .catch(() => showToast('Error', 'Failed to create subscription'))
+                .finally(() => {
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalHTML;
+                    }
+                });
+        });
+    }
+
+    const subscriptionEditForm = document.getElementById('subscription-edit-form');
+    if (subscriptionEditForm && editRetentionControls) {
+        subscriptionEditForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (!editingSubscriptionId) {
+                return;
+            }
+
+            const payload = {
+                show_name: document.getElementById('edit_subscription_show_name').value.trim(),
+                retention_type: editRetentionControls.select.value,
+                enabled: document.getElementById('edit_subscription_enabled').checked
+            };
+            if (!editRetentionControls.input.disabled && editRetentionControls.input.value) {
+                payload.retention_value = editRetentionControls.input.value.trim();
+            }
+
+            fetch(`/subscriptions/${editingSubscriptionId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('Success', 'Subscription updated');
+                        const modal = bootstrap.Modal.getInstance(subscriptionEditModalEl);
+                        if (modal) {
+                            modal.hide();
+                        }
+                        loadSubscriptions();
+                    } else {
+                        showToast('Error', data.error || 'Failed to update subscription');
+                    }
+                })
+                .catch(() => showToast('Error', 'Failed to update subscription'));
+        });
+    }
+
+    if (subscriptionsTableBody) {
+        subscriptionsTableBody.addEventListener('click', function(event) {
+            const button = event.target.closest('button[data-action]');
+            if (!button) {
+                return;
+            }
+            const id = button.getAttribute('data-id');
+            const action = button.getAttribute('data-action');
+            const subscription = subscriptionsCache.find(s => s.id === id);
+            if (!subscription) {
+                return;
+            }
+
+            if (action === 'edit') {
+                if (!editRetentionControls) {
+                    return;
+                }
+                editingSubscriptionId = id;
+                document.getElementById('edit_subscription_show_name').value = subscription.show_name || '';
+                const mode = (subscription.retention && subscription.retention.mode) || 'all';
+                let selectValue = 'keep_all';
+                if (mode === 'episodes') {
+                    selectValue = 'keep_episodes';
+                } else if (mode === 'days') {
+                    selectValue = 'keep_days';
+                }
+                editRetentionControls.select.value = selectValue;
+                editRetentionControls.select.dispatchEvent(new Event('change'));
+                if (selectValue !== 'keep_all') {
+                    editRetentionControls.input.value = subscription.retention && subscription.retention.value ? subscription.retention.value : '';
+                } else {
+                    editRetentionControls.input.value = '';
+                }
+                const enabledSwitch = document.getElementById('edit_subscription_enabled');
+                if (enabledSwitch) {
+                    enabledSwitch.checked = subscription.enabled !== false;
+                }
+                const modal = new bootstrap.Modal(subscriptionEditModalEl);
+                modal.show();
+            } else if (action === 'toggle') {
+                const payload = { enabled: !(subscription.enabled !== false) };
+                fetch(`/subscriptions/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            showToast('Success', payload.enabled ? 'Subscription resumed' : 'Subscription paused');
+                            loadSubscriptions();
+                        } else {
+                            showToast('Error', data.error || 'Failed to update subscription');
+                        }
+                    })
+                    .catch(() => showToast('Error', 'Failed to update subscription'));
+            } else if (action === 'delete') {
+                if (!confirm('Remove this subscription?')) {
+                    return;
+                }
+                fetch(`/subscriptions/${id}`, { method: 'DELETE' })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            showToast('Success', 'Subscription removed');
+                            loadSubscriptions();
+                        } else {
+                            showToast('Error', data.error || 'Failed to remove subscription');
+                        }
+                    })
+                    .catch(() => showToast('Error', 'Failed to remove subscription'));
+            }
+        });
+    }
     
     // Settings Form Submission
     const settingsForm = document.getElementById('settings-form');
@@ -331,21 +553,28 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    function triggerUpdateCheck() {
+        fetch('/playlists/check', { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.created_jobs && data.created_jobs.length > 0) {
+                    showToast('Updates', `Created ${data.created_jobs.length} jobs`);
+                    loadJobs();
+                } else {
+                    showToast('Info', 'No updates found');
+                }
+            })
+            .catch(() => showToast('Error', 'Failed to check for updates'));
+    }
+
     const checkPlaylistsBtn = document.getElementById('check-playlists');
     if (checkPlaylistsBtn) {
-        checkPlaylistsBtn.addEventListener('click', function() {
-            fetch('/playlists/check', {method: 'POST'})
-                .then(r => r.json())
-                .then(data => {
-                    if (data.created_jobs && data.created_jobs.length > 0) {
-                        showToast('Updates', `Created ${data.created_jobs.length} jobs`);
-                        loadJobs();
-                    } else {
-                        showToast('Info', 'No updates found');
-                    }
-                })
-                .catch(() => showToast('Error', 'Failed to check playlists'));
-        });
+        checkPlaylistsBtn.addEventListener('click', triggerUpdateCheck);
+    }
+
+    const checkSubscriptionsBtn = document.getElementById('check-subscriptions');
+    if (checkSubscriptionsBtn) {
+        checkSubscriptionsBtn.addEventListener('click', triggerUpdateCheck);
     }
     
     // Load dashboard data by default
@@ -360,6 +589,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         if (document.querySelector('#playlists:not(.d-none)')) {
             loadPlaylists();
+        }
+        if (document.querySelector('#subscriptions:not(.d-none)')) {
+            loadSubscriptions();
         }
     }, 5000);
 });
@@ -511,6 +743,83 @@ function updatePlaylistsTable(data) {
                 })
                 .catch(() => showToast('Error', 'Failed to remove playlist'));
         });
+    });
+}
+
+function escapeHtml(value) {
+    if (value === undefined || value === null) {
+        return '';
+    }
+    return value
+        .toString()
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function formatRetention(retention) {
+    if (!retention || retention.mode === 'all') {
+        return 'Keep all episodes';
+    }
+    if (retention.mode === 'episodes') {
+        return `Keep last ${retention.value} episodes`;
+    }
+    if (retention.mode === 'days') {
+        return `Keep last ${retention.value} days`;
+    }
+    return 'Custom';
+}
+
+function loadSubscriptions() {
+    fetch('/subscriptions')
+        .then(r => r.json())
+        .then(list => {
+            subscriptionsCache = Array.isArray(list) ? list : [];
+            updateSubscriptionsTable(subscriptionsCache);
+        })
+        .catch(err => console.error('Error fetching subscriptions:', err));
+}
+
+function updateSubscriptionsTable(data) {
+    const tbody = document.querySelector('#subscriptions-table tbody');
+    if (!tbody) {
+        return;
+    }
+    tbody.innerHTML = '';
+    if (!data || data.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = '<td colspan="6" class="text-center">No channel subscriptions</td>';
+        tbody.appendChild(row);
+        return;
+    }
+
+    data.forEach(sub => {
+        const row = document.createElement('tr');
+        const showCell = escapeHtml(sub.show_name || '');
+        const urlCell = escapeHtml(sub.url || '');
+        const retentionCell = formatRetention(sub.retention);
+        const lastEpisode = sub.last_episode || 0;
+        const enabled = sub.enabled !== false;
+        const statusBadge = enabled
+            ? '<span class="badge bg-success">Active</span>'
+            : '<span class="badge bg-secondary">Paused</span>';
+        const safeHref = encodeURI(sub.url || '');
+        const actions = `
+            <div class="btn-group btn-group-sm" role="group">
+                <button type="button" class="btn btn-outline-primary" data-action="edit" data-id="${sub.id}" title="Edit subscription"><i class="bi bi-pencil"></i></button>
+                <button type="button" class="btn btn-outline-${enabled ? 'warning' : 'success'}" data-action="toggle" data-id="${sub.id}" title="${enabled ? 'Pause downloads' : 'Resume downloads'}"><i class="bi ${enabled ? 'bi-pause-circle' : 'bi-play-circle'}"></i></button>
+                <button type="button" class="btn btn-outline-danger" data-action="delete" data-id="${sub.id}" title="Remove subscription"><i class="bi bi-trash"></i></button>
+            </div>`;
+        row.innerHTML = `
+            <td>${showCell}</td>
+            <td><a href="${safeHref}" target="_blank" rel="noopener noreferrer">${urlCell}</a></td>
+            <td>${escapeHtml(retentionCell)}</td>
+            <td>${lastEpisode}</td>
+            <td>${statusBadge}</td>
+            <td class="text-end">${actions}</td>`;
+        tbody.appendChild(row);
     });
 }
 
