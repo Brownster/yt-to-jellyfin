@@ -23,7 +23,8 @@ Tubarr is a Python application that downloads YouTube playlists and processes th
 - **Job Management**: Track download progress and manage multiple concurrent downloads
 - **Configurable Concurrency**: Limit how many playlists convert at once
 
-![Screenshot_20250609_184625](https://github.com/user-attachments/assets/591071d3-bdc7-49f2-8a94-35a5cb7db89d)
+<img width="1836" height="761" alt="image" src="https://github.com/user-attachments/assets/93efdb9c-760e-41b0-b53c-aac99edcb457" />
+
 
 ## Installation
 
