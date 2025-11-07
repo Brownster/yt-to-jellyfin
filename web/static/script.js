@@ -44,8 +44,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 loadJobs();
             } else if (sectionId === 'history') {
                 loadHistory();
-            } else if (sectionId === 'media') {
-                loadMedia();
             } else if (sectionId === 'playlists') {
                 loadPlaylists();
             } else if (sectionId === 'subscriptions') {
@@ -668,14 +666,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Refresh Media button
-    const refreshMediaBtn = document.getElementById('refresh-media');
-    if (refreshMediaBtn) {
-        refreshMediaBtn.addEventListener('click', function() {
-            loadMedia();
-        });
-    }
-
     function triggerUpdateCheck() {
         fetch('/playlists/check', { method: 'POST' })
             .then(r => r.json())
@@ -739,23 +729,21 @@ function loadDashboard() {
             console.error('Error fetching jobs:', error);
         });
     
-    // Load media data
+    // Load media data for dashboard statistics
     fetch('/media')
         .then(response => response.json())
         .then(media => {
             updateMediaStats(media);
-            updateRecentTvMedia(media);
         })
         .catch(error => {
             console.error('Error fetching media:', error);
         });
 
-    // Load movie data
+    // Load movie data for dashboard statistics
     fetch('/movies')
         .then(response => response.json())
         .then(movies => {
             updateMovieStats(movies);
-            updateRecentMovieMedia(movies);
         })
         .catch(error => {
             console.error('Error fetching movies:', error);
@@ -793,6 +781,14 @@ function updateJobsData() {
             if (document.querySelector('#dashboard:not(.d-none)')) {
                 updateDashboardStats(jobs);
                 updateRecentJobs(jobs);
+                fetch('/media')
+                    .then(response => response.json())
+                    .then(updateMediaStats)
+                    .catch(error => console.error('Error fetching media:', error));
+                fetch('/movies')
+                    .then(response => response.json())
+                    .then(updateMovieStats)
+                    .catch(error => console.error('Error fetching movies:', error));
             }
             if (document.querySelector('#history:not(.d-none)')) {
                 loadHistory();
@@ -2352,172 +2348,6 @@ function stopMusicJobPolling(jobId) {
     }
 }
 
-function loadMedia() {
-    Promise.all([
-        fetch('/media').then(r => r.json()),
-        fetch('/movies').then(r => r.json())
-    ])
-        .then(([media, movies]) => {
-            displayMediaLibrary(media, movies);
-        })
-        .catch(error => {
-            console.error('Error fetching media:', error);
-        });
-}
-
-function displayMediaLibrary(media, movies) {
-    const tvContainer = document.getElementById('media-tv-container');
-    tvContainer.innerHTML = '';
-
-    if (media.length === 0) {
-        tvContainer.innerHTML = '<div class="alert alert-info">No TV shows found in library</div>';
-    } else {
-        const row = document.createElement('div');
-        row.className = 'row';
-
-        media.forEach(show => {
-            const showId = show.name.replace(/[^a-zA-Z0-9]/g, '_');
-            const totalEpisodes = show.episode_count || 0;
-            const posterUrl = show.poster ? `/media_files/${encodeURIComponent(show.poster)}` : null;
-
-            const col = document.createElement('div');
-            col.className = 'col-sm-6 col-md-4 col-lg-3 mb-4';
-            col.innerHTML = `
-                <div class="card h-100 show-card" data-show-id="${showId}">
-                    <div class="show-poster-container position-relative">
-                        ${posterUrl ? `<img src="${posterUrl}" class="show-poster" alt="${show.name}">` : `<div class="show-poster bg-secondary d-flex align-items-center justify-content-center"><i class="bi bi-tv text-white" style="font-size: 3rem;"></i></div>`}
-                        <span class="badge bg-primary position-absolute top-0 end-0 m-2">${totalEpisodes}</span>
-                    </div>
-                    <div class="card-body text-center">
-                        <h5 class="card-title">${show.name}</h5>
-                    </div>
-                </div>`;
-
-            const seasonsRow = document.createElement('div');
-            seasonsRow.className = 'col-12 d-none';
-            seasonsRow.id = `show-seasons-${showId}`;
-            seasonsRow.innerHTML = `<div class="row mt-2">${show.seasons.map(season => createSeasonCard(season)).join('')}</div>`;
-            row.appendChild(col);
-            row.appendChild(seasonsRow);
-        });
-
-        tvContainer.appendChild(row);
-    }
-
-    const movieContainer = document.getElementById('media-movie-container');
-    movieContainer.innerHTML = '';
-
-    if (movies.length === 0) {
-        movieContainer.innerHTML = '<div class="alert alert-info">No movies found in library</div>';
-    } else {
-        const movieRow = document.createElement('div');
-        movieRow.className = 'row';
-        movies.forEach(movie => {
-            movieRow.innerHTML += createMovieCard(movie);
-        });
-        movieContainer.appendChild(movieRow);
-    }
-
-    document.querySelectorAll('.show-card').forEach(card => {
-        card.addEventListener('click', function() {
-            const showId = this.getAttribute('data-show-id');
-            const seasonsContainer = document.getElementById(`show-seasons-${showId}`);
-            if (seasonsContainer) {
-                seasonsContainer.classList.toggle('d-none');
-            }
-        });
-    });
-
-    document.querySelectorAll('.season-card').forEach(card => {
-        card.addEventListener('click', function() {
-            const seasonId = this.getAttribute('data-season-id');
-            const episodeContainer = document.getElementById(`episode-container-${seasonId}`);
-
-            if (episodeContainer.classList.contains('d-none')) {
-                episodeContainer.classList.remove('d-none');
-                this.querySelector('.toggle-icon').classList.replace('bi-plus', 'bi-dash');
-            } else {
-                episodeContainer.classList.add('d-none');
-                this.querySelector('.toggle-icon').classList.replace('bi-dash', 'bi-plus');
-            }
-        });
-    });
-}
-
-function createSeasonCard(season) {
-    const seasonId = season.name.replace(/[^a-zA-Z0-9]/g, '_');
-    const episodeCount = season.episodes.length;
-    const posterUrl = season.poster ? `/media_files/${encodeURIComponent(season.poster)}` : null;
-
-    return `
-        <div class="col-md-6 col-lg-4 mb-4">
-            <div class="card media-card">
-                <div class="season-poster-container">
-                    ${posterUrl ? `<img src="${posterUrl}" class="season-poster" alt="${season.name}">` : `<div class="season-poster bg-secondary d-flex align-items-center justify-content-center"><i class="bi bi-film text-white" style="font-size: 3rem;"></i></div>`}
-                </div>
-                <div class="card-body">
-                    <h5 class="card-title">${season.name}</h5>
-                    <p class="card-text">${episodeCount} Episodes</p>
-                    <div class="d-grid">
-                        <button class="btn btn-outline-primary season-card" data-season-id="${seasonId}">
-                            <i class="bi bi-plus toggle-icon"></i> Episode List
-                        </button>
-                    </div>
-                </div>
-                <div id="episode-container-${seasonId}" class="d-none">
-                    <div class="episode-table-container">
-                        <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>Episode</th>
-                                    <th>Size</th>
-                                    <th>Modified</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${season.episodes.map(ep => createEpisodeRow(ep)).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-function createEpisodeRow(episode) {
-    const size = formatFileSize(episode.size);
-
-    return `
-        <tr>
-            <td>${episode.episode_num !== null && episode.episode_num !== undefined ? episode.episode_num : ''}</td>
-            <td>${episode.name}</td>
-            <td>${size}</td>
-            <td>${formatDate(episode.modified)}</td>
-        </tr>
-    `;
-}
-
-function createMovieCard(movie) {
-    const posterUrl = movie.poster ? `/media_files/${encodeURIComponent(movie.poster)}` : null;
-    const size = formatFileSize(movie.size);
-
-    return `
-        <div class="col-sm-6 col-md-4 col-lg-3 mb-4">
-            <div class="card movie-card h-100">
-                <div class="season-poster-container">
-                    ${posterUrl ? `<img src="${posterUrl}" class="season-poster" alt="${movie.name}">` : `<div class="season-poster bg-secondary d-flex align-items-center justify-content-center"><i class="bi bi-film text-white" style="font-size: 3rem;"></i></div>`}
-                </div>
-                <div class="card-body">
-                    <h5 class="card-title">${movie.name}</h5>
-                    <p class="card-text">${size}<br>${formatDate(movie.modified)}</p>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
 function loadSettings() {
     fetch('/config')
         .then(response => response.json())
@@ -2663,108 +2493,6 @@ function updateRecentJobs(jobs) {
             </div>
         `;
         container.appendChild(item);
-    });
-}
-
-function updateRecentTvMedia(media) {
-    const container = document.getElementById('recent-activity-media');
-    if (!container) return;
-
-    container.innerHTML = '';
-
-    if (media.length === 0) {
-        container.innerHTML = '<p class="text-gray-400 text-center py-3">No media found</p>';
-        return;
-    }
-
-    // Flatten all seasons
-    let allSeasons = [];
-    media.forEach(show => {
-        show.seasons.forEach(season => {
-            allSeasons.push({
-                show: show.name,
-                ...season
-            });
-        });
-    });
-
-    // Sort by latest modified episode
-    allSeasons.sort((a, b) => {
-        const aLatest = a.episodes.length > 0 ?
-            Math.max(...a.episodes.map(e => new Date(e.modified).getTime())) : 0;
-        const bLatest = b.episodes.length > 0 ?
-            Math.max(...b.episodes.map(e => new Date(e.modified).getTime())) : 0;
-        return bLatest - aLatest;
-    });
-
-    // Take only first 5
-    const recentSeasons = allSeasons.slice(0, 5);
-
-    recentSeasons.forEach(season => {
-        const latestDate = season.episodes.length > 0 ?
-            Math.max(...season.episodes.map(e => new Date(e.modified).getTime())) : 0;
-
-        const item = document.createElement('div');
-        item.className = 'activity-item';
-        item.innerHTML = `
-            <div class="flex-1">
-                <p class="item-title">${escapeHtml(season.show)}</p>
-                <p class="item-subtitle">${escapeHtml(season.name)} • ${season.episodes.length} episode${season.episodes.length > 1 ? 's' : ''}</p>
-            </div>
-            <p class="item-meta">${latestDate ? formatDate(new Date(latestDate).toISOString()) : 'N/A'}</p>
-        `;
-        container.appendChild(item);
-    });
-}
-
-function updateRecentMovieJobs(jobs) {
-    const table = document.getElementById('recent-movie-jobs-table').querySelector('tbody');
-    table.innerHTML = '';
-
-    if (jobs.length === 0) {
-        const row = document.createElement('tr');
-        row.innerHTML = '<td colspan="3" class="text-center">No jobs found</td>';
-        table.appendChild(row);
-        return;
-    }
-
-    jobs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    const recent = jobs.slice(0, 5);
-
-    recent.forEach(job => {
-        const row = document.createElement('tr');
-        const statusClass = getStatusBadgeClass(job.status);
-        row.innerHTML = `
-            <td>${job.movie_name}</td>
-            <td><span class="badge ${statusClass}">${job.status}</span></td>
-            <td>${formatDate(job.created_at)}</td>
-        `;
-        table.appendChild(row);
-    });
-}
-
-function updateRecentMovieMedia(movies) {
-    const table = document.getElementById('recent-movie-media-table').querySelector('tbody');
-    table.innerHTML = '';
-
-    if (movies.length === 0) {
-        const row = document.createElement('tr');
-        row.innerHTML = '<td colspan="3" class="text-center">No movies found</td>';
-        table.appendChild(row);
-        return;
-    }
-
-    movies.sort((a, b) => new Date(b.modified) - new Date(a.modified));
-    const recent = movies.slice(0, 5);
-
-    recent.forEach(movie => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${movie.name}</td>
-            <td>${formatFileSize(movie.size)}</td>
-            <td>${formatDate(movie.modified)}</td>
-        `;
-        table.appendChild(row);
     });
 }
 
