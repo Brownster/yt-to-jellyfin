@@ -1,6 +1,13 @@
 // Tubarr Frontend Script
 
 let subscriptionsCache = [];
+const musicState = {
+    albumTracks: [],
+    playlistTracks: [],
+    editing: null,
+    pendingTags: {},
+};
+const musicJobPollers = new Map();
 
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize Bootstrap components
@@ -50,7 +57,11 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
-    
+
+    setupJobFilterControls();
+    setupHistoryFilterControls();
+    initializeMusicForms();
+
     // CRF sliders
     const crfSlider = document.getElementById('crf');
     const crfValue = document.getElementById('crf-value');
@@ -114,6 +125,118 @@ document.addEventListener('DOMContentLoaded', function() {
         select.addEventListener('change', updateState);
         updateState();
         return { select, input };
+    }
+
+    function setupJobFilterControls() {
+        const group = document.getElementById('job-type-filter');
+        if (!group) {
+            return;
+        }
+        group.addEventListener('click', event => {
+            const button = event.target.closest('button[data-job-filter]');
+            if (!button) {
+                return;
+            }
+            group.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            const filter = button.getAttribute('data-job-filter');
+            document.querySelectorAll('.job-panel').forEach(panel => {
+                const type = panel.getAttribute('data-job-type');
+                if (filter === 'all' || type === filter) {
+                    panel.style.display = '';
+                } else {
+                    panel.style.display = 'none';
+                }
+            });
+        });
+    }
+
+    function setupHistoryFilterControls() {
+        const group = document.getElementById('history-type-filter');
+        if (!group) {
+            return;
+        }
+        group.addEventListener('click', event => {
+            const button = event.target.closest('button[data-history-filter]');
+            if (!button) {
+                return;
+            }
+            group.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            const filter = button.getAttribute('data-history-filter');
+            document.querySelectorAll('.history-panel').forEach(panel => {
+                const type = panel.getAttribute('data-history-type');
+                if (filter === 'all' || type === filter) {
+                    panel.style.display = '';
+                } else {
+                    panel.style.display = 'none';
+                }
+            });
+        });
+    }
+
+    function initializeMusicForms() {
+        const singleForm = document.getElementById('music-single-form');
+        if (singleForm) {
+            singleForm.addEventListener('submit', handleMusicSingleSubmit);
+        }
+
+        const albumFetchBtn = document.getElementById('music_album_fetch');
+        if (albumFetchBtn) {
+            albumFetchBtn.addEventListener('click', handleMusicAlbumFetch);
+        }
+
+        const albumAddTrackBtn = document.getElementById('music_album_add_track');
+        if (albumAddTrackBtn) {
+            albumAddTrackBtn.addEventListener('click', () => {
+                addMusicTrack('album');
+            });
+        }
+
+        const albumForm = document.getElementById('music-album-form');
+        if (albumForm) {
+            albumForm.addEventListener('submit', handleMusicAlbumSubmit);
+        }
+
+        const playlistFetchBtn = document.getElementById('music_playlist_fetch');
+        if (playlistFetchBtn) {
+            playlistFetchBtn.addEventListener('click', handleMusicPlaylistFetch);
+        }
+
+        const playlistForm = document.getElementById('music-playlist-form');
+        if (playlistForm) {
+            playlistForm.addEventListener('submit', handleMusicPlaylistSubmit);
+        }
+
+        const trackSaveButton = document.getElementById('music_track_save');
+        if (trackSaveButton) {
+            trackSaveButton.addEventListener('click', saveMusicTrackModal);
+        }
+
+        const manageTagsButton = document.getElementById('music_track_manage_tags');
+        if (manageTagsButton) {
+            manageTagsButton.addEventListener('click', openMusicTagModal);
+        }
+
+        const tagAddButton = document.getElementById('music_tag_add');
+        if (tagAddButton) {
+            tagAddButton.addEventListener('click', addMusicTag);
+        }
+
+        const tagList = document.getElementById('music_tag_list');
+        if (tagList) {
+            tagList.addEventListener('click', handleMusicTagListClick);
+        }
+
+        const tagModalEl = document.getElementById('musicTagModal');
+        if (tagModalEl) {
+            tagModalEl.addEventListener('hidden.bs.modal', () => {
+                const tagsInput = document.getElementById('music_track_tags');
+                if (tagsInput) {
+                    tagsInput.value = formatTags(musicState.pendingTags);
+                }
+            });
+        }
     }
 
     if (subscriptionEditModalEl) {
@@ -610,10 +733,7 @@ function loadDashboard() {
         .then(response => response.json())
         .then(jobs => {
             updateDashboardStats(jobs);
-            const tvJobs = jobs.filter(j => j.media_type !== 'movie');
-            const movieJobs = jobs.filter(j => j.media_type === 'movie');
-            updateRecentTvJobs(tvJobs);
-            updateRecentMovieJobs(movieJobs);
+            updateRecentJobs(jobs);
         })
         .catch(error => {
             console.error('Error fetching jobs:', error);
@@ -646,10 +766,12 @@ function loadJobs() {
     fetch('/jobs')
         .then(response => response.json())
         .then(jobs => {
-            const tvJobs = jobs.filter(j => j.media_type !== 'movie');
+            const musicJobs = jobs.filter(j => j.media_type === 'music');
             const movieJobs = jobs.filter(j => j.media_type === 'movie');
+            const tvJobs = jobs.filter(j => j.media_type !== 'movie' && j.media_type !== 'music');
             updateJobsTable(tvJobs);
             updateMovieJobsTable(movieJobs);
+            updateMusicJobsTable(musicJobs);
         })
         .catch(error => {
             console.error('Error fetching jobs:', error);
@@ -660,16 +782,17 @@ function updateJobsData() {
     fetch('/jobs')
         .then(response => response.json())
         .then(jobs => {
-            const tvJobs = jobs.filter(j => j.media_type !== 'movie');
+            const musicJobs = jobs.filter(j => j.media_type === 'music');
             const movieJobs = jobs.filter(j => j.media_type === 'movie');
+            const tvJobs = jobs.filter(j => j.media_type !== 'movie' && j.media_type !== 'music');
             if (document.querySelector('#jobs:not(.d-none)')) {
                 updateJobsTable(tvJobs);
                 updateMovieJobsTable(movieJobs);
+                updateMusicJobsTable(musicJobs);
             }
             if (document.querySelector('#dashboard:not(.d-none)')) {
                 updateDashboardStats(jobs);
-                updateRecentTvJobs(tvJobs);
-                updateRecentMovieJobs(movieJobs);
+                updateRecentJobs(jobs);
             }
             if (document.querySelector('#history:not(.d-none)')) {
                 loadHistory();
@@ -1143,14 +1266,118 @@ function updateMovieJobsTable(jobs) {
     });
 }
 
+function updateMusicJobsTable(jobs) {
+    const tableEl = document.getElementById('music-jobs-table');
+    if (!tableEl) {
+        return;
+    }
+    const tbody = tableEl.querySelector('tbody');
+    tbody.innerHTML = '';
+
+    if (!jobs || jobs.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = '<td colspan="7" class="text-center">No jobs found</td>';
+        tbody.appendChild(row);
+        return;
+    }
+
+    jobs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    jobs.forEach(job => {
+        const row = document.createElement('tr');
+        const shortId = job.job_id.substring(0, 8);
+        const statusClass = getStatusBadgeClass(job.status);
+        const request = job.music_request || {};
+        const collection = request.collection || {};
+        const tracks = Array.isArray(request.tracks) ? request.tracks : [];
+        const jobType = (request.job_type || 'music').toString();
+        const displayType = jobType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        const collectionName = request.display_name || collection.title || job.show_name || 'Music';
+
+        let progressDisplay = `
+            <div class="progress">
+                <div class="progress-bar" role="progressbar" style="width: ${job.progress}%"
+                    aria-valuenow="${job.progress}" aria-valuemin="0" aria-valuemax="100">
+                    ${Math.round(job.progress)}%
+                </div>
+            </div>`;
+
+        if (tracks.length) {
+            progressDisplay += `
+                <small class="d-block text-muted">${job.processed_files || 0} / ${tracks.length} tracks</small>
+            `;
+        }
+
+        if (job.current_file && job.status !== 'completed' && job.status !== 'failed') {
+            progressDisplay += `
+                <small class="d-block text-truncate" style="max-width: 200px;" title="${job.current_file}">
+                    ${job.current_file}
+                </small>
+            `;
+        }
+
+        const canCancel = !['completed', 'failed', 'cancelled'].includes(job.status);
+        const cancelBtn = canCancel ? `
+                <button class="btn btn-sm btn-danger cancel-job" data-job-id="${job.job_id}">
+                    <i class="bi bi-x-circle"></i>
+                </button>` : '';
+
+        row.innerHTML = `
+            <td title="${job.job_id}">${shortId}...</td>
+            <td>${escapeHtml(collectionName)}</td>
+            <td>${escapeHtml(displayType)}</td>
+            <td><span class="badge ${statusClass}">${job.status}</span></td>
+            <td>${progressDisplay}</td>
+            <td>${formatDate(job.created_at)}</td>
+            <td>
+                <button class="btn btn-sm btn-info view-job" data-job-id="${job.job_id}">
+                    <i class="bi bi-eye"></i>
+                </button>
+                ${cancelBtn}
+            </td>
+        `;
+
+        tbody.appendChild(row);
+    });
+
+    tbody.querySelectorAll('.cancel-job').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const jobId = this.getAttribute('data-job-id');
+            if (confirm('Cancel this job?')) {
+                fetch(`/jobs/${jobId}`, { method: 'DELETE' })
+                    .then(r => {
+                        if (r.ok) {
+                            showToast('Success', 'Job cancelled');
+                            updateJobsData();
+                        } else {
+                            r.json().then(d => {
+                                showToast('Error', d.error || 'Failed to cancel job');
+                            });
+                        }
+                    })
+                    .catch(() => showToast('Error', 'Failed to cancel job'));
+            }
+        });
+    });
+
+    tbody.querySelectorAll('.view-job').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const jobId = this.getAttribute('data-job-id');
+            showJobDetails(jobId);
+        });
+    });
+}
+
 function loadHistory() {
     fetch('/history')
         .then(response => response.json())
         .then(jobs => {
-            const tvJobs = jobs.filter(j => j.media_type !== 'movie');
+            const musicJobs = jobs.filter(j => j.media_type === 'music');
             const movieJobs = jobs.filter(j => j.media_type === 'movie');
+            const tvJobs = jobs.filter(j => j.media_type !== 'movie' && j.media_type !== 'music');
             updateHistoryTable(tvJobs);
             updateMovieHistoryTable(movieJobs);
+            updateMusicHistoryTable(musicJobs);
         })
         .catch(error => {
             console.error('Error fetching history:', error);
@@ -1252,6 +1479,637 @@ function updateMovieHistoryTable(jobs) {
             showJobDetails(jobId);
         });
     });
+}
+
+function updateMusicHistoryTable(jobs) {
+    const tableEl = document.getElementById('music-history-table');
+    if (!tableEl) {
+        return;
+    }
+    const tbody = tableEl.querySelector('tbody');
+    tbody.innerHTML = '';
+
+    if (!jobs || jobs.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = '<td colspan="7" class="text-center">No jobs found</td>';
+        tbody.appendChild(row);
+        return;
+    }
+
+    jobs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    jobs.forEach(job => {
+        const row = document.createElement('tr');
+        const shortId = job.job_id.substring(0, 8);
+        const statusClass = getStatusBadgeClass(job.status);
+        const request = job.music_request || {};
+        const collection = request.collection || {};
+        const jobType = (request.job_type || 'music').toString();
+        const displayType = jobType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        const collectionName = request.display_name || collection.title || job.show_name || 'Music';
+
+        let progressDisplay = `
+            <div class="progress">
+                <div class="progress-bar" role="progressbar" style="width: ${job.progress}%"
+                    aria-valuenow="${job.progress}" aria-valuemin="0" aria-valuemax="100">
+                    ${Math.round(job.progress)}%
+                </div>
+            </div>`;
+
+        row.innerHTML = `
+            <td title="${job.job_id}">${shortId}...</td>
+            <td>${escapeHtml(collectionName)}</td>
+            <td>${escapeHtml(displayType)}</td>
+            <td><span class="badge ${statusClass}">${job.status}</span></td>
+            <td>${progressDisplay}</td>
+            <td>${formatDate(job.updated_at || job.created_at)}</td>
+            <td>
+                <button class="btn btn-sm btn-info view-job" data-job-id="${job.job_id}">
+                    <i class="bi bi-eye"></i>
+                </button>
+            </td>`;
+
+        tbody.appendChild(row);
+    });
+
+    tbody.querySelectorAll('.view-job').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const jobId = this.getAttribute('data-job-id');
+            showJobDetails(jobId);
+        });
+    });
+}
+
+function handleMusicSingleSubmit(event) {
+    event.preventDefault();
+    const submitButton = document.getElementById('music-single-submit');
+    toggleButtonLoading(submitButton, true, 'Queuing...');
+
+    const url = document.getElementById('music_single_url').value.trim();
+    const title = document.getElementById('music_single_title').value.trim();
+    const artist = document.getElementById('music_single_artist').value.trim();
+    if (!url || !title || !artist) {
+        toggleButtonLoading(submitButton, false);
+        showToast('Error', 'Track URL, title, and artist are required.');
+        return;
+    }
+
+    const album = document.getElementById('music_single_album').value.trim();
+    const year = document.getElementById('music_single_year').value.trim();
+    const trackNo = document.getElementById('music_single_track').value.trim();
+    const discNo = document.getElementById('music_single_disc').value.trim();
+    const genres = parseGenresInput(document.getElementById('music_single_genres').value);
+    const tags = parseTagInput(document.getElementById('music_single_tags').value);
+    const cover = document.getElementById('music_single_cover').value.trim();
+
+    const track = serializeMusicTrack(
+        {
+            title,
+            artist,
+            album,
+            year,
+            track_number: toOptionalNumber(trackNo),
+            disc_number: toOptionalNumber(discNo) || 1,
+            genres,
+            tags,
+            cover,
+            source_url: url,
+        },
+        0,
+    );
+
+    const payload = {
+        job_type: 'single',
+        source_url: url,
+        display_name: title,
+        collection: {
+            title: album || title,
+            artist,
+            year: year || '',
+            genres,
+            cover_url: cover,
+        },
+        tracks: [track],
+    };
+
+    postMusicJob(payload, () => {
+        event.currentTarget.reset();
+    }).finally(() => {
+        toggleButtonLoading(submitButton, false);
+    });
+}
+
+function handleMusicAlbumFetch() {
+    const fetchButton = document.getElementById('music_album_fetch');
+    const urlInput = document.getElementById('music_album_url');
+    if (!urlInput) {
+        return;
+    }
+    const url = urlInput.value.trim();
+    if (!url) {
+        showToast('Error', 'Enter an album or playlist URL.');
+        return;
+    }
+
+    toggleButtonLoading(fetchButton, true, 'Fetching...');
+    fetch(`/music/playlists/info?url=${encodeURIComponent(url)}`)
+        .then(r => r.json())
+        .then(info => {
+            if (info.error) {
+                showToast('Error', info.error);
+                return;
+            }
+            document.getElementById('music_album_title').value = info.title || document.getElementById('music_album_title').value;
+            document.getElementById('music_album_artist').value = info.uploader || document.getElementById('music_album_artist').value;
+            if (info.thumbnail) {
+                document.getElementById('music_album_cover').value = info.thumbnail;
+            }
+            const firstEntry = (info.entries || [])[0] || {};
+            if (firstEntry.release_year) {
+                document.getElementById('music_album_year').value = firstEntry.release_year;
+            }
+            musicState.albumTracks = (info.entries || []).map((entry, idx) =>
+                normalizeMusicEntry(entry, idx + 1, info.title || '')
+            );
+            renderMusicTrackTable('album');
+            showToast('Success', `Loaded ${musicState.albumTracks.length} tracks`);
+        })
+        .catch(() => showToast('Error', 'Failed to fetch playlist metadata'))
+        .finally(() => toggleButtonLoading(fetchButton, false));
+}
+
+function handleMusicAlbumSubmit(event) {
+    event.preventDefault();
+    const submitButton = document.getElementById('music-album-submit');
+    toggleButtonLoading(submitButton, true, 'Queuing...');
+
+    const url = document.getElementById('music_album_url').value.trim();
+    const title = document.getElementById('music_album_title').value.trim();
+    const artist = document.getElementById('music_album_artist').value.trim();
+    if (!url || !title || !artist) {
+        toggleButtonLoading(submitButton, false);
+        showToast('Error', 'Album URL, title, and artist are required.');
+        return;
+    }
+
+    if (!musicState.albumTracks.length) {
+        toggleButtonLoading(submitButton, false);
+        showToast('Error', 'Add at least one track to the album.');
+        return;
+    }
+
+    const year = document.getElementById('music_album_year').value.trim();
+    const genres = parseGenresInput(document.getElementById('music_album_genre').value);
+    const cover = document.getElementById('music_album_cover').value.trim();
+    const embedCover = document.getElementById('music_album_embed_cover').checked;
+
+    const payload = {
+        job_type: 'album',
+        source_url: url,
+        display_name: title,
+        collection: {
+            title,
+            artist,
+            year: year || '',
+            genres,
+            cover_url: cover,
+            embed_cover: embedCover,
+        },
+        tracks: musicState.albumTracks.map((track, idx) => serializeMusicTrack(track, idx)),
+    };
+
+    postMusicJob(payload, () => {
+        event.currentTarget.reset();
+        musicState.albumTracks = [];
+        renderMusicTrackTable('album');
+    }).finally(() => toggleButtonLoading(submitButton, false));
+}
+
+function handleMusicPlaylistFetch() {
+    const fetchButton = document.getElementById('music_playlist_fetch');
+    const urlInput = document.getElementById('music_playlist_url');
+    if (!urlInput) {
+        return;
+    }
+    const url = urlInput.value.trim();
+    if (!url) {
+        showToast('Error', 'Enter a playlist URL to inspect.');
+        return;
+    }
+
+    toggleButtonLoading(fetchButton, true, 'Inspecting...');
+    fetch(`/music/playlists/info?url=${encodeURIComponent(url)}`)
+        .then(r => r.json())
+        .then(info => {
+            if (info.error) {
+                showToast('Error', info.error);
+                return;
+            }
+            document.getElementById('music_playlist_title').value = info.title || document.getElementById('music_playlist_title').value;
+            document.getElementById('music_playlist_owner').value = info.uploader || document.getElementById('music_playlist_owner').value;
+            if (info.thumbnail) {
+                document.getElementById('music_playlist_cover').value = info.thumbnail;
+            }
+            let entries = info.entries || [];
+            const limitValue = document.getElementById('music_playlist_limit').value.trim();
+            const limit = limitValue ? parseInt(limitValue, 10) : null;
+            if (limit && Number.isFinite(limit)) {
+                entries = entries.slice(0, limit);
+            }
+            musicState.playlistTracks = entries.map((entry, idx) =>
+                normalizeMusicEntry(entry, idx + 1, info.title || '')
+            );
+            renderMusicTrackTable('playlist');
+            showToast('Success', `Loaded ${musicState.playlistTracks.length} tracks`);
+        })
+        .catch(() => showToast('Error', 'Failed to inspect playlist'))
+        .finally(() => toggleButtonLoading(fetchButton, false));
+}
+
+function handleMusicPlaylistSubmit(event) {
+    event.preventDefault();
+    const submitButton = document.getElementById('music-playlist-submit');
+    toggleButtonLoading(submitButton, true, 'Queuing...');
+
+    const url = document.getElementById('music_playlist_url').value.trim();
+    const title = document.getElementById('music_playlist_title').value.trim();
+    if (!url || !title) {
+        toggleButtonLoading(submitButton, false);
+        showToast('Error', 'Playlist URL and collection name are required.');
+        return;
+    }
+
+    if (!musicState.playlistTracks.length) {
+        toggleButtonLoading(submitButton, false);
+        showToast('Error', 'Load the playlist to populate tracks before submitting.');
+        return;
+    }
+
+    const owner = document.getElementById('music_playlist_owner').value.trim();
+    const variant = document.getElementById('music_playlist_variant').value;
+    const limitValue = document.getElementById('music_playlist_limit').value.trim();
+    const limit = limitValue ? parseInt(limitValue, 10) : null;
+    const cover = document.getElementById('music_playlist_cover').value.trim();
+    const includeFuture = document.getElementById('music_playlist_include_future').checked;
+
+    const payload = {
+        job_type: variant || 'playlist',
+        source_url: url,
+        display_name: title,
+        collection: {
+            title,
+            owner,
+            cover_url: cover,
+            variant,
+            include_future: includeFuture,
+            limit: limit || null,
+        },
+        tracks: musicState.playlistTracks.map((track, idx) => serializeMusicTrack(track, idx)),
+    };
+
+    postMusicJob(payload, () => {
+        event.currentTarget.reset();
+        musicState.playlistTracks = [];
+        renderMusicTrackTable('playlist');
+    }).finally(() => toggleButtonLoading(submitButton, false));
+}
+
+function addMusicTrack(type, track = null) {
+    const list = getMusicTrackState(type);
+    const baseAlbum = type === 'album' ? document.getElementById('music_album_title')?.value.trim() : document.getElementById('music_playlist_title')?.value.trim();
+    const nextIndex = list.length + 1;
+    const newTrack = track || {
+        title: `Track ${nextIndex}`,
+        artist: '',
+        album: baseAlbum || '',
+        track_number: nextIndex,
+        disc_number: 1,
+        duration: null,
+        genres: [],
+        tags: {},
+        year: '',
+        source_url: '',
+        thumbnail: '',
+    };
+    list.push(newTrack);
+    renderMusicTrackTable(type);
+}
+
+function getMusicTrackState(type) {
+    return type === 'playlist' ? musicState.playlistTracks : musicState.albumTracks;
+}
+
+function renderMusicTrackTable(type) {
+    const containerId = type === 'playlist' ? 'music-playlist-tracks' : 'music-album-tracks';
+    const container = document.getElementById(containerId);
+    if (!container) {
+        return;
+    }
+    const tracks = getMusicTrackState(type);
+    if (!tracks.length) {
+        container.innerHTML = '<p class="text-muted mb-0">No tracks available. Fetch metadata or add tracks manually.</p>';
+        return;
+    }
+
+    const table = document.createElement('table');
+    table.className = 'table table-sm align-middle';
+    table.innerHTML = `
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Track</th>
+                <th>Album</th>
+                <th>Duration</th>
+                <th>Tags</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    `;
+
+    const tbody = table.querySelector('tbody');
+    tracks.forEach((track, index) => {
+        const row = document.createElement('tr');
+        const tagsCount = track.tags ? Object.keys(track.tags).length : 0;
+        row.innerHTML = `
+            <td>${index + 1}</td>
+            <td>
+                <div class="fw-semibold">${escapeHtml(track.title || `Track ${index + 1}`)}</div>
+                <small class="text-muted">${escapeHtml(track.artist || '')}</small>
+            </td>
+            <td>${escapeHtml(track.album || '')}</td>
+            <td>${track.duration ? formatDuration(track.duration) : '—'}</td>
+            <td>${tagsCount} tag${tagsCount === 1 ? '' : 's'}</td>
+            <td>
+                <div class="btn-group btn-group-sm" role="group">
+                    <button class="btn btn-outline-secondary" data-action="edit" data-index="${index}" data-type="${type}"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-outline-danger" data-action="remove" data-index="${index}" data-type="${type}"><i class="bi bi-trash"></i></button>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+
+    container.innerHTML = '';
+    container.appendChild(table);
+
+    tbody.querySelectorAll('button[data-action="edit"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const index = parseInt(btn.getAttribute('data-index'), 10);
+            openMusicTrackModal(type, index);
+        });
+    });
+
+    tbody.querySelectorAll('button[data-action="remove"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const index = parseInt(btn.getAttribute('data-index'), 10);
+            const list = getMusicTrackState(type);
+            list.splice(index, 1);
+            renderMusicTrackTable(type);
+        });
+    });
+}
+
+function openMusicTrackModal(type, index) {
+    const tracks = getMusicTrackState(type);
+    const track = tracks[index];
+    if (!track) {
+        return;
+    }
+    musicState.editing = { type, index };
+    musicState.pendingTags = { ...(track.tags || {}) };
+
+    document.getElementById('music_track_index').value = index;
+    document.getElementById('music_track_title').value = track.title || '';
+    document.getElementById('music_track_artist').value = track.artist || '';
+    document.getElementById('music_track_album').value = track.album || '';
+    document.getElementById('music_track_year').value = track.year || '';
+    document.getElementById('music_track_number').value = track.track_number || index + 1;
+    document.getElementById('music_track_disc').value = track.disc_number || 1;
+    document.getElementById('music_track_duration').value = track.duration || '';
+    document.getElementById('music_track_genres').value = (track.genres || []).join('; ');
+    document.getElementById('music_track_tags').value = formatTags(track.tags || {});
+    document.getElementById('music_track_notes').value = track.notes || '';
+
+    renderMusicTagList();
+    const modal = new bootstrap.Modal(document.getElementById('musicTrackModal'));
+    modal.show();
+}
+
+function saveMusicTrackModal() {
+    if (!musicState.editing) {
+        return;
+    }
+    const { type, index } = musicState.editing;
+    const tracks = getMusicTrackState(type);
+    const track = tracks[index];
+    if (!track) {
+        return;
+    }
+
+    track.title = document.getElementById('music_track_title').value.trim() || track.title;
+    track.artist = document.getElementById('music_track_artist').value.trim();
+    track.album = document.getElementById('music_track_album').value.trim();
+    track.year = document.getElementById('music_track_year').value.trim();
+    track.track_number = toOptionalNumber(document.getElementById('music_track_number').value.trim()) || index + 1;
+    track.disc_number = toOptionalNumber(document.getElementById('music_track_disc').value.trim()) || 1;
+    track.duration = toOptionalNumber(document.getElementById('music_track_duration').value.trim());
+    track.genres = parseGenresInput(document.getElementById('music_track_genres').value);
+    track.tags = parseTagInput(document.getElementById('music_track_tags').value);
+    track.notes = document.getElementById('music_track_notes').value.trim();
+
+    renderMusicTrackTable(type);
+
+    const modalEl = document.getElementById('musicTrackModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) {
+        modal.hide();
+    }
+    musicState.editing = null;
+}
+
+function openMusicTagModal() {
+    const modal = new bootstrap.Modal(document.getElementById('musicTagModal'));
+    renderMusicTagList();
+    modal.show();
+}
+
+function addMusicTag() {
+    const keyInput = document.getElementById('music_tag_key');
+    const valueInput = document.getElementById('music_tag_value');
+    const key = keyInput.value.trim();
+    const value = valueInput.value.trim();
+    if (!key || !value) {
+        showToast('Error', 'Tag key and value are required.');
+        return;
+    }
+    musicState.pendingTags[key] = value;
+    keyInput.value = '';
+    valueInput.value = '';
+    renderMusicTagList();
+    document.getElementById('music_track_tags').value = formatTags(musicState.pendingTags);
+}
+
+function handleMusicTagListClick(event) {
+    const button = event.target.closest('button[data-remove-tag]');
+    if (!button) {
+        return;
+    }
+    const key = button.getAttribute('data-remove-tag');
+    delete musicState.pendingTags[key];
+    renderMusicTagList();
+    document.getElementById('music_track_tags').value = formatTags(musicState.pendingTags);
+}
+
+function renderMusicTagList() {
+    const list = document.getElementById('music_tag_list');
+    if (!list) {
+        return;
+    }
+    const entries = Object.entries(musicState.pendingTags || {});
+    if (!entries.length) {
+        list.innerHTML = '<li class="list-group-item text-muted">No tags</li>';
+        return;
+    }
+    list.innerHTML = '';
+    entries.forEach(([key, value]) => {
+        const item = document.createElement('li');
+        item.className = 'list-group-item d-flex justify-content-between align-items-center';
+        item.innerHTML = `
+            <span><strong>${escapeHtml(key)}</strong>: ${escapeHtml(value)}</span>
+            <button class="btn btn-sm btn-outline-danger" type="button" data-remove-tag="${escapeHtml(key)}">
+                <i class="bi bi-x"></i>
+            </button>
+        `;
+        list.appendChild(item);
+    });
+}
+
+function parseGenresInput(value) {
+    return value
+        .split(';')
+        .map(v => v.trim())
+        .filter(Boolean);
+}
+
+function parseTagInput(value) {
+    const tags = {};
+    value
+        .split(';')
+        .map(v => v.trim())
+        .filter(Boolean)
+        .forEach(entry => {
+            const [key, ...rest] = entry.split('=');
+            if (!key || !rest.length) {
+                return;
+            }
+            const tagValue = rest.join('=').trim();
+            if (tagValue) {
+                tags[key.trim()] = tagValue;
+            }
+        });
+    return tags;
+}
+
+function formatTags(tags) {
+    return Object.entries(tags || {})
+        .map(([key, value]) => `${key}=${value}`)
+        .join('; ');
+}
+
+function serializeMusicTrack(track, index) {
+    return {
+        title: track.title || `Track ${index + 1}`,
+        artist: track.artist || '',
+        album: track.album || '',
+        track_number: toOptionalNumber(track.track_number) || index + 1,
+        disc_number: toOptionalNumber(track.disc_number) || 1,
+        duration: toOptionalNumber(track.duration),
+        genres: Array.isArray(track.genres) ? track.genres : [],
+        tags: track.tags || {},
+        year: track.year || '',
+        notes: track.notes || '',
+        source_url: track.source_url || '',
+        thumbnail: track.thumbnail || '',
+    };
+}
+
+function normalizeMusicEntry(entry, index, fallbackAlbum) {
+    return {
+        title: entry.title || `Track ${index}`,
+        artist: entry.artist || entry.channel || entry.uploader || '',
+        album: entry.album || fallbackAlbum || '',
+        track_number: entry.track_number || index,
+        disc_number: entry.disc_number || 1,
+        duration: entry.duration || null,
+        genres: [],
+        tags: {},
+        year: entry.release_year || '',
+        source_url: entry.webpage_url || entry.url || '',
+        thumbnail: entry.thumbnail || '',
+    };
+}
+
+function postMusicJob(payload, onSuccess) {
+    return fetch('/music/jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (data.job_id) {
+                showToast('Success', 'Music job queued');
+                startMusicJobPolling(data.job_id);
+                if (typeof onSuccess === 'function') {
+                    onSuccess(data.job_id);
+                }
+                const jobsLink = document.querySelector('[data-section="jobs"]');
+                if (jobsLink) {
+                    jobsLink.click();
+                }
+            } else {
+                showToast('Error', data.error || 'Failed to queue music job');
+            }
+            return data;
+        })
+        .catch(() => {
+            showToast('Error', 'Failed to queue music job');
+        })
+        .finally(() => {
+            updateJobsData();
+        });
+}
+
+function toggleButtonLoading(button, loading, text = 'Loading...') {
+    if (!button) {
+        return;
+    }
+    if (loading) {
+        if (!button.dataset.originalText) {
+            button.dataset.originalText = button.innerHTML;
+        }
+        button.disabled = true;
+        button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> ${text}`;
+    } else {
+        button.disabled = false;
+        if (button.dataset.originalText) {
+            button.innerHTML = button.dataset.originalText;
+            delete button.dataset.originalText;
+        }
+    }
+}
+
+function toOptionalNumber(value) {
+    if (value === null || value === undefined) {
+        return null;
+    }
+    const trimmed = value.toString().trim();
+    if (!trimmed) {
+        return null;
+    }
+    const parsed = parseInt(trimmed, 10);
+    return Number.isFinite(parsed) ? parsed : null;
 }
 
 function showJobDetails(jobId) {
@@ -1419,6 +2277,78 @@ function updateJobDetailModal(job) {
                 }
             };
         }
+    }
+}
+
+function getMediaTypeMeta(job) {
+    if (job.media_type === 'movie') {
+        return { icon: 'bi-film', title: job.movie_name || 'Movie job' };
+    }
+    if (job.media_type === 'music') {
+        const request = job.music_request || {};
+        const collection = request.collection || {};
+        const title = request.display_name || collection.title || job.show_name || 'Music job';
+        return { icon: 'bi-music-note-beamed', title };
+    }
+    return { icon: 'bi-tv', title: job.show_name || 'TV job' };
+}
+
+function buildJobSubtitle(job) {
+    if (job.media_type === 'music') {
+        const request = job.music_request || {};
+        const typeLabel = (request.job_type || 'music').replace(/_/g, ' ');
+        const tracks = Array.isArray(request.tracks)
+            ? request.tracks.length
+            : job.remaining_files
+            ? job.remaining_files.length
+            : 0;
+        return `${typeLabel} • ${tracks} track${tracks === 1 ? '' : 's'}`;
+    }
+    if (job.media_type === 'movie') {
+        return 'Movie download';
+    }
+    return `Season ${job.season_num || ''}`.trim();
+}
+
+function formatDuration(seconds) {
+    const value = Number(seconds);
+    if (!Number.isFinite(value) || value <= 0) {
+        return '—';
+    }
+    const mins = Math.floor(value / 60);
+    const secs = Math.round(value % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+function startMusicJobPolling(jobId) {
+    if (musicJobPollers.has(jobId)) {
+        return;
+    }
+    const timer = setInterval(() => {
+        fetch(`/music/jobs/${jobId}`)
+            .then(r => r.json())
+            .then(job => {
+                if (job.error) {
+                    stopMusicJobPolling(jobId);
+                    return;
+                }
+                updateJobsData();
+                if (['completed', 'failed', 'cancelled'].includes(job.status)) {
+                    stopMusicJobPolling(jobId);
+                }
+            })
+            .catch(() => {
+                stopMusicJobPolling(jobId);
+            });
+    }, 5000);
+    musicJobPollers.set(jobId, timer);
+}
+
+function stopMusicJobPolling(jobId) {
+    const timer = musicJobPollers.get(jobId);
+    if (timer) {
+        clearInterval(timer);
+        musicJobPollers.delete(jobId);
     }
 }
 
@@ -1699,29 +2629,33 @@ function updateMovieStats(movies) {
     document.getElementById('total-movies').textContent = totalMovies;
 }
 
-function updateRecentTvJobs(jobs) {
+function updateRecentJobs(jobs) {
     const container = document.getElementById('recent-activity-jobs');
     if (!container) return;
 
     container.innerHTML = '';
 
-    if (jobs.length === 0) {
+    if (!jobs || jobs.length === 0) {
         container.innerHTML = '<p class="text-gray-400 text-center py-3">No jobs found</p>';
         return;
     }
 
-    // Sort jobs by creation date, newest first and take only first 5
-    jobs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    const recentJobs = jobs.slice(0, 5);
+    const sortedJobs = [...jobs].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    const recentJobs = sortedJobs.slice(0, 5);
 
     recentJobs.forEach(job => {
         const statusClass = getStatusBadgeClass(job.status);
+        const { icon, title } = getMediaTypeMeta(job);
+        const subtitle = buildJobSubtitle(job);
         const item = document.createElement('div');
         item.className = 'activity-item';
         item.innerHTML = `
+            <div class="activity-icon">
+                <i class="bi ${icon}"></i>
+            </div>
             <div class="flex-1">
-                <p class="item-title">${escapeHtml(job.show_name)}</p>
-                <p class="item-subtitle">Season ${escapeHtml(job.season_num)}</p>
+                <p class="item-title">${escapeHtml(title)}</p>
+                <p class="item-subtitle">${escapeHtml(subtitle)}</p>
             </div>
             <div class="text-end">
                 <span class="badge ${statusClass}">${escapeHtml(job.status)}</span>

@@ -71,13 +71,11 @@ def jobs():
 @app.route("/movies", methods=["GET", "POST"])
 def movies():
     if request.method == "POST":
-        video_url = (
-            request.form.get("video_url")
-            or (request.json or {}).get("video_url")
+        video_url = request.form.get("video_url") or (request.json or {}).get(
+            "video_url"
         )
-        movie_name = (
-            request.form.get("movie_name")
-            or (request.json or {}).get("movie_name")
+        movie_name = request.form.get("movie_name") or (request.json or {}).get(
+            "movie_name"
         )
         if not video_url or not movie_name:
             return jsonify({"error": "Missing required parameters"}), 400
@@ -97,6 +95,45 @@ def movies():
             return jsonify({"job_id": job_id})
     else:
         return jsonify(ytj.list_movies())
+
+
+@app.route("/music/jobs", methods=["GET", "POST"])
+def music_jobs():
+    """Create or list music download jobs."""
+
+    if request.method == "POST":
+        data = request.get_json(silent=True) or {}
+        if not data:
+            return jsonify({"error": "Missing request payload"}), 400
+        try:
+            job_id = ytj.create_music_job(data)
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+        return jsonify({"job_id": job_id})
+
+    jobs = [job for job in ytj.get_jobs() if job.get("media_type") == "music"]
+    return jsonify(jobs)
+
+
+@app.route("/music/jobs/<job_id>", methods=["GET"])
+def music_job_detail(job_id):
+    """Return details for a single music job."""
+
+    job = ytj.get_job(job_id)
+    if not job or job.get("media_type") != "music":
+        return jsonify({"error": "Job not found"}), 404
+    return jsonify(job)
+
+
+@app.route("/music/playlists/info", methods=["GET"])
+def music_playlist_info():
+    """Return playlist metadata for music requests."""
+
+    url = request.args.get("url")
+    if not url:
+        return jsonify({"error": "Missing url"}), 400
+    info = ytj.get_music_playlist_info(url)
+    return jsonify(info)
 
 
 @app.route("/jobs/<job_id>", methods=["GET", "DELETE"])

@@ -11,7 +11,14 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from .config import _load_config, logger
-from .jobs import DownloadJob, create_job, get_job, get_jobs, cancel_job
+from .jobs import (
+    DownloadJob,
+    create_job,
+    create_music_job,
+    get_job,
+    get_jobs,
+    cancel_job,
+)
 from .playlist import (
     _load_playlists,
     _save_playlists,
@@ -38,6 +45,7 @@ from .media import (
     list_media,
     list_movies,
     get_playlist_videos,
+    get_music_playlist_details,
 )
 from .jellyfin import (
     copy_to_jellyfin,
@@ -257,6 +265,14 @@ class YTToJellyfin:
                 job.update(message="Job queued")
         return job_id
 
+    def create_music_job(
+        self,
+        music_request: Dict,
+        *,
+        start_thread: bool = True,
+    ) -> str:
+        return create_music_job(self, music_request, start_thread=start_thread)
+
     def get_job(self, job_id: str) -> Optional[Dict]:
         return get_job(self, job_id)
 
@@ -371,9 +387,8 @@ class YTToJellyfin:
             self.generate_movie_artwork(folder, job_id)
             if job.status == "cancelled":
                 return
-            if (
-                self.config.get("jellyfin_enabled", False)
-                and self.config.get("jellyfin_movie_path")
+            if self.config.get("jellyfin_enabled", False) and self.config.get(
+                "jellyfin_movie_path"
             ):
                 self.copy_movie_to_jellyfin(job.movie_name, job_id)
             job.update(
@@ -393,10 +408,8 @@ class YTToJellyfin:
         with self.job_lock:
             if job_id in self.active_jobs:
                 self.active_jobs.remove(job_id)
-            while (
-                self.job_queue
-                and len(self.active_jobs)
-                < self.config.get("max_concurrent_jobs", 1)
+            while self.job_queue and len(self.active_jobs) < self.config.get(
+                "max_concurrent_jobs", 1
             ):
                 next_id = self.job_queue.pop(0)
                 self.active_jobs.append(next_id)
@@ -466,6 +479,9 @@ class YTToJellyfin:
 
     def get_playlist_videos(self, url: str) -> List[Dict]:
         return get_playlist_videos(self, url)
+
+    def get_music_playlist_info(self, url: str) -> Dict:
+        return get_music_playlist_details(self, url)
 
     def copy_to_jellyfin(self, show_name: str, season_num: str, job_id: str) -> None:
         copy_to_jellyfin(self, show_name, season_num, job_id)
