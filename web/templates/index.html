@@ -79,12 +79,6 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#" data-section="media">
-                            <i class="bi bi-collection-play"></i>
-                            <span>Media Library</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
                         <a class="nav-link" href="#" data-section="settings">
                             <i class="bi bi-gear"></i>
                             <span>Settings</span>
@@ -98,6 +92,21 @@
                 <!-- Dashboard Section -->
                 <section id="dashboard" class="content-section active">
                     <h2>Dashboard</h2>
+
+                    <div class="tip-callout">
+                        <div class="tip-icon">
+                            <i class="bi bi-lightbulb"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-2">Welcome to Tubarr</h6>
+                            <p class="mb-2">Use these quick hints to move from a YouTube link to a finished download in just a few clicks.</p>
+                            <ul class="tip-list">
+                                <li>Select <strong>New TV Download</strong> or <strong>New Movie Download</strong> from the sidebar to create a job.</li>
+                                <li>Keep an eye on the <strong>Jobs</strong> tab to monitor progress and retry failures.</li>
+                                <li>Save time with <strong>Subscriptions</strong> to automatically create new TV jobs when channels update.</li>
+                            </ul>
+                        </div>
+                    </div>
 
                     <!-- Stats Grid -->
                     <div class="row mb-4">
@@ -185,15 +194,17 @@
                         </div>
 
                         <div class="col-lg-6 mb-4">
-                            <div class="card">
-                                <div class="card-header d-flex justify-content-between align-items-center">
-                                    <h6 class="m-0">Recent Media</h6>
-                                    <a href="#" data-section="media" class="btn btn-sm btn-primary">View All</a>
+                            <div class="card h-100">
+                                <div class="card-header">
+                                    <h6 class="m-0">Need a Hand?</h6>
                                 </div>
                                 <div class="card-body">
-                                    <div id="recent-activity-media">
-                                        <!-- Populated by JavaScript -->
-                                    </div>
+                                    <p class="mb-2">Tubarr focuses on converting the videos you pick—nothing more to manage.</p>
+                                    <ul class="tip-list mb-0">
+                                        <li>Hover over form labels to see extra details where available.</li>
+                                        <li>Use descriptive show names so you can recognise downloads later.</li>
+                                        <li>Jump into <strong>Settings</strong> to set default quality before starting big jobs.</li>
+                                    </ul>
                                 </div>
                             </div>
                         </div>
@@ -211,6 +222,20 @@
                             <i class="bi bi-arrow-clockwise"></i>
                             Check All for Updates
                         </button>
+                    </div>
+
+                    <div class="tip-callout">
+                        <div class="tip-icon">
+                            <i class="bi bi-bell"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-2">Subscription Tips</h6>
+                            <ul class="tip-list mb-0">
+                                <li>Add the official channel URL so Tubarr can spot new uploads reliably.</li>
+                                <li>Use retention rules to avoid filling your storage with old episodes.</li>
+                                <li>Click “Check All for Updates” whenever you want to trigger downloads on demand.</li>
+                            </ul>
+                        </div>
                     </div>
 
                     <div id="subscriptions-container">
@@ -259,6 +284,20 @@
                 <!-- New TV Download Section -->
                 <section id="new-job" class="content-section">
                     <h2>New TV Download</h2>
+
+                    <div class="tip-callout">
+                        <div class="tip-icon">
+                            <i class="bi bi-collection-play"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-2">Before You Start</h6>
+                            <ul class="tip-list mb-0">
+                                <li>Grab the playlist URL from YouTube and double-check it plays in your region.</li>
+                                <li>Set the correct season and episode numbers so Jellyfin sorts your files automatically.</li>
+                                <li>Keep “Track playlist for updates” on to fetch new episodes when they arrive.</li>
+                            </ul>
+                        </div>
+                    </div>
 
                     <div class="card">
                         <div class="card-header">
@@ -339,6 +378,20 @@
                 <section id="new-movie" class="content-section">
                     <h2>New Movie Download</h2>
 
+                    <div class="tip-callout">
+                        <div class="tip-icon">
+                            <i class="bi bi-film"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-2">Movie Download Tips</h6>
+                            <ul class="tip-list mb-0">
+                                <li>Paste either a single movie URL or a playlist containing the full film.</li>
+                                <li>Pick a clear movie name—this becomes the folder and filename when processing completes.</li>
+                                <li>Monitor the Jobs tab to see when your transcode finishes.</li>
+                            </ul>
+                        </div>
+                    </div>
+
                     <div class="card">
                         <div class="card-header">
                             <h6 class="m-0">Add Movie from YouTube</h6>
@@ -364,6 +417,20 @@
                 <!-- New Music Section -->
                 <section id="new-music" class="content-section">
                     <h2>New Music Download</h2>
+
+                    <div class="tip-callout">
+                        <div class="tip-icon">
+                            <i class="bi bi-music-note-beamed"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-2">Music Workflow Tips</h6>
+                            <ul class="tip-list mb-0">
+                                <li>Use the tabs below to switch between single tracks, albums, or playlists.</li>
+                                <li>Fetch metadata first to pre-fill titles and artwork before you fine-tune tags.</li>
+                                <li>Embed cover art to make tracks look great on Jellyfin and other players.</li>
+                            </ul>
+                        </div>
+                    </div>
 
                     <div class="card">
                         <div class="card-header">
@@ -573,6 +640,20 @@
                 <section id="jobs" class="content-section">
                     <h2>Download Jobs</h2>
 
+                    <div class="tip-callout">
+                        <div class="tip-icon">
+                            <i class="bi bi-activity"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-2">Tracking Jobs</h6>
+                            <ul class="tip-list mb-0">
+                                <li>Filter the queue with the buttons below to focus on TV, movies, or music.</li>
+                                <li>Use the action menu on each job to retry or cancel items if something stalls.</li>
+                                <li>Completed jobs move to the History tab automatically for safekeeping.</li>
+                            </ul>
+                        </div>
+                    </div>
+
                     <div class="d-flex justify-content-end mb-3">
                         <div class="btn-group btn-group-sm" role="group" id="job-type-filter" aria-label="Job type filter">
                             <button type="button" class="btn btn-outline-primary active" data-job-filter="all">
@@ -666,6 +747,20 @@
                 <section id="history" class="content-section">
                     <h2>History</h2>
 
+                    <div class="tip-callout">
+                        <div class="tip-icon">
+                            <i class="bi bi-archive"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-2">History Tips</h6>
+                            <ul class="tip-list mb-0">
+                                <li>Filter by media type to confirm exactly what finished and when.</li>
+                                <li>Use the action buttons to re-queue a past download without re-entering details.</li>
+                                <li>History is trimmed automatically based on the limit you set under Settings.</li>
+                            </ul>
+                        </div>
+                    </div>
+
                     <div class="d-flex justify-content-end mb-3">
                         <div class="btn-group btn-group-sm" role="group" id="history-type-filter" aria-label="History type filter">
                             <button type="button" class="btn btn-outline-secondary active" data-history-filter="all">
@@ -755,25 +850,23 @@
                     </div>
                 </section>
 
-                <!-- Media Library Section -->
-                <section id="media" class="content-section">
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h2 class="mb-0">Media Library</h2>
-                        <button class="btn btn-secondary" id="refresh-media">
-                            <i class="bi bi-arrow-clockwise"></i> Refresh
-                        </button>
-                    </div>
-
-                    <h3 class="mt-4 mb-3">TV Shows</h3>
-                    <div id="media-tv-container"></div>
-
-                    <h3 class="mt-4 mb-3">Movies</h3>
-                    <div id="media-movie-container"></div>
-                </section>
-
                 <!-- Settings Section -->
                 <section id="settings" class="content-section">
                     <h2>Settings</h2>
+
+                    <div class="tip-callout">
+                        <div class="tip-icon">
+                            <i class="bi bi-gear"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-2">Settings Tips</h6>
+                            <ul class="tip-list mb-0">
+                                <li>Choose your default download folder and video quality before kicking off large jobs.</li>
+                                <li>Enable Jellyfin syncing only if you have an API key ready—otherwise leave it off.</li>
+                                <li>Adjust the concurrent transcodes slider based on your hardware capabilities.</li>
+                            </ul>
+                        </div>
+                    </div>
 
                     <div class="card">
                         <div class="card-header">
