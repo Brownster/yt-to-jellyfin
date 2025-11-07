@@ -59,6 +59,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setupJobFilterControls();
     setupHistoryFilterControls();
     initializeMusicForms();
+    initializeTipCallouts();
 
     // CRF sliders
     const crfSlider = document.getElementById('crf');
@@ -716,6 +717,36 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }, 5000);
 });
+
+// Initialize tip callouts with collapse functionality and localStorage persistence
+function initializeTipCallouts() {
+    const tipCallouts = document.querySelectorAll('.tip-callout');
+
+    tipCallouts.forEach(tip => {
+        const tipId = tip.dataset.tipId;
+        const toggle = tip.querySelector('.tip-toggle');
+        const title = tip.querySelector('h6');
+
+        if (!tipId || !toggle) return;
+
+        // Load collapsed state from localStorage
+        const isCollapsed = localStorage.getItem(`tip-${tipId}-collapsed`) === 'true';
+        if (isCollapsed) {
+            tip.classList.add('collapsed');
+        }
+
+        // Toggle function
+        const toggleTip = () => {
+            const currentlyCollapsed = tip.classList.contains('collapsed');
+            tip.classList.toggle('collapsed');
+            localStorage.setItem(`tip-${tipId}-collapsed`, !currentlyCollapsed);
+        };
+
+        // Add click handlers
+        toggle.addEventListener('click', toggleTip);
+        title.addEventListener('click', toggleTip);
+    });
+}
 
 function loadDashboard() {
     // Load jobs data

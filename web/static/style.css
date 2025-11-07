@@ -202,6 +202,11 @@ h2 {
     align-items: flex-start;
     margin-bottom: 1.5rem;
     box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    position: relative;
+}
+
+.tip-callout.collapsed {
+    padding: 0.75rem 1.5rem;
 }
 
 .tip-icon {
@@ -215,11 +220,21 @@ h2 {
     justify-content: center;
     font-size: 1.35rem;
     flex-shrink: 0;
+    transition: opacity 0.3s ease;
+}
+
+.tip-callout.collapsed .tip-icon {
+    width: 1.75rem;
+    height: 1.75rem;
+    font-size: 0.9rem;
 }
 
 .tip-callout h6 {
     color: white;
     font-weight: 600;
+    margin-bottom: 0;
+    cursor: pointer;
+    user-select: none;
 }
 
 .tip-callout p {
@@ -234,6 +249,51 @@ h2 {
 
 .tip-list li + li {
     margin-top: 0.35rem;
+}
+
+.tip-content {
+    overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.3s ease, margin 0.3s ease;
+    max-height: 1000px;
+    opacity: 1;
+}
+
+.tip-callout.collapsed .tip-content {
+    max-height: 0;
+    opacity: 0;
+    margin-top: 0 !important;
+}
+
+.tip-toggle {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.25rem;
+    background: none;
+    border: none;
+    color: var(--gray-400);
+    cursor: pointer;
+    padding: 0.25rem;
+    font-size: 1.1rem;
+    transition: color 0.2s ease, transform 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tip-callout.collapsed .tip-toggle {
+    top: 0.75rem;
+}
+
+.tip-toggle:hover {
+    color: var(--blue-600);
+}
+
+.tip-toggle i {
+    transition: transform 0.3s ease;
+}
+
+.tip-callout.collapsed .tip-toggle i {
+    transform: rotate(180deg);
 }
 
 /* Dashboard Stat Cards */

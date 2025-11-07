@@ -93,19 +93,24 @@
                 <section id="dashboard" class="content-section active">
                     <h2>Dashboard</h2>
 
-                    <div class="tip-callout">
+                    <div class="tip-callout" data-tip-id="dashboard">
                         <div class="tip-icon">
                             <i class="bi bi-lightbulb"></i>
                         </div>
-                        <div>
+                        <div class="flex-grow-1">
                             <h6 class="mb-2">Welcome to Tubarr</h6>
-                            <p class="mb-2">Use these quick hints to move from a YouTube link to a finished download in just a few clicks.</p>
-                            <ul class="tip-list">
-                                <li>Select <strong>New TV Download</strong> or <strong>New Movie Download</strong> from the sidebar to create a job.</li>
-                                <li>Keep an eye on the <strong>Jobs</strong> tab to monitor progress and retry failures.</li>
-                                <li>Save time with <strong>Subscriptions</strong> to automatically create new TV jobs when channels update.</li>
-                            </ul>
+                            <div class="tip-content">
+                                <p class="mb-2">Use these quick hints to move from a YouTube link to a finished download in just a few clicks.</p>
+                                <ul class="tip-list">
+                                    <li>Select <strong>New TV Download</strong> or <strong>New Movie Download</strong> from the sidebar to create a job.</li>
+                                    <li>Keep an eye on the <strong>Jobs</strong> tab to monitor progress and retry failures.</li>
+                                    <li>Save time with <strong>Subscriptions</strong> to automatically create new TV jobs when channels update.</li>
+                                </ul>
+                            </div>
                         </div>
+                        <button class="tip-toggle" aria-label="Toggle tip">
+                            <i class="bi bi-chevron-up"></i>
+                        </button>
                     </div>
 
                     <!-- Stats Grid -->
@@ -224,18 +229,23 @@
                         </button>
                     </div>
 
-                    <div class="tip-callout">
+                    <div class="tip-callout" data-tip-id="subscriptions">
                         <div class="tip-icon">
                             <i class="bi bi-bell"></i>
                         </div>
-                        <div>
+                        <div class="flex-grow-1">
                             <h6 class="mb-2">Subscription Tips</h6>
-                            <ul class="tip-list mb-0">
-                                <li>Add the official channel URL so Tubarr can spot new uploads reliably.</li>
-                                <li>Use retention rules to avoid filling your storage with old episodes.</li>
-                                <li>Click “Check All for Updates” whenever you want to trigger downloads on demand.</li>
-                            </ul>
+                            <div class="tip-content">
+                                <ul class="tip-list mb-0">
+                                    <li>Add the official channel URL so Tubarr can spot new uploads reliably.</li>
+                                    <li>Use retention rules to avoid filling your storage with old episodes.</li>
+                                    <li>Click "Check All for Updates" whenever you want to trigger downloads on demand.</li>
+                                </ul>
+                            </div>
                         </div>
+                        <button class="tip-toggle" aria-label="Toggle tip">
+                            <i class="bi bi-chevron-up"></i>
+                        </button>
                     </div>
 
                     <div id="subscriptions-container">
@@ -285,18 +295,23 @@
                 <section id="new-job" class="content-section">
                     <h2>New TV Download</h2>
 
-                    <div class="tip-callout">
+                    <div class="tip-callout" data-tip-id="new-tv">
                         <div class="tip-icon">
                             <i class="bi bi-collection-play"></i>
                         </div>
-                        <div>
+                        <div class="flex-grow-1">
                             <h6 class="mb-2">Before You Start</h6>
-                            <ul class="tip-list mb-0">
-                                <li>Grab the playlist URL from YouTube and double-check it plays in your region.</li>
-                                <li>Set the correct season and episode numbers so Jellyfin sorts your files automatically.</li>
-                                <li>Keep “Track playlist for updates” on to fetch new episodes when they arrive.</li>
-                            </ul>
+                            <div class="tip-content">
+                                <ul class="tip-list mb-0">
+                                    <li>Grab the playlist URL from YouTube and double-check it plays in your region.</li>
+                                    <li>Set the correct season and episode numbers so Jellyfin sorts your files automatically.</li>
+                                    <li>Keep "Track playlist for updates" on to fetch new episodes when they arrive.</li>
+                                </ul>
+                            </div>
                         </div>
+                        <button class="tip-toggle" aria-label="Toggle tip">
+                            <i class="bi bi-chevron-up"></i>
+                        </button>
                     </div>
 
                     <div class="card">
@@ -308,7 +323,8 @@
                                 <div class="row mb-3">
                                     <div class="col-lg-10">
                                         <label for="playlist_url" class="form-label">YouTube Playlist URL</label>
-                                        <input type="text" class="form-control" id="playlist_url" placeholder="https://youtube.com/playlist?list=..." required>
+                                        <input type="text" class="form-control" id="playlist_url" placeholder="https://youtube.com/playlist?list=..." required
+                                               data-bs-toggle="tooltip" title="Paste the full YouTube playlist URL. Make sure the playlist is public or unlisted.">
                                     </div>
                                     <div class="col-lg-2 d-flex align-items-end">
                                         <button type="button" class="btn btn-secondary w-100" id="select-start-btn">Choose Start Video</button>
@@ -319,15 +335,18 @@
                                 <div class="row mb-3">
                                     <div class="col-lg-4">
                                         <label for="show_name" class="form-label">TV Show Name</label>
-                                        <input type="text" class="form-control" id="show_name" placeholder="Show Name" required>
+                                        <input type="text" class="form-control" id="show_name" placeholder="Show Name" required
+                                               data-bs-toggle="tooltip" title="This will be the folder name in your media library. Use a name that matches your media server's naming convention.">
                                     </div>
                                     <div class="col-lg-4">
                                         <label for="season_num" class="form-label">Season Number</label>
-                                        <input type="text" class="form-control" id="season_num" placeholder="01" pattern="[0-9]+" required>
+                                        <input type="text" class="form-control" id="season_num" placeholder="01" pattern="[0-9]+" required
+                                               data-bs-toggle="tooltip" title="Season number for this playlist. Use leading zeros (e.g., 01, 02) for proper sorting.">
                                     </div>
                                     <div class="col-lg-4">
                                         <label for="episode_start" class="form-label">Episode Start Number</label>
-                                        <input type="text" class="form-control" id="episode_start" placeholder="01" pattern="[0-9]+" required>
+                                        <input type="text" class="form-control" id="episode_start" placeholder="01" pattern="[0-9]+" required
+                                               data-bs-toggle="tooltip" title="Starting episode number. The first video in the playlist will be this episode number.">
                                     </div>
                                 </div>
 
@@ -378,18 +397,23 @@
                 <section id="new-movie" class="content-section">
                     <h2>New Movie Download</h2>
 
-                    <div class="tip-callout">
+                    <div class="tip-callout" data-tip-id="new-movie">
                         <div class="tip-icon">
                             <i class="bi bi-film"></i>
                         </div>
-                        <div>
+                        <div class="flex-grow-1">
                             <h6 class="mb-2">Movie Download Tips</h6>
-                            <ul class="tip-list mb-0">
-                                <li>Paste either a single movie URL or a playlist containing the full film.</li>
-                                <li>Pick a clear movie name—this becomes the folder and filename when processing completes.</li>
-                                <li>Monitor the Jobs tab to see when your transcode finishes.</li>
-                            </ul>
+                            <div class="tip-content">
+                                <ul class="tip-list mb-0">
+                                    <li>Paste either a single movie URL or a playlist containing the full film.</li>
+                                    <li>Pick a clear movie name—this becomes the folder and filename when processing completes.</li>
+                                    <li>Monitor the Jobs tab to see when your transcode finishes.</li>
+                                </ul>
+                            </div>
                         </div>
+                        <button class="tip-toggle" aria-label="Toggle tip">
+                            <i class="bi bi-chevron-up"></i>
+                        </button>
                     </div>
 
                     <div class="card">
@@ -400,11 +424,13 @@
                             <form id="new-movie-form">
                                 <div class="mb-3">
                                     <label for="movie_url" class="form-label">Movie or Playlist URL</label>
-                                    <input type="text" class="form-control" id="movie_url" placeholder="https://youtube.com/watch?v=..." required>
+                                    <input type="text" class="form-control" id="movie_url" placeholder="https://youtube.com/watch?v=..." required
+                                           data-bs-toggle="tooltip" title="Enter a single video URL or a playlist URL containing the full movie.">
                                 </div>
                                 <div class="mb-3">
                                     <label for="movie_name" class="form-label">Movie Name</label>
-                                    <input type="text" class="form-control" id="movie_name" placeholder="Movie Name" required>
+                                    <input type="text" class="form-control" id="movie_name" placeholder="Movie Name" required
+                                           data-bs-toggle="tooltip" title="The name of the movie. This will be used for the folder and file name.">
                                 </div>
                                 <div class="text-end">
                                     <button type="submit" class="btn btn-primary">Start Download</button>
@@ -418,18 +444,23 @@
                 <section id="new-music" class="content-section">
                     <h2>New Music Download</h2>
 
-                    <div class="tip-callout">
+                    <div class="tip-callout" data-tip-id="new-music">
                         <div class="tip-icon">
                             <i class="bi bi-music-note-beamed"></i>
                         </div>
-                        <div>
+                        <div class="flex-grow-1">
                             <h6 class="mb-2">Music Workflow Tips</h6>
-                            <ul class="tip-list mb-0">
-                                <li>Use the tabs below to switch between single tracks, albums, or playlists.</li>
-                                <li>Fetch metadata first to pre-fill titles and artwork before you fine-tune tags.</li>
-                                <li>Embed cover art to make tracks look great on Jellyfin and other players.</li>
-                            </ul>
+                            <div class="tip-content">
+                                <ul class="tip-list mb-0">
+                                    <li>Use the tabs below to switch between single tracks, albums, or playlists.</li>
+                                    <li>Fetch metadata first to pre-fill titles and artwork before you fine-tune tags.</li>
+                                    <li>Embed cover art to make tracks look great on Jellyfin and other players.</li>
+                                </ul>
+                            </div>
                         </div>
+                        <button class="tip-toggle" aria-label="Toggle tip">
+                            <i class="bi bi-chevron-up"></i>
+                        </button>
                     </div>
 
                     <div class="card">
@@ -640,18 +671,23 @@
                 <section id="jobs" class="content-section">
                     <h2>Download Jobs</h2>
 
-                    <div class="tip-callout">
+                    <div class="tip-callout" data-tip-id="jobs">
                         <div class="tip-icon">
                             <i class="bi bi-activity"></i>
                         </div>
-                        <div>
+                        <div class="flex-grow-1">
                             <h6 class="mb-2">Tracking Jobs</h6>
-                            <ul class="tip-list mb-0">
-                                <li>Filter the queue with the buttons below to focus on TV, movies, or music.</li>
-                                <li>Use the action menu on each job to retry or cancel items if something stalls.</li>
-                                <li>Completed jobs move to the History tab automatically for safekeeping.</li>
-                            </ul>
+                            <div class="tip-content">
+                                <ul class="tip-list mb-0">
+                                    <li>Filter the queue with the buttons below to focus on TV, movies, or music.</li>
+                                    <li>Use the action menu on each job to retry or cancel items if something stalls.</li>
+                                    <li>Completed jobs move to the History tab automatically for safekeeping.</li>
+                                </ul>
+                            </div>
                         </div>
+                        <button class="tip-toggle" aria-label="Toggle tip">
+                            <i class="bi bi-chevron-up"></i>
+                        </button>
                     </div>
 
                     <div class="d-flex justify-content-end mb-3">
@@ -747,18 +783,23 @@
                 <section id="history" class="content-section">
                     <h2>History</h2>
 
-                    <div class="tip-callout">
+                    <div class="tip-callout" data-tip-id="history">
                         <div class="tip-icon">
                             <i class="bi bi-archive"></i>
                         </div>
-                        <div>
+                        <div class="flex-grow-1">
                             <h6 class="mb-2">History Tips</h6>
-                            <ul class="tip-list mb-0">
-                                <li>Filter by media type to confirm exactly what finished and when.</li>
-                                <li>Use the action buttons to re-queue a past download without re-entering details.</li>
-                                <li>History is trimmed automatically based on the limit you set under Settings.</li>
-                            </ul>
+                            <div class="tip-content">
+                                <ul class="tip-list mb-0">
+                                    <li>Filter by media type to confirm exactly what finished and when.</li>
+                                    <li>Use the action buttons to re-queue a past download without re-entering details.</li>
+                                    <li>History is trimmed automatically based on the limit you set under Settings.</li>
+                                </ul>
+                            </div>
                         </div>
+                        <button class="tip-toggle" aria-label="Toggle tip">
+                            <i class="bi bi-chevron-up"></i>
+                        </button>
                     </div>
 
                     <div class="d-flex justify-content-end mb-3">
