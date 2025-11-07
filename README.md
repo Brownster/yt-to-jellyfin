@@ -44,9 +44,19 @@ Tubarr is a Python application that downloads YouTube playlists and processes th
    ```
 
 3. **Install system dependencies**:
-   - yt-dlp: Download from https://github.com/yt-dlp/yt-dlp/releases
-   - ffmpeg
-   - ImageMagick (for convert and montage commands)
+   - **yt-dlp**: Download from https://github.com/yt-dlp/yt-dlp/releases and make sure it is executable
+   - **ffmpeg**: Required for downloads, remuxing, thumbnail extraction, and music tagging
+   - **ImageMagick** (`convert` and `montage` binaries): Used for poster and collage generation
+   - **Optional**: `ffprobe` (ships with ffmpeg) for codec inspection during H.265 conversion
+
+   You can quickly verify everything is on the `PATH` with:
+
+   ```bash
+   yt-dlp --version
+   ffmpeg -version
+   convert -version
+   montage -version
+   ```
 
 ### Option 2: Docker
 
@@ -125,6 +135,26 @@ curl -X POST http://localhost:8000/movies \
 Open the **New Movie Download** section, enter the video or playlist URL and the
 movie name, then click **Start Download**.
 Movie files will be converted to H.265 if the feature is enabled, just like TV downloads.
+
+### Music Downloads
+
+Tubarr can ingest music videos, albums, and playlists and tag the resulting files with embedded metadata.
+
+**Dependencies**
+
+- ffmpeg with `libmp3lame` support is required for audio extraction and tagging.
+- yt-dlp provides the raw media and JSON metadata consumed by the tagging pipeline.
+- Optional: `mutagen` is bundled via `requirements.txt` to embed ID3/Vorbis tags.
+
+**Web Interface Forms**
+
+Open the **New Music Download** tab and choose the form that matches your workflow:
+
+- **Single Track** – requires **Track URL**, **Track Title**, and **Artist**. Optional fields include **Album / Collection**, **Year**, **Track #**, **Disc #**, **Genres**, custom `key=value` tags, and a **Cover Art URL**.
+- **Album / Playlist** – requires **Album or Playlist URL**, **Album Title**, and **Album Artist**. You can fetch track metadata directly from YouTube, provide release year, genres, cover art, toggle embedded artwork, and curate the track table before submission.
+- **Playlist & Mixes** – requires **Playlist URL** and **Collection Name**. Additional options let you set the owner/curator, specify the playlist type (original, mix, radio, etc.), cap the track count, include future updates, and supply cover art.
+
+Submitting any form triggers a POST to `/music/jobs` and enqueues a background task. Progress is visible under **Jobs → Music** and completed collections appear in the **Music** history panel.
 
 ### Managing Playlists and Updates
 
