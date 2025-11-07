@@ -25,6 +25,8 @@ Tubarr is a Python application that downloads YouTube playlists and processes th
 
 <img width="1836" height="761" alt="image" src="https://github.com/user-attachments/assets/93efdb9c-760e-41b0-b53c-aac99edcb457" />
 
+<img width="1794" height="859" alt="image" src="https://github.com/user-attachments/assets/c6cadc12-cc3d-4f11-b94f-c12c88ac63cf" />
+
 
 ## Installation
 
