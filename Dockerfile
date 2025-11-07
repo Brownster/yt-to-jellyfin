@@ -48,7 +48,11 @@ ENV OUTPUT_DIR=/media \
     USE_H265=true \
     CRF=28 \
     YTDLP_PATH=/usr/local/bin/yt-dlp \
-    COOKIES_PATH=
+    COOKIES_PATH= \
+    MUSIC_OUTPUT_DIR=/media/music \
+    MUSIC_DEFAULT_GENRE= \
+    MUSIC_DEFAULT_YEAR= \
+    JELLYFIN_MUSIC_PATH=
 
 # Create media directory and set permissions
 RUN mkdir -p /media && chown -R appuser:appuser /media /app
