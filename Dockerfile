@@ -39,6 +39,7 @@ COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/pytho
 # Copy application code
 COPY app.py .
 COPY entrypoint.sh .
+COPY tubarr/ tubarr/
 COPY web/ web/
 RUN chmod +x entrypoint.sh
 

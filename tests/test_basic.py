@@ -29,7 +29,10 @@ class TestYTToJellyfin(unittest.TestCase):
     @patch("subprocess.run")
     def test_check_dependencies(self, mock_run):
         # Setup mock to return successfully
-        mock_run.return_value = MagicMock(returncode=0)
+        # Mock for both 'which' commands and ffmpeg encoder check
+        mock_result = MagicMock(returncode=0)
+        mock_result.stdout = "libmp3lame encoder support present"
+        mock_run.return_value = mock_result
 
         # Test dependency checking with success
         self.assertTrue(self.app.check_dependencies())
