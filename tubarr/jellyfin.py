@@ -260,6 +260,108 @@ def copy_movie_to_jellyfin(app, movie_name: str, job_id: str) -> None:
             job.update(message=f"Error copying files to Jellyfin: {e}")
 
 
+def copy_music_to_jellyfin(
+    app, album_name: str, artist_name: str, job_id: str
+) -> None:
+    if not app.config.get("jellyfin_enabled", False):
+        log_job(
+            job_id,
+            logging.INFO,
+            "Jellyfin integration disabled, skipping music copy",
+        )
+        return
+
+    music_path = app.config.get("jellyfin_music_path", "")
+    if not music_path:
+        log_job(
+            job_id,
+            logging.INFO,
+            "Jellyfin music path not configured, skipping music copy",
+        )
+        return
+
+    job = app.jobs.get(job_id)
+    if job:
+        job.update(
+            status="copying_to_jellyfin_music",
+            stage="copying_to_jellyfin_music",
+            progress=97,
+            detailed_status="Copying music to Jellyfin library",
+            message="Copying music to Jellyfin library",
+        )
+
+    sanitized_album = app.sanitize_name(album_name)
+    sanitized_artist = app.sanitize_name(artist_name) if artist_name else ""
+    source_folder = Path(app.config["output_dir"]) / "Music"
+    if sanitized_artist:
+        source_folder = source_folder / sanitized_artist
+    source_folder = source_folder / sanitized_album
+
+    if not source_folder.exists():
+        log_job(
+            job_id,
+            logging.WARNING,
+            f"Music source folder not found: {source_folder}",
+        )
+        return
+
+    dest_folder = Path(music_path)
+    if sanitized_artist:
+        dest_folder = dest_folder / sanitized_artist
+    dest_folder = dest_folder / sanitized_album
+
+    try:
+        os.makedirs(dest_folder, exist_ok=True)
+    except OSError as exc:
+        log_job(job_id, logging.ERROR, f"Failed to create Jellyfin music folder: {exc}")
+        if job:
+            job.update(
+                message=f"Failed to create Jellyfin music folder: {exc}",
+                stage="failed",
+                status="failed",
+            )
+        return
+
+    audio_files = list(source_folder.glob("*.mp3"))
+    artwork_files = list(source_folder.glob("*.jpg")) + list(
+        source_folder.glob("*.png")
+    )
+    total_files = len(audio_files) + len(artwork_files)
+
+    for idx, file_path in enumerate(audio_files + artwork_files, start=1):
+        dest_file = dest_folder / file_path.name
+        try:
+            shutil.copy2(file_path, dest_file)
+        except (IOError, shutil.Error) as exc:
+            log_job(job_id, logging.ERROR, f"Failed to copy {file_path.name}: {exc}")
+            if job:
+                job.update(
+                    message=f"Failed to copy {file_path.name}: {exc}",
+                    stage="failed",
+                    status="failed",
+                )
+            return
+
+        if job:
+            job.update(
+                processed_files=idx,
+                total_files=total_files,
+                stage_progress=int(idx / max(total_files, 1) * 100),
+                file_name=file_path.name,
+                message=f"Copied {file_path.name} to Jellyfin music folder",
+            )
+
+    if job:
+        job.update(
+            progress=99,
+            detailed_status="Music copied to Jellyfin",
+            message="Finished copying music to Jellyfin",
+        )
+
+    if app.config.get("jellyfin_api_key") and app.config.get("jellyfin_host"):
+        app.trigger_jellyfin_scan(job_id)
+
+
 def trigger_jellyfin_scan(app, job_id: str) -> None:
     job = app.jobs.get(job_id)
     if job:
@@ -312,5 +414,6 @@ def trigger_jellyfin_scan(app, job_id: str) -> None:
 __all__ = [
     "copy_to_jellyfin",
     "copy_movie_to_jellyfin",
+    "copy_music_to_jellyfin",
     "trigger_jellyfin_scan",
 ]

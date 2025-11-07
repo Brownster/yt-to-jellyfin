@@ -31,6 +31,7 @@ update_checker:
 jellyfin:
   enabled: false
   tv_path: /path/to/jellyfin/tv  # Full path to your Jellyfin TV folder
+  music_path: /path/to/jellyfin/music  # Optional path to your Jellyfin music folder
   host: localhost
   port: 8096
   api_key: ""  # Optional: API key for triggering library scan

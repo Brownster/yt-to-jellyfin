@@ -32,6 +32,7 @@ class ConfigModel(BaseModel):
     jellyfin_enabled: bool = False
     jellyfin_tv_path: str = ""
     jellyfin_movie_path: str = ""
+    jellyfin_music_path: str = ""
     jellyfin_host: str = ""
     jellyfin_port: int = Field(8096, ge=1, le=65535)
     jellyfin_api_key: str = ""
@@ -86,6 +87,7 @@ def _load_config() -> Dict:
         == "true",
         "jellyfin_tv_path": os.environ.get("JELLYFIN_TV_PATH", ""),
         "jellyfin_movie_path": os.environ.get("JELLYFIN_MOVIE_PATH", ""),
+        "jellyfin_music_path": os.environ.get("JELLYFIN_MUSIC_PATH", ""),
         "jellyfin_host": os.environ.get("JELLYFIN_HOST", ""),
         "jellyfin_port": os.environ.get("JELLYFIN_PORT", "8096"),
         "jellyfin_api_key": os.environ.get("JELLYFIN_API_KEY", ""),
@@ -164,6 +166,8 @@ def _load_config() -> Dict:
                             config["jellyfin_tv_path"] = value
                         elif key == "movie_path":
                             config["jellyfin_movie_path"] = value
+                        elif key == "music_path":
+                            config["jellyfin_music_path"] = value
                         elif key == "host":
                             config["jellyfin_host"] = value
                         elif key == "port":

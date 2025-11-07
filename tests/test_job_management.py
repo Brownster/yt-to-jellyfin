@@ -108,7 +108,11 @@ class TestJobManagement(unittest.TestCase):
 
         # Verify playlist was registered and thread started
         mock_register.assert_called_once_with(
-            "https://youtube.com/playlist?list=TEST", "Test Show", "01", None
+            "https://youtube.com/playlist?list=TEST",
+            "Test Show",
+            "01",
+            None,
+            media_type="tv",
         )
         mock_thread.assert_called_once()
         mock_thread.return_value.start.assert_called_once()

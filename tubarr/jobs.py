@@ -2,11 +2,30 @@ import os
 import uuid
 import threading
 import subprocess
+from dataclasses import dataclass, field, asdict
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from .config import logger
 from .utils import terminate_process
+
+
+@dataclass
+class TrackMetadata:
+    """Metadata describing a single music track."""
+
+    title: str
+    artist: str
+    album: str
+    track_number: int
+    total_tracks: Optional[int] = None
+    disc_number: Optional[int] = None
+    total_discs: Optional[int] = None
+    release_date: Optional[str] = None
+    genres: List[str] = field(default_factory=list)
+    cover_url: Optional[str] = None
+    album_artist: Optional[str] = None
+    extra: Dict[str, Any] = field(default_factory=dict)
 
 
 class DownloadJob:
@@ -22,6 +41,9 @@ class DownloadJob:
         playlist_start=None,
         media_type="tv",
         movie_name="",
+        album_name="",
+        artist_name="",
+        tracks: Optional[List[TrackMetadata]] = None,
         subscription_id=None,
     ):
         self.job_id = job_id
@@ -32,6 +54,8 @@ class DownloadJob:
         self.playlist_start = playlist_start
         self.media_type = media_type
         self.movie_name = movie_name
+        self.album_name = album_name
+        self.artist_name = artist_name
         self.subscription_id = subscription_id
         self.status = "queued"
         self.progress = 0
@@ -46,6 +70,7 @@ class DownloadJob:
         self.processed_files = 0
         self.detailed_status = "Job queued"
         self.remaining_files: List[str] = []
+        self.tracks: List[TrackMetadata] = tracks or []
 
     def update(
         self,
@@ -82,6 +107,11 @@ class DownloadJob:
                     "downloading": "Downloading videos",
                     "processing_metadata": "Processing metadata",
                     "converting": "Converting videos to H.265",
+                    "downloading_audio": "Downloading audio tracks",
+                    "processing_tracks": "Preparing downloaded tracks",
+                    "converting_audio": "Converting audio to MP3",
+                    "tagging": "Applying track metadata",
+                    "copying_to_jellyfin_music": "Copying music to Jellyfin",
                     "generating_artwork": "Generating artwork and thumbnails",
                     "creating_nfo": "Creating NFO files",
                     "completed": "Processing completed",
@@ -112,6 +142,8 @@ class DownloadJob:
             "playlist_start": self.playlist_start,
             "media_type": self.media_type,
             "movie_name": self.movie_name,
+            "album_name": self.album_name,
+            "artist_name": self.artist_name,
             "subscription_id": self.subscription_id,
             "status": self.status,
             "progress": self.progress,
@@ -125,6 +157,7 @@ class DownloadJob:
             "processed_files": self.processed_files,
             "detailed_status": self.detailed_status,
             "remaining_files": self.remaining_files,
+            "tracks": [asdict(track) for track in self.tracks],
         }
 
 
@@ -139,6 +172,7 @@ def create_job(
     episode_start: str,
     playlist_start: Optional[int] = None,
     track_playlist: bool = True,
+    media_type: str = "tv",
     subscription_id: Optional[str] = None,
     *,
     start_thread: bool = True,
@@ -152,6 +186,7 @@ def create_job(
         episode_start,
         playlist_start,
         subscription_id=subscription_id,
+        media_type=media_type,
     )
 
     try:
@@ -170,7 +205,11 @@ def create_job(
 
     if track_playlist and app._is_playlist_url(playlist_url):
         added = app._register_playlist(
-            playlist_url, show_name, season_num, playlist_start
+            playlist_url,
+            show_name,
+            season_num,
+            playlist_start,
+            media_type=media_type,
         )
         if added and playlist_start and playlist_start > 1:
             try:
@@ -199,13 +238,108 @@ def create_job(
         if len(app.active_jobs) < app.config.get("max_concurrent_jobs", 1):
             app.active_jobs.append(job_id)
             if start_thread:
-                threading.Thread(target=app.process_job, args=(job_id,)).start()
+                target = (
+                    app.process_music_job
+                    if media_type == "music"
+                    else app.process_job
+                )
+                threading.Thread(target=target, args=(job_id,)).start()
         else:
             app.job_queue.append(job_id)
             job.update(message="Job queued")
 
     # If start_thread is False and there is no active job, the caller is
     # expected to process the job manually.
+
+    return job_id
+
+
+def create_music_job(
+    app,
+    playlist_url: str,
+    album_name: str,
+    artist_name: str,
+    tracks: List[Dict[str, Any]],
+    *,
+    playlist_start: Optional[int] = None,
+    track_playlist: bool = True,
+    subscription_id: Optional[str] = None,
+    start_thread: bool = True,
+) -> str:
+    """Create a music download job with track metadata."""
+
+    track_objects = [
+        track
+        if isinstance(track, TrackMetadata)
+        else TrackMetadata(
+            title=track.get("title", ""),
+            artist=track.get("artist", artist_name),
+            album=track.get("album", album_name),
+            track_number=int(track.get("track_number", idx + 1)),
+            total_tracks=track.get("total_tracks"),
+            disc_number=track.get("disc_number"),
+            total_discs=track.get("total_discs"),
+            release_date=track.get("release_date"),
+            genres=list(track.get("genres", []) or []),
+            cover_url=track.get("cover_url"),
+            album_artist=track.get("album_artist", artist_name),
+            extra={k: v for k, v in track.items() if k not in {
+                "title",
+                "artist",
+                "album",
+                "track_number",
+                "total_tracks",
+                "disc_number",
+                "total_discs",
+                "release_date",
+                "genres",
+                "cover_url",
+                "album_artist",
+            }},
+        )
+        for idx, track in enumerate(tracks)
+    ]
+
+    job_id = str(uuid.uuid4())
+    job = DownloadJob(
+        job_id,
+        playlist_url,
+        album_name,
+        "01",
+        "01",
+        playlist_start,
+        media_type="music",
+        album_name=album_name,
+        artist_name=artist_name,
+        tracks=track_objects,
+        subscription_id=subscription_id,
+    )
+    job.remaining_files = [
+        f"{track.track_number:02d} - {track.title}" for track in track_objects
+    ]
+
+    with app.job_lock:
+        app.jobs[job_id] = job
+        if len(app.active_jobs) < app.config.get("max_concurrent_jobs", 1):
+            app.active_jobs.append(job_id)
+            if start_thread:
+                threading.Thread(target=app.process_music_job, args=(job_id,)).start()
+        else:
+            app.job_queue.append(job_id)
+            job.update(message="Job queued")
+
+    if track_playlist and app._is_playlist_url(playlist_url):
+        try:
+            app._register_playlist(
+                playlist_url,
+                album_name,
+                "01",
+                playlist_start,
+                media_type="music",
+                extra_metadata={"album_name": album_name, "artist_name": artist_name},
+            )
+        except Exception as exc:
+            logger.error(f"Failed to register music playlist {playlist_url}: {exc}")
 
     return job_id
 
@@ -235,4 +369,12 @@ def cancel_job(app, job_id: str) -> bool:
     return True
 
 
-__all__ = ["DownloadJob", "create_job", "get_job", "get_jobs", "cancel_job"]
+__all__ = [
+    "DownloadJob",
+    "TrackMetadata",
+    "create_job",
+    "create_music_job",
+    "get_job",
+    "get_jobs",
+    "cancel_job",
+]

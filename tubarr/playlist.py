@@ -4,7 +4,7 @@ import re
 import subprocess
 import threading
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from .config import logger
 
@@ -50,11 +50,14 @@ def _register_playlist(
     show_name: str,
     season_num: str,
     start_index: Optional[int] = None,
+    *,
+    media_type: str = "tv",
+    extra_metadata: Optional[Dict[str, Any]] = None,
 ) -> bool:
     """Add a playlist to the tracking file if not already present."""
     pid = _get_playlist_id(url)
     if pid not in playlists:
-        playlists[pid] = {
+        entry: Dict[str, Any] = {
             "url": url,
             "show_name": show_name,
             "season_num": season_num,
@@ -62,6 +65,11 @@ def _register_playlist(
             "disabled": False,
             "start_index": int(start_index or 1),
         }
+        if media_type != "tv":
+            entry["media_type"] = media_type
+        if extra_metadata:
+            entry["extra_metadata"] = extra_metadata
+        playlists[pid] = entry
         _save_playlists(playlists_file, playlists)
         return True
     return False
@@ -105,6 +113,8 @@ def _get_existing_max_index(folder: str, season_num: str) -> int:
 def check_playlist_updates(app) -> List[str]:
     created_jobs = []
     for pid, info in app.playlists.items():
+        if info.get("media_type", "tv") != "tv":
+            continue
         if info.get("disabled"):
             continue
         archive = info.get("archive", _get_archive_file(info["url"]))

@@ -8,10 +8,18 @@ import shutil
 import uuid
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
 from .config import _load_config, logger
-from .jobs import DownloadJob, create_job, get_job, get_jobs, cancel_job
+from .jobs import (
+    DownloadJob,
+    TrackMetadata,
+    create_job,
+    create_music_job,
+    get_job,
+    get_jobs,
+    cancel_job,
+)
 from .playlist import (
     _load_playlists,
     _save_playlists,
@@ -27,7 +35,9 @@ from .playlist import (
 from .media import (
     create_folder_structure,
     create_movie_folder,
+    create_music_album_folder,
     download_playlist,
+    download_music_tracks,
     process_metadata,
     process_movie_metadata,
     convert_movie_file,
@@ -38,10 +48,12 @@ from .media import (
     list_media,
     list_movies,
     get_playlist_videos,
+    prepare_music_tracks,
 )
 from .jellyfin import (
     copy_to_jellyfin,
     copy_movie_to_jellyfin,
+    copy_music_to_jellyfin,
     trigger_jellyfin_scan,
 )
 from .utils import sanitize_name, clean_filename, check_dependencies, log_job
@@ -116,6 +128,9 @@ class YTToJellyfin:
         show_name: str,
         season_num: str,
         start_index: Optional[int] = None,
+        *,
+        media_type: str = "tv",
+        extra_metadata: Optional[Dict[str, Any]] = None,
     ) -> bool:
         added = _register_playlist(
             self.playlists,
@@ -124,6 +139,8 @@ class YTToJellyfin:
             show_name,
             season_num,
             start_index,
+            media_type=media_type,
+            extra_metadata=extra_metadata,
         )
         if added:
             self._save_playlists()
@@ -257,6 +274,30 @@ class YTToJellyfin:
                 job.update(message="Job queued")
         return job_id
 
+    def create_music_job(
+        self,
+        playlist_url: str,
+        album_name: str,
+        artist_name: str,
+        tracks: List[Dict[str, Any]],
+        *,
+        playlist_start: Optional[int] = None,
+        track_playlist: bool = True,
+        subscription_id: Optional[str] = None,
+        start_thread: bool = True,
+    ) -> str:
+        return create_music_job(
+            self,
+            playlist_url,
+            album_name,
+            artist_name,
+            tracks,
+            playlist_start=playlist_start,
+            track_playlist=track_playlist,
+            subscription_id=subscription_id,
+            start_thread=start_thread,
+        )
+
     def get_job(self, job_id: str) -> Optional[Dict]:
         return get_job(self, job_id)
 
@@ -388,6 +429,72 @@ class YTToJellyfin:
         finally:
             self._on_job_complete(job_id)
 
+    def process_music_job(self, job_id: str) -> None:
+        job = self.jobs.get(job_id)
+        if not job:
+            log_job(job_id, logging.ERROR, "Job not found")
+            return
+
+        try:
+            job.update(status="in_progress", message="Starting music job")
+            if not self.check_dependencies():
+                job.update(status="failed", message="Missing dependencies")
+                return
+
+            folder = self.create_music_album_folder(job.album_name, job.artist_name)
+            job.update(
+                message=f"Created music folder structure at {folder}",
+                detailed_status="Preparing album folder",
+            )
+
+            downloaded_files = self.download_music_tracks(
+                job.playlist_url,
+                folder,
+                job_id,
+                job.playlist_start,
+            )
+
+            if job.status == "cancelled":
+                return
+
+            if not downloaded_files:
+                job.update(status="failed", message="Audio download failed")
+                return
+
+            prepared = self.prepare_music_tracks(
+                folder,
+                job.tracks,
+                downloaded_files,
+                job_id,
+            )
+
+            if job.status == "cancelled":
+                return
+
+            if not prepared:
+                job.update(status="failed", message="Failed to prepare music tracks")
+                return
+
+            if (
+                self.config.get("jellyfin_enabled", False)
+                and self.config.get("jellyfin_music_path")
+            ):
+                self.copy_music_to_jellyfin(job.album_name, job.artist_name, job_id)
+
+            job.update(
+                status="completed",
+                progress=100,
+                stage="completed",
+                detailed_status="Music job completed",
+                message="Music job completed successfully",
+            )
+            log_job(job_id, logging.INFO, "Music job completed successfully")
+        except Exception as exc:  # pragma: no cover - unexpected errors
+            logger.exception(f"Job {job_id}: Error processing music job: {exc}")
+            job.update(status="failed", message=f"Error: {exc}")
+        finally:
+            self._on_job_complete(job_id)
+
     def _on_job_complete(self, job_id: str) -> None:
         """Start the next queued job if available."""
         with self.job_lock:
@@ -400,10 +507,14 @@ class YTToJellyfin:
             ):
                 next_id = self.job_queue.pop(0)
                 self.active_jobs.append(next_id)
-                threading.Thread(
-                    target=self.process_job,
-                    args=(next_id,),
-                ).start()
+                next_job = self.jobs.get(next_id)
+                target = self.process_job
+                if next_job:
+                    if next_job.media_type == "movie":
+                        target = self.process_movie_job
+                    elif next_job.media_type == "music":
+                        target = self.process_music_job
+                threading.Thread(target=target, args=(next_id,)).start()
 
     # media functions
     def create_folder_structure(self, show_name: str, season_num: str) -> str:
@@ -411,6 +522,11 @@ class YTToJellyfin:
 
     def create_movie_folder(self, movie_name: str) -> str:
         return create_movie_folder(self, movie_name)
+
+    def create_music_album_folder(
+        self, album_name: str, artist_name: Optional[str] = None
+    ) -> str:
+        return create_music_album_folder(self, album_name, artist_name)
 
     def download_playlist(
         self,
@@ -422,6 +538,17 @@ class YTToJellyfin:
     ) -> bool:
         return download_playlist(
             self, playlist_url, folder, season_num, job_id, playlist_start
+        )
+
+    def download_music_tracks(
+        self,
+        playlist_url: str,
+        folder: str,
+        job_id: str,
+        playlist_start: Optional[int] = None,
+    ) -> List[Path]:
+        return download_music_tracks(
+            self, playlist_url, folder, job_id, playlist_start
         )
 
     def process_metadata(
@@ -444,6 +571,15 @@ class YTToJellyfin:
 
     def convert_video_files(self, folder: str, season_num: str, job_id: str) -> None:
         convert_video_files(self, folder, season_num, job_id)
+
+    def prepare_music_tracks(
+        self,
+        folder: str,
+        tracks: Sequence[TrackMetadata],
+        downloaded_files: Sequence[Path],
+        job_id: str,
+    ) -> List[Path]:
+        return prepare_music_tracks(self, folder, tracks, downloaded_files, job_id)
 
     def generate_artwork(
         self, folder: str, show_name: str, season_num: str, job_id: str
@@ -473,6 +609,11 @@ class YTToJellyfin:
     def copy_movie_to_jellyfin(self, movie_name: str, job_id: str) -> None:
         copy_movie_to_jellyfin(self, movie_name, job_id)
 
+    def copy_music_to_jellyfin(
+        self, album_name: str, artist_name: str, job_id: str
+    ) -> None:
+        copy_music_to_jellyfin(self, album_name, artist_name, job_id)
+
     def trigger_jellyfin_scan(self, job_id: str) -> None:
         trigger_jellyfin_scan(self, job_id)
 
@@ -480,6 +621,8 @@ class YTToJellyfin:
     def list_playlists(self) -> List[Dict]:
         playlists = []
         for pid, info in self.playlists.items():
+            if info.get("media_type", "tv") != "tv":
+                continue
             archive = info.get("archive", self._get_archive_file(info["url"]))
             last_downloaded = 0
             if os.path.exists(archive):
