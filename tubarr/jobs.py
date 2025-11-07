@@ -23,6 +23,7 @@ class DownloadJob:
         media_type="tv",
         movie_name="",
         subscription_id=None,
+        music_request=None,
     ):
         self.job_id = job_id
         self.playlist_url = playlist_url
@@ -33,6 +34,7 @@ class DownloadJob:
         self.media_type = media_type
         self.movie_name = movie_name
         self.subscription_id = subscription_id
+        self.music_request = music_request or {}
         self.status = "queued"
         self.progress = 0
         self.messages = []
@@ -113,6 +115,7 @@ class DownloadJob:
             "media_type": self.media_type,
             "movie_name": self.movie_name,
             "subscription_id": self.subscription_id,
+            "music_request": self.music_request,
             "status": self.status,
             "progress": self.progress,
             "messages": messages,
@@ -235,4 +238,63 @@ def cancel_job(app, job_id: str) -> bool:
     return True
 
 
-__all__ = ["DownloadJob", "create_job", "get_job", "get_jobs", "cancel_job"]
+__all__ = [
+    "DownloadJob",
+    "create_job",
+    "create_music_job",
+    "get_job",
+    "get_jobs",
+    "cancel_job",
+]
+
+
+def create_music_job(app, music_request: Dict, *, start_thread: bool = True) -> str:
+    """Register a music download job request."""
+
+    if not isinstance(music_request, dict):
+        raise ValueError("music_request must be a mapping")
+
+    source_url = music_request.get("source_url", "")
+    collection = music_request.get("collection", {}) or {}
+    job_type = music_request.get("job_type", "music")
+
+    display_name = (
+        music_request.get("display_name")
+        or collection.get("title")
+        or collection.get("name")
+        or (music_request.get("track") or {}).get("title")
+        or music_request.get("track_title")
+        or job_type.title()
+    )
+
+    tracks = music_request.get("tracks")
+    if tracks is not None and not isinstance(tracks, list):
+        raise ValueError("tracks must be a list when provided")
+
+    job_id = str(uuid.uuid4())
+    job = DownloadJob(
+        job_id,
+        source_url,
+        display_name,
+        collection.get("year") or collection.get("disc") or "--",
+        "1",
+        playlist_start=None,
+        media_type="music",
+        music_request=music_request,
+    )
+
+    if isinstance(tracks, list):
+        for track in tracks:
+            if isinstance(track, dict):
+                title = track.get("title") or track.get("name")
+                if title:
+                    job.remaining_files.append(title)
+
+    with app.job_lock:
+        app.jobs[job_id] = job
+        job.update(
+            detailed_status="Awaiting music processor",
+            message="Music job queued",
+        )
+
+    return job_id

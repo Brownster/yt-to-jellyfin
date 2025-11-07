@@ -55,6 +55,12 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="#" data-section="new-music">
+                            <i class="bi bi-music-note-beamed"></i>
+                            <span>New Music Download</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="#" data-section="jobs">
                             <i class="bi bi-list-task"></i>
                             <span>Jobs</span>
@@ -355,11 +361,236 @@
                     </div>
                 </section>
 
+                <!-- New Music Section -->
+                <section id="new-music" class="content-section">
+                    <h2>New Music Download</h2>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+                                <h6 class="m-0">Create Music Jobs</h6>
+                                <div class="text-muted small">
+                                    Fetch playlist metadata, adjust tags, and queue downloads for individual tracks, albums, or curated playlists.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <ul class="nav nav-tabs" id="musicJobTabs" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="music-single-tab" data-bs-toggle="tab" data-bs-target="#music-single" type="button" role="tab" aria-controls="music-single" aria-selected="true">
+                                        <i class="bi bi-music-note"></i> Single Track
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="music-album-tab" data-bs-toggle="tab" data-bs-target="#music-album" type="button" role="tab" aria-controls="music-album" aria-selected="false">
+                                        <i class="bi bi-disc"></i> Album
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="music-playlist-tab" data-bs-toggle="tab" data-bs-target="#music-playlist" type="button" role="tab" aria-controls="music-playlist" aria-selected="false">
+                                        <i class="bi bi-collection-music"></i> Playlist &amp; Mixes
+                                    </button>
+                                </li>
+                            </ul>
+
+                            <div class="tab-content mt-4" id="musicJobTabContent">
+                                <div class="tab-pane fade show active" id="music-single" role="tabpanel" aria-labelledby="music-single-tab">
+                                    <form id="music-single-form" class="music-job-form">
+                                        <div class="row g-3">
+                                            <div class="col-12">
+                                                <label for="music_single_url" class="form-label">Track URL</label>
+                                                <input type="url" class="form-control" id="music_single_url" placeholder="https://youtube.com/watch?v=..." required>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="music_single_title" class="form-label">Track Title</label>
+                                                <input type="text" class="form-control" id="music_single_title" placeholder="Song Title" required>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="music_single_artist" class="form-label">Artist</label>
+                                                <input type="text" class="form-control" id="music_single_artist" placeholder="Artist or Band" required>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="music_single_album" class="form-label">Album / Collection</label>
+                                                <input type="text" class="form-control" id="music_single_album" placeholder="Album or Collection Name">
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label for="music_single_year" class="form-label">Year</label>
+                                                <input type="number" min="1900" max="2100" class="form-control" id="music_single_year" placeholder="2024">
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label for="music_single_track" class="form-label">Track #</label>
+                                                <input type="number" min="1" class="form-control" id="music_single_track" placeholder="1">
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label for="music_single_disc" class="form-label">Disc #</label>
+                                                <input type="number" min="1" class="form-control" id="music_single_disc" placeholder="1">
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label for="music_single_genres" class="form-label">Genres</label>
+                                                <input type="text" class="form-control" id="music_single_genres" placeholder="Rock; Alternative">
+                                                <div class="form-text">Separate multiple genres with semicolons.</div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="music_single_tags" class="form-label">Custom Tags</label>
+                                                <input type="text" class="form-control" id="music_single_tags" placeholder="mood=chill;language=en">
+                                                <div class="form-text">Use <code>key=value</code> pairs separated by semicolons.</div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="music_single_cover" class="form-label">Cover Art URL (optional)</label>
+                                                <input type="url" class="form-control" id="music_single_cover" placeholder="https://.../cover.jpg">
+                                            </div>
+                                        </div>
+                                        <div class="text-end mt-4">
+                                            <button type="submit" class="btn btn-primary" id="music-single-submit">
+                                                <i class="bi bi-cloud-arrow-down"></i> Queue Track
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+
+                                <div class="tab-pane fade" id="music-album" role="tabpanel" aria-labelledby="music-album-tab">
+                                    <form id="music-album-form" class="music-job-form">
+                                        <div class="row g-3">
+                                            <div class="col-12">
+                                                <label for="music_album_url" class="form-label">Album or Playlist URL</label>
+                                                <div class="input-group">
+                                                    <input type="url" class="form-control" id="music_album_url" placeholder="https://youtube.com/playlist?list=..." required>
+                                                    <button class="btn btn-outline-secondary" type="button" id="music_album_fetch">
+                                                        <i class="bi bi-search"></i> Fetch Metadata
+                                                    </button>
+                                                </div>
+                                                <div class="form-text">Use any playlist URL that represents the album tracks.</div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="music_album_title" class="form-label">Album Title</label>
+                                                <input type="text" class="form-control" id="music_album_title" placeholder="Album Title" required>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="music_album_artist" class="form-label">Album Artist</label>
+                                                <input type="text" class="form-control" id="music_album_artist" placeholder="Primary Artist" required>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label for="music_album_year" class="form-label">Release Year</label>
+                                                <input type="number" min="1900" max="2100" class="form-control" id="music_album_year" placeholder="2024">
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label for="music_album_genre" class="form-label">Genres</label>
+                                                <input type="text" class="form-control" id="music_album_genre" placeholder="Pop; Dance">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="music_album_cover" class="form-label">Cover Art URL</label>
+                                                <input type="url" class="form-control" id="music_album_cover" placeholder="https://.../cover.jpg">
+                                            </div>
+                                            <div class="col-12">
+                                                <label class="form-label">Track Listing</label>
+                                                <div class="table-responsive" id="music-album-tracks">
+                                                    <p class="text-muted mb-0">Fetch metadata to populate track information or add tracks manually.</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-12 d-flex justify-content-between align-items-center">
+                                                <button type="button" class="btn btn-outline-secondary" id="music_album_add_track">
+                                                    <i class="bi bi-plus-circle"></i> Add Track
+                                                </button>
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" id="music_album_embed_cover" checked>
+                                                    <label class="form-check-label" for="music_album_embed_cover">Embed cover art into files</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="text-end mt-4">
+                                            <button type="submit" class="btn btn-primary" id="music-album-submit">
+                                                <i class="bi bi-cloud-arrow-down"></i> Queue Album
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+
+                                <div class="tab-pane fade" id="music-playlist" role="tabpanel" aria-labelledby="music-playlist-tab">
+                                    <form id="music-playlist-form" class="music-job-form">
+                                        <div class="row g-3">
+                                            <div class="col-12">
+                                                <label for="music_playlist_url" class="form-label">Playlist URL</label>
+                                                <div class="input-group">
+                                                    <input type="url" class="form-control" id="music_playlist_url" placeholder="https://youtube.com/playlist?list=..." required>
+                                                    <button class="btn btn-outline-secondary" type="button" id="music_playlist_fetch">
+                                                        <i class="bi bi-search"></i> Inspect Playlist
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="music_playlist_title" class="form-label">Collection Name</label>
+                                                <input type="text" class="form-control" id="music_playlist_title" placeholder="Playlist or Mix Name" required>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="music_playlist_owner" class="form-label">Owner / Curator</label>
+                                                <input type="text" class="form-control" id="music_playlist_owner" placeholder="Channel or Curator">
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label for="music_playlist_variant" class="form-label">Playlist Type</label>
+                                                <select id="music_playlist_variant" class="form-select">
+                                                    <option value="standard" selected>Standard Playlist</option>
+                                                    <option value="mix">YouTube Mix</option>
+                                                    <option value="channel">Channel Uploads</option>
+                                                    <option value="artist">Artist Radio</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label for="music_playlist_limit" class="form-label">Track Limit</label>
+                                                <input type="number" min="1" class="form-control" id="music_playlist_limit" placeholder="All">
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label for="music_playlist_cover" class="form-label">Cover Art URL</label>
+                                                <input type="url" class="form-control" id="music_playlist_cover" placeholder="https://.../cover.jpg">
+                                            </div>
+                                            <div class="col-12">
+                                                <label class="form-label">Playlist Tracks</label>
+                                                <div class="table-responsive" id="music-playlist-tracks">
+                                                    <p class="text-muted mb-0">Inspect the playlist to load tracks. You can edit tags for each track.</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-12">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="music_playlist_include_future" checked>
+                                                    <label class="form-check-label" for="music_playlist_include_future">
+                                                        Track this playlist for future additions
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="text-end mt-4">
+                                            <button type="submit" class="btn btn-primary" id="music-playlist-submit">
+                                                <i class="bi bi-cloud-arrow-down"></i> Queue Playlist
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- Jobs Section -->
                 <section id="jobs" class="content-section">
                     <h2>Download Jobs</h2>
 
-                    <div class="card mb-4">
+                    <div class="d-flex justify-content-end mb-3">
+                        <div class="btn-group btn-group-sm" role="group" id="job-type-filter" aria-label="Job type filter">
+                            <button type="button" class="btn btn-outline-primary active" data-job-filter="all">
+                                <i class="bi bi-collection"></i> All
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" data-job-filter="tv">
+                                <i class="bi bi-tv"></i> TV
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" data-job-filter="movie">
+                                <i class="bi bi-film"></i> Movies
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" data-job-filter="music">
+                                <i class="bi bi-music-note-beamed"></i> Music
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card mb-4 job-panel" data-job-type="tv">
                         <div class="card-header">
                             <h6 class="m-0">Active TV Jobs</h6>
                         </div>
@@ -383,7 +614,7 @@
                         </div>
                     </div>
 
-                    <div class="card">
+                    <div class="card job-panel" data-job-type="movie">
                         <div class="card-header">
                             <h6 class="m-0">Active Movie Jobs</h6>
                         </div>
@@ -405,13 +636,54 @@
                             </div>
                         </div>
                     </div>
+
+                    <div class="card mt-4 job-panel" data-job-type="music">
+                        <div class="card-header">
+                            <h6 class="m-0">Active Music Jobs</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table" id="music-jobs-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Collection</th>
+                                            <th>Type</th>
+                                            <th>Status</th>
+                                            <th>Progress</th>
+                                            <th>Created</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </section>
 
                 <!-- History Section -->
                 <section id="history" class="content-section">
                     <h2>History</h2>
 
-                    <div class="card mb-4">
+                    <div class="d-flex justify-content-end mb-3">
+                        <div class="btn-group btn-group-sm" role="group" id="history-type-filter" aria-label="History type filter">
+                            <button type="button" class="btn btn-outline-secondary active" data-history-filter="all">
+                                <i class="bi bi-collection"></i> All
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" data-history-filter="tv">
+                                <i class="bi bi-tv"></i> TV
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" data-history-filter="movie">
+                                <i class="bi bi-film"></i> Movies
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" data-history-filter="music">
+                                <i class="bi bi-music-note-beamed"></i> Music
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card mb-4 history-panel" data-history-type="tv">
                         <div class="card-header">
                             <h6 class="m-0">Past TV Jobs</h6>
                         </div>
@@ -435,7 +707,7 @@
                         </div>
                     </div>
 
-                    <div class="card">
+                    <div class="card history-panel" data-history-type="movie">
                         <div class="card-header">
                             <h6 class="m-0">Movie History</h6>
                         </div>
@@ -449,6 +721,30 @@
                                             <th>Status</th>
                                             <th>Progress</th>
                                             <th>Created</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mt-4 history-panel" data-history-type="music">
+                        <div class="card-header">
+                            <h6 class="m-0">Music History</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table" id="music-history-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Collection</th>
+                                            <th>Type</th>
+                                            <th>Status</th>
+                                            <th>Progress</th>
+                                            <th>Completed</th>
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
@@ -617,6 +913,111 @@
                     </div>
                 </section>
             </main>
+        </div>
+    </div>
+
+    <!-- Music Track Edit Modal -->
+    <div class="modal fade" id="musicTrackModal" tabindex="-1" aria-labelledby="musicTrackModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="musicTrackModalLabel">
+                        <i class="bi bi-music-note-beamed"></i> Edit Track Metadata
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="music-track-form">
+                        <input type="hidden" id="music_track_index">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="music_track_title" class="form-label">Title</label>
+                                <input type="text" class="form-control" id="music_track_title" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="music_track_artist" class="form-label">Artist</label>
+                                <input type="text" class="form-control" id="music_track_artist" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="music_track_album" class="form-label">Album</label>
+                                <input type="text" class="form-control" id="music_track_album">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="music_track_year" class="form-label">Year</label>
+                                <input type="number" min="1900" max="2100" class="form-control" id="music_track_year">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="music_track_number" class="form-label">Track #</label>
+                                <input type="number" min="1" class="form-control" id="music_track_number">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="music_track_disc" class="form-label">Disc #</label>
+                                <input type="number" min="1" class="form-control" id="music_track_disc">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="music_track_duration" class="form-label">Duration (s)</label>
+                                <input type="number" min="0" class="form-control" id="music_track_duration" placeholder="180">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="music_track_genres" class="form-label">Genres</label>
+                                <input type="text" class="form-control" id="music_track_genres" placeholder="Rock; Indie">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="music_track_tags" class="form-label">Custom Tags</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="music_track_tags" placeholder="mood=energetic;language=en">
+                                    <button class="btn btn-outline-secondary" type="button" id="music_track_manage_tags">
+                                        <i class="bi bi-tags"></i>
+                                    </button>
+                                </div>
+                                <div class="form-text">Use <code>key=value</code> pairs separated by semicolons or open the tag editor.</div>
+                            </div>
+                            <div class="col-12">
+                                <label for="music_track_notes" class="form-label">Notes</label>
+                                <textarea class="form-control" id="music_track_notes" rows="2" placeholder="Optional notes for this track"></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="music_track_save">
+                        <i class="bi bi-save"></i> Save Track
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Music Tag Modal -->
+    <div class="modal fade" id="musicTagModal" tabindex="-1" aria-labelledby="musicTagModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="musicTagModalLabel">
+                        <i class="bi bi-tags"></i> Edit Custom Tags
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="music_tag_key" class="form-label">Tag Key</label>
+                        <input type="text" class="form-control" id="music_tag_key" placeholder="mood">
+                    </div>
+                    <div class="mb-3">
+                        <label for="music_tag_value" class="form-label">Tag Value</label>
+                        <input type="text" class="form-control" id="music_tag_value" placeholder="upbeat">
+                    </div>
+                    <div class="form-text">Use the add button to append tags to the current track. Existing tags will be displayed below.</div>
+                    <ul class="list-group mt-3" id="music_tag_list"></ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="music_tag_add">
+                        <i class="bi bi-plus-lg"></i> Add Tag
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 

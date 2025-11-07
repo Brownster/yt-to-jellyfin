@@ -414,9 +414,7 @@ def convert_video_files(app, folder: str, season_num: str, job_id: str) -> None:
                 detailed_status=(
                     f"Converting {filename} to H.265 (file {i+1}/{total_files})"
                 ),
-                message=(
-                    f"Converting {filename} to H.265 ({i+1}/{total_files})"
-                ),
+                message=(f"Converting {filename} to H.265 ({i+1}/{total_files})"),
             )
         log_job(job_id, logging.INFO, f"Converting {video} to H.265")
         try:
@@ -777,8 +775,7 @@ def process_movie_metadata(
         poster_path = tmdb_data.get("poster_path")
         genres = [g["name"] for g in tmdb_data.get("genres", [])]
         actors = [
-            c.get("name")
-            for c in tmdb_data.get("credits", {}).get("cast", [])[:5]
+            c.get("name") for c in tmdb_data.get("credits", {}).get("cast", [])[:5]
         ]
         base_name = f"{title}"
         if year:
@@ -1184,8 +1181,7 @@ def list_movies(app) -> List[Dict]:
         if not movie_dir.is_dir():
             continue
         if any(
-            sd.is_dir() and sd.name.startswith("Season ")
-            for sd in movie_dir.iterdir()
+            sd.is_dir() and sd.name.startswith("Season ") for sd in movie_dir.iterdir()
         ):
             continue
         movie_file = None
@@ -1210,9 +1206,11 @@ def list_movies(app) -> List[Dict]:
                     "modified": datetime.fromtimestamp(
                         movie_file.stat().st_mtime
                     ).strftime("%Y-%m-%d %H:%M:%S"),
-                    "poster": os.path.relpath(poster_file, output_dir)
-                    if poster_file.exists()
-                    else None,
+                    "poster": (
+                        os.path.relpath(poster_file, output_dir)
+                        if poster_file.exists()
+                        else None
+                    ),
                 }
             )
     return movies
@@ -1244,6 +1242,93 @@ def get_playlist_videos(app, url: str) -> List[Dict]:
         return []
 
 
+def get_music_playlist_details(app, url: str) -> Dict:
+    """Return rich metadata for a music playlist, album or track list."""
+
+    try:
+        result = subprocess.run(
+            [
+                app.config["ytdlp_path"],
+                "--dump-single-json",
+                url,
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        data = json.loads(result.stdout)
+    except (subprocess.CalledProcessError, json.JSONDecodeError) as exc:
+        logger.error(f"Failed to fetch music playlist info: {exc}")
+        return {"entries": []}
+
+    entries = data.get("entries") or []
+    playlist_title = data.get("title") or data.get("playlist") or ""
+    uploader = data.get("uploader") or data.get("channel") or ""
+    playlist_thumbs = data.get("thumbnails") or []
+    cover_url = None
+    if playlist_thumbs:
+        cover_url = max(
+            playlist_thumbs,
+            key=lambda t: (t.get("width", 0) or 0) * (t.get("height", 0) or 0),
+        ).get("url")
+
+    normalized_entries: List[Dict] = []
+    for idx, entry in enumerate(entries, start=1):
+        if not isinstance(entry, dict):
+            continue
+        thumbs = entry.get("thumbnails") or []
+        thumb_url = None
+        if thumbs:
+            thumb_url = max(
+                thumbs,
+                key=lambda t: (t.get("width", 0) or 0) * (t.get("height", 0) or 0),
+            ).get("url")
+
+        release_year = entry.get("release_year")
+        if not release_year:
+            release_date = entry.get("release_date")
+            if release_date:
+                release_year = str(release_date)[:4]
+
+        normalized_entries.append(
+            {
+                "index": idx,
+                "id": entry.get("id"),
+                "title": entry.get("title") or f"Track {idx}",
+                "duration": entry.get("duration"),
+                "channel": entry.get("channel"),
+                "artist": entry.get("artist") or entry.get("uploader"),
+                "album": entry.get("album") or playlist_title,
+                "release_year": release_year,
+                "webpage_url": entry.get("webpage_url")
+                or entry.get("url")
+                or _entry_source_url(entry),
+                "thumbnail": thumb_url,
+                "track_number": entry.get("track_number") or idx,
+                "disc_number": entry.get("disc_number") or 1,
+                "tags": entry.get("tags") or [],
+            }
+        )
+
+    return {
+        "title": playlist_title,
+        "uploader": uploader,
+        "uploader_id": data.get("uploader_id"),
+        "entries": normalized_entries,
+        "webpage_url": data.get("webpage_url") or url,
+        "thumbnail": cover_url,
+        "description": data.get("description"),
+    }
+
+
+def _entry_source_url(entry: Dict) -> str:
+    for key in ("original_url", "url", "webpage_url"):
+        value = entry.get(key)
+        if value:
+            return value
+    return ""
+
+
 __all__ = [
     "create_folder_structure",
     "create_movie_folder",
@@ -1258,4 +1343,5 @@ __all__ = [
     "list_media",
     "list_movies",
     "get_playlist_videos",
+    "get_music_playlist_details",
 ]
