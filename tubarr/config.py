@@ -32,6 +32,7 @@ class ConfigModel(BaseModel):
     jellyfin_enabled: bool = False
     jellyfin_tv_path: str = ""
     jellyfin_movie_path: str = ""
+    jellyfin_music_path: str = ""
     jellyfin_host: str = ""
     jellyfin_port: int = Field(8096, ge=1, le=65535)
     jellyfin_api_key: str = ""
@@ -40,6 +41,9 @@ class ConfigModel(BaseModel):
     imdb_api_key: str = ""
     clean_filenames: bool = True
     defaults: Optional[Dict[str, str]] = Field(default_factory=dict)
+    music_output_dir: str = Field(..., min_length=1)
+    music_default_genre: str = ""
+    music_default_year: Optional[int] = Field(default=None, ge=0)
 
     @validator("jellyfin_tv_path", always=True)
     def validate_jellyfin_tv_path(cls, v, values):
@@ -94,7 +98,20 @@ def _load_config() -> Dict:
         == "true",
         "imdb_api_key": os.environ.get("IMDB_API_KEY", ""),
         "clean_filenames": os.environ.get("CLEAN_FILENAMES", "true").lower() == "true",
+        "music_output_dir": os.environ.get("MUSIC_OUTPUT_DIR", "./music"),
+        "music_default_genre": os.environ.get("MUSIC_DEFAULT_GENRE", ""),
+        "music_default_year": None,
+        "jellyfin_music_path": os.environ.get("JELLYFIN_MUSIC_PATH", ""),
     }
+
+    music_year_env = os.environ.get("MUSIC_DEFAULT_YEAR", "").strip()
+    if music_year_env:
+        try:
+            config["music_default_year"] = int(music_year_env)
+        except ValueError:
+            logger.warning(
+                "Invalid MUSIC_DEFAULT_YEAR value '%s'; expected integer", music_year_env
+            )
 
     cookies_path = os.environ.get("COOKIES_PATH", "")
     if cookies_path and os.path.exists(cookies_path):
@@ -164,6 +181,8 @@ def _load_config() -> Dict:
                             config["jellyfin_tv_path"] = value
                         elif key == "movie_path":
                             config["jellyfin_movie_path"] = value
+                        elif key == "music_path":
+                            config["jellyfin_music_path"] = value
                         elif key == "host":
                             config["jellyfin_host"] = value
                         elif key == "port":
@@ -181,6 +200,21 @@ def _load_config() -> Dict:
                     if "api_key" in file_config["imdb"]:
                         config["imdb_api_key"] = file_config["imdb"]["api_key"]
 
+                if "music" in file_config and isinstance(file_config["music"], dict):
+                    music_cfg = file_config["music"]
+                    if "output_dir" in music_cfg:
+                        config["music_output_dir"] = music_cfg["output_dir"]
+                    if "default_genre" in music_cfg:
+                        config["music_default_genre"] = music_cfg["default_genre"]
+                    if "default_year" in music_cfg:
+                        try:
+                            config["music_default_year"] = int(music_cfg["default_year"])
+                        except (TypeError, ValueError):
+                            logger.warning(
+                                "Invalid music.default_year value '%s'; expected integer",
+                                music_cfg["default_year"],
+                            )
+
                 if "update_checker" in file_config and isinstance(
                     file_config["update_checker"], dict
                 ):
@@ -195,9 +229,20 @@ def _load_config() -> Dict:
     if not config["output_dir"]:
         raise ValueError("output_dir is required")
 
-    # Ensure output_dir is absolute so file serving works regardless of the
+    # Ensure output directories are absolute so file serving works regardless of the
     # current working directory
     config["output_dir"] = os.path.abspath(config["output_dir"])
+    config["music_output_dir"] = os.path.abspath(config["music_output_dir"])
+
+    if isinstance(config.get("music_default_year"), str) and config["music_default_year"]:
+        try:
+            config["music_default_year"] = int(config["music_default_year"])
+        except ValueError:
+            logger.warning(
+                "Invalid music_default_year value '%s'; expected integer",
+                config["music_default_year"],
+            )
+            config["music_default_year"] = None
 
     try:
         validated = ConfigModel(**config)

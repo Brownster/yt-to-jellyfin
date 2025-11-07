@@ -95,15 +95,47 @@ def check_dependencies(ytdlp_path: str, extra: List[str] = None) -> bool:
     else:
         dependencies.append(ytdlp_path)
 
+    ffmpeg_path = None
     for cmd in dependencies:
         try:
             result = subprocess.run(
                 ["which", cmd], check=True, capture_output=True, text=True
             )
-            logger.info(f"Found dependency {cmd} at: {result.stdout.strip()}")
+            found_path = result.stdout.strip()
+            logger.info(f"Found dependency {cmd} at: {found_path}")
+            if cmd == "ffmpeg":
+                ffmpeg_path = found_path or cmd
         except subprocess.CalledProcessError:
             logger.error(f"Required dependency not found: {cmd}")
             return False
+
+    ffmpeg_cmd = ffmpeg_path or "ffmpeg"
+    try:
+        encoder_check = subprocess.run(
+            [ffmpeg_cmd, "-hide_banner", "-encoders"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+        logger.error(f"Failed to verify ffmpeg encoders: {exc}")
+        return False
+
+    if "libmp3lame" not in encoder_check.stdout:
+        logger.error("ffmpeg is missing libmp3lame encoder support required for MP3 output")
+        return False
+
+    try:
+        subprocess.run(
+            [ytdlp_path, "--version"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError, PermissionError) as exc:
+        logger.error(f"Failed to execute yt-dlp for version check: {exc}")
+        return False
+
     return True
 
 
