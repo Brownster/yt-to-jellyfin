@@ -432,6 +432,32 @@
                                     <input type="text" class="form-control" id="movie_name" placeholder="Movie Name" required
                                            data-bs-toggle="tooltip" title="The name of the movie. This will be used for the folder and file name.">
                                 </div>
+                                <div class="mb-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="movie_use_h265" checked>
+                                        <label class="form-check-label" for="movie_use_h265">Convert to H.265 (Recommended for smaller file size)</label>
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-lg-6">
+                                        <label for="movie_quality" class="form-label">Maximum Video Quality</label>
+                                        <select class="form-select" id="movie_quality">
+                                            <option value="2160">4K (2160p)</option>
+                                            <option value="1440">QHD (1440p)</option>
+                                            <option value="1080" selected>FHD (1080p)</option>
+                                            <option value="720">HD (720p)</option>
+                                            <option value="480">SD (480p)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-lg-6">
+                                        <label for="movie_crf" class="form-label">H.265 Quality (CRF): <span id="movie-crf-value">28</span></label>
+                                        <input type="range" class="form-range" min="18" max="32" step="1" id="movie_crf" value="28">
+                                        <div class="d-flex justify-content-between">
+                                            <small>Higher Quality</small>
+                                            <small>Smaller Size</small>
+                                        </div>
+                                    </div>
+                                </div>
                                 <div class="text-end">
                                     <button type="submit" class="btn btn-primary">Start Download</button>
                                 </div>

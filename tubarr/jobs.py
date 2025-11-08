@@ -46,6 +46,10 @@ class DownloadJob:
         tracks: Optional[List[TrackMetadata]] = None,
         subscription_id=None,
         music_request=None,
+        *,
+        quality_override: Optional[int] = None,
+        use_h265_override: Optional[bool] = None,
+        crf_override: Optional[int] = None,
     ):
         self.job_id = job_id
         self.playlist_url = playlist_url
@@ -60,6 +64,9 @@ class DownloadJob:
         self.tracks: List[TrackMetadata] = tracks or []
         self.subscription_id = subscription_id
         self.music_request = music_request or {}
+        self.quality_override = quality_override
+        self.use_h265_override = use_h265_override
+        self.crf_override = crf_override
         self.status = "queued"
         self.progress = 0
         self.messages = []
@@ -153,6 +160,9 @@ class DownloadJob:
             "processed_files": self.processed_files,
             "detailed_status": self.detailed_status,
             "remaining_files": self.remaining_files,
+            "quality_override": self.quality_override,
+            "use_h265_override": self.use_h265_override,
+            "crf_override": self.crf_override,
         }
 
 
@@ -170,6 +180,9 @@ def create_job(
     subscription_id: Optional[str] = None,
     *,
     start_thread: bool = True,
+    quality: Optional[int] = None,
+    use_h265: Optional[bool] = None,
+    crf: Optional[int] = None,
 ) -> str:
     job_id = str(uuid.uuid4())
     job = DownloadJob(
@@ -180,6 +193,9 @@ def create_job(
         episode_start,
         playlist_start,
         subscription_id=subscription_id,
+        quality_override=quality,
+        use_h265_override=use_h265,
+        crf_override=crf,
     )
 
     try:

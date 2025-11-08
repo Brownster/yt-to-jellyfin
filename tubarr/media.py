@@ -68,13 +68,17 @@ def download_playlist(
         if os.path.exists(local_ytdlp) and os.access(local_ytdlp, os.X_OK):
             ytdlp_path = local_ytdlp
     log_job(job_id, logging.INFO, f"Using yt-dlp from: {ytdlp_path}")
+    job = app.jobs.get(job_id)
+    quality_setting = app.config["quality"]
+    if job and job.quality_override is not None:
+        quality_setting = job.quality_override
     cmd = [
         ytdlp_path,
         "--ignore-errors",
         "--no-warnings",
         (
-            f'-f bestvideo[height<={app.config["quality"]}]'
-            f'+bestaudio/best[height<={app.config["quality"]}]'
+            f'-f bestvideo[height<={quality_setting}]'
+            f'+bestaudio/best[height<={quality_setting}]'
         ),
         "-o",
         output_template,
@@ -99,7 +103,6 @@ def download_playlist(
         cmd.insert(1, f'--cookies={app.config["cookies"]}')
     else:
         cmd.insert(1, "--no-cookies")
-    job = app.jobs.get(job_id)
     if job:
         job.update(
             status="downloading",
@@ -335,16 +338,21 @@ def process_metadata(
 
 
 def convert_video_files(app, folder: str, season_num: str, job_id: str) -> None:
-    if not app.config["use_h265"]:
+    job = app.jobs.get(job_id)
+    use_h265 = app.config["use_h265"]
+    if job and job.use_h265_override is not None:
+        use_h265 = job.use_h265_override
+    if not use_h265:
         log_job(job_id, logging.INFO, "H.265 conversion disabled, skipping")
-        job = app.jobs.get(job_id)
         if job:
             job.update(
                 message="H.265 conversion disabled, skipping",
                 detailed_status="H.265 conversion disabled",
             )
         return
-    job = app.jobs.get(job_id)
+    crf_value = app.config["crf"]
+    if job and job.crf_override is not None:
+        crf_value = job.crf_override
     if job:
         job.update(
             status="converting",
@@ -415,7 +423,7 @@ def convert_video_files(app, folder: str, season_num: str, job_id: str) -> None:
             "-preset",
             "medium",
             "-crf",
-            str(app.config["crf"]),
+            str(crf_value),
             "-tag:v",
             "hvc1",
             "-c:a",
@@ -548,9 +556,12 @@ def convert_video_files(app, folder: str, season_num: str, job_id: str) -> None:
 
 def convert_movie_file(app, folder: str, job_id: str) -> None:
     """Convert a downloaded movie to H.265 if enabled."""
-    if not app.config["use_h265"]:
+    job = app.jobs.get(job_id)
+    use_h265 = app.config["use_h265"]
+    if job and job.use_h265_override is not None:
+        use_h265 = job.use_h265_override
+    if not use_h265:
         log_job(job_id, logging.INFO, "H.265 conversion disabled, skipping")
-        job = app.jobs.get(job_id)
         if job:
             job.update(
                 message="H.265 conversion disabled, skipping",
@@ -558,7 +569,9 @@ def convert_movie_file(app, folder: str, job_id: str) -> None:
             )
         return
 
-    job = app.jobs.get(job_id)
+    crf_value = app.config["crf"]
+    if job and job.crf_override is not None:
+        crf_value = job.crf_override
     if job:
         job.update(
             status="converting",
@@ -625,7 +638,7 @@ def convert_movie_file(app, folder: str, job_id: str) -> None:
         "-preset",
         "medium",
         "-crf",
-        str(app.config["crf"]),
+        str(crf_value),
         "-tag:v",
         "hvc1",
         "-c:a",

@@ -227,6 +227,9 @@ class YTToJellyfin:
         track_playlist: bool = True,
         *,
         start_thread: bool = True,
+        quality: Optional[int] = None,
+        use_h265: Optional[bool] = None,
+        crf: Optional[int] = None,
     ) -> str:
         return create_job(
             self,
@@ -237,6 +240,9 @@ class YTToJellyfin:
             playlist_start,
             track_playlist,
             start_thread=start_thread,
+            quality=quality,
+            use_h265=use_h265,
+            crf=crf,
         )
 
     def create_movie_job(
@@ -245,6 +251,9 @@ class YTToJellyfin:
         movie_name: str,
         *,
         start_thread: bool = True,
+        quality: Optional[int] = None,
+        use_h265: Optional[bool] = None,
+        crf: Optional[int] = None,
     ) -> str:
         job_id = str(uuid.uuid4())
         job = DownloadJob(
@@ -255,6 +264,9 @@ class YTToJellyfin:
             "",
             media_type="movie",
             movie_name=movie_name,
+            quality_override=quality,
+            use_h265_override=use_h265,
+            crf_override=crf,
         )
         with self.job_lock:
             self.jobs[job_id] = job
