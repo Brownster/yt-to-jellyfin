@@ -22,6 +22,23 @@ app = Flask(
 ytj = YTToJellyfin()
 
 
+def _parse_optional_int(value, label):
+    if value is None or value == "":
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"Invalid {label} value")
+
+
+def _parse_optional_bool(value):
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    return str(value).lower() not in {"false", "0", "off", "no"}
+
+
 @app.route("/")
 def index():
     """Main web interface page."""
@@ -39,6 +56,16 @@ def jobs():
         episode_start = request.form.get("episode_start")
         playlist_start = request.form.get("playlist_start")
         track_playlist = request.form.get("track_playlist", "true").lower() != "false"
+        quality_val = request.form.get("quality")
+        use_h265_raw = request.form.get("use_h265")
+        crf_val = request.form.get("crf")
+
+        try:
+            quality_override = _parse_optional_int(quality_val, "quality")
+            crf_override = _parse_optional_int(crf_val, "CRF")
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+        use_h265_override = _parse_optional_bool(use_h265_raw)
 
         if not playlist_url or not show_name or not season_num or not episode_start:
             return jsonify({"error": "Missing required parameters"}), 400
@@ -52,6 +79,9 @@ def jobs():
                 episode_start,
                 playlist_start_int,
                 track_playlist,
+                quality=quality_override,
+                use_h265=use_h265_override,
+                crf=crf_override,
             )
         else:
             job_id = ytj.create_job(
@@ -61,6 +91,9 @@ def jobs():
                 episode_start,
                 playlist_start=None,
                 track_playlist=track_playlist,
+                quality=quality_override,
+                use_h265=use_h265_override,
+                crf=crf_override,
             )
         return jsonify({"job_id": job_id})
     else:
@@ -71,14 +104,23 @@ def jobs():
 @app.route("/movies", methods=["GET", "POST"])
 def movies():
     if request.method == "POST":
-        video_url = request.form.get("video_url") or (request.json or {}).get(
-            "video_url"
-        )
-        movie_name = request.form.get("movie_name") or (request.json or {}).get(
-            "movie_name"
-        )
+        data = request.form if request.form else (request.json or {})
+        video_url = data.get("video_url")
+        movie_name = data.get("movie_name")
+        quality_val = data.get("quality")
+        use_h265_raw = data.get("use_h265")
+        crf_val = data.get("crf")
+
         if not video_url or not movie_name:
             return jsonify({"error": "Missing required parameters"}), 400
+
+        try:
+            quality_override = _parse_optional_int(quality_val, "quality")
+            crf_override = _parse_optional_int(crf_val, "CRF")
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+        use_h265_override = _parse_optional_bool(use_h265_raw)
+
         if ytj._is_playlist_url(video_url):
             videos = ytj.get_playlist_videos(video_url)
             job_ids = []
@@ -88,10 +130,24 @@ def movies():
                 if not vid:
                     continue
                 url = f"https://www.youtube.com/watch?v={vid}"
-                job_ids.append(ytj.create_movie_job(url, title))
+                job_ids.append(
+                    ytj.create_movie_job(
+                        url,
+                        title,
+                        quality=quality_override,
+                        use_h265=use_h265_override,
+                        crf=crf_override,
+                    )
+                )
             return jsonify({"job_ids": job_ids})
         else:
-            job_id = ytj.create_movie_job(video_url, movie_name)
+            job_id = ytj.create_movie_job(
+                video_url,
+                movie_name,
+                quality=quality_override,
+                use_h265=use_h265_override,
+                crf=crf_override,
+            )
             return jsonify({"job_id": job_id})
     else:
         return jsonify(ytj.list_movies())

@@ -69,6 +69,14 @@ document.addEventListener('DOMContentLoaded', function() {
             crfValue.textContent = this.value;
         });
     }
+
+    const movieCrfSlider = document.getElementById('movie_crf');
+    const movieCrfValue = document.getElementById('movie-crf-value');
+    if (movieCrfSlider && movieCrfValue) {
+        movieCrfSlider.addEventListener('input', function() {
+            movieCrfValue.textContent = this.value;
+        });
+    }
     
     const defaultCrfSlider = document.getElementById('default_crf');
     const defaultCrfValue = document.getElementById('default-crf-value');
@@ -314,6 +322,16 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             const track = document.getElementById('track_playlist');
             formData.append('track_playlist', track && track.checked ? 'true' : 'false');
+            const qualitySelect = document.getElementById('quality');
+            if (qualitySelect) {
+                formData.append('quality', qualitySelect.value);
+            }
+            const useH265Toggle = document.getElementById('use_h265');
+            formData.append('use_h265', useH265Toggle && useH265Toggle.checked ? 'true' : 'false');
+            const crfInput = document.getElementById('crf');
+            if (crfInput) {
+                formData.append('crf', crfInput.value);
+            }
 
             // Send request to create job
             fetch('/jobs', {
@@ -358,6 +376,16 @@ document.addEventListener('DOMContentLoaded', function() {
             const formData = new FormData();
             formData.append('video_url', document.getElementById('movie_url').value);
             formData.append('movie_name', document.getElementById('movie_name').value);
+            const movieQuality = document.getElementById('movie_quality');
+            if (movieQuality) {
+                formData.append('quality', movieQuality.value);
+            }
+            const movieUseH265 = document.getElementById('movie_use_h265');
+            formData.append('use_h265', movieUseH265 && movieUseH265.checked ? 'true' : 'false');
+            const movieCrf = document.getElementById('movie_crf');
+            if (movieCrf) {
+                formData.append('crf', movieCrf.value);
+            }
 
             fetch('/movies', {
                 method: 'POST',
@@ -381,6 +409,47 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+
+    fetch('/config')
+        .then(response => response.json())
+        .then(config => {
+            const tvQuality = document.getElementById('quality');
+            if (tvQuality && config.quality) {
+                tvQuality.value = String(config.quality);
+            }
+            const tvUseH265 = document.getElementById('use_h265');
+            if (tvUseH265) {
+                tvUseH265.checked = config.use_h265 !== false;
+            }
+            const tvCrf = document.getElementById('crf');
+            if (tvCrf) {
+                const crfVal = config.crf || 28;
+                tvCrf.value = crfVal;
+                const crfLabel = document.getElementById('crf-value');
+                if (crfLabel) {
+                    crfLabel.textContent = crfVal;
+                }
+            }
+
+            const movieQuality = document.getElementById('movie_quality');
+            if (movieQuality && config.quality) {
+                movieQuality.value = String(config.quality);
+            }
+            const movieUseH265Toggle = document.getElementById('movie_use_h265');
+            if (movieUseH265Toggle) {
+                movieUseH265Toggle.checked = config.use_h265 !== false;
+            }
+            const movieCrfInput = document.getElementById('movie_crf');
+            if (movieCrfInput) {
+                const crfVal = config.crf || 28;
+                movieCrfInput.value = crfVal;
+                const movieCrfLabel = document.getElementById('movie-crf-value');
+                if (movieCrfLabel) {
+                    movieCrfLabel.textContent = crfVal;
+                }
+            }
+        })
+        .catch(() => {});
 
     const subscriptionRetentionControls = configureRetentionControls('retention_type', 'retention_value', 'retention-value-help');
     const editRetentionControls = configureRetentionControls('edit_retention_type', 'edit_retention_value', 'edit-retention-help');
