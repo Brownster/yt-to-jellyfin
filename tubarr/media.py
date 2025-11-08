@@ -3,9 +3,12 @@ import json
 import re
 import subprocess
 import logging
+import requests
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Sequence, TYPE_CHECKING
 from datetime import datetime
+
+from mutagen.id3 import ID3, TIT2, TPE1, TPE2, TALB, TRCK, TPOS, TDRC, TCON, APIC, ID3NoHeaderError
 
 from .config import logger
 from .utils import (
@@ -16,6 +19,9 @@ from .utils import (
     log_job,
 )
 from . import tmdb
+
+if TYPE_CHECKING:
+    from .jobs import TrackMetadata
 
 
 def create_folder_structure(app, show_name: str, season_num: str) -> str:
@@ -32,6 +38,18 @@ def create_movie_folder(app, movie_name: str) -> str:
     folder = Path(app.config["output_dir"]) / sanitize_name(movie_name)
     folder.mkdir(parents=True, exist_ok=True)
     return str(folder)
+
+
+def create_music_album_folder(
+    app, album_name: str, artist_name: Optional[str] = None
+) -> str:
+    """Create folder structure for music albums: Music/[Artist]/Album"""
+    base_folder = Path(app.config["music_output_dir"])
+    if artist_name:
+        base_folder = base_folder / sanitize_name(artist_name)
+    album_folder = base_folder / sanitize_name(album_name)
+    album_folder.mkdir(parents=True, exist_ok=True)
+    return str(album_folder)
 
 
 def download_playlist(
@@ -1108,6 +1126,338 @@ def create_nfo_files(
         f.write(tvshow_nfo)
     if job:
         job.update(progress=100, message="Created NFO files")
+
+
+def download_music_tracks(
+    app,
+    playlist_url: str,
+    folder: str,
+    job_id: str,
+    playlist_start: Optional[int] = None,
+) -> List[Path]:
+    """Download playlist audio tracks using yt-dlp bestaudio profile."""
+
+    output_template = f"{folder}/%(playlist_index)03d - %(title)s.%(ext)s"
+    ytdlp_path = app.config["ytdlp_path"]
+    if not os.path.isabs(ytdlp_path):
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        local_ytdlp = os.path.join(script_dir, ytdlp_path)
+        if os.path.exists(local_ytdlp) and os.access(local_ytdlp, os.X_OK):
+            ytdlp_path = local_ytdlp
+
+    cmd = [
+        ytdlp_path,
+        "--ignore-errors",
+        "--no-warnings",
+        "-f",
+        "bestaudio/best",
+        "-o",
+        output_template,
+        "--write-info-json",
+        "--restrict-filenames",
+        "--progress",
+        "--no-cookies-from-browser",
+        playlist_url,
+    ]
+
+    archive_file = app._get_archive_file(playlist_url)
+    os.makedirs(os.path.dirname(archive_file), exist_ok=True)
+    cmd.extend(["--download-archive", archive_file])
+    if playlist_start:
+        cmd.extend(["--playlist-start", str(playlist_start)])
+    if app.config["cookies"] and os.path.exists(app.config["cookies"]):
+        cmd.insert(1, f'--cookies={app.config["cookies"]}')
+    else:
+        cmd.insert(1, "--no-cookies")
+
+    job = app.jobs.get(job_id)
+    if job:
+        job.update(
+            status="downloading",
+            stage="downloading_audio",
+            progress=0,
+            stage_progress=0,
+            detailed_status="Starting audio download",
+            message=f"Downloading audio playlist: {playlist_url}",
+        )
+
+    log_job(job_id, logging.INFO, f"Starting audio download for playlist: {playlist_url}")
+
+    try:
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            universal_newlines=True,
+            start_new_session=True,
+        )
+        if job:
+            job.process = process
+        total_items = 0
+        processed = 0
+        current_file = ""
+        for raw_line in process.stdout:
+            if job and job.status == "cancelled":
+                terminate_process(process)
+                break
+            line = raw_line.strip()
+            log_job(job_id, logging.INFO, line)
+            if job:
+                if "Destination:" in line:
+                    match = re.search(r"Destination:\s+(.+)", line)
+                    if match:
+                        current_file = os.path.basename(match.group(1))
+                        processed += 1
+                        if job.remaining_files:
+                            job.remaining_files.pop(0)
+                        job.update(
+                            processed_files=processed,
+                            file_name=current_file,
+                            detailed_status=f"Downloading: {current_file}",
+                            message=f"Downloading {current_file}",
+                        )
+                elif "[download]" in line and "of" in line and "item" in line:
+                    total_match = re.search(r"of\s+(\d+)\s+item", line)
+                    if total_match:
+                        total_items = int(total_match.group(1))
+                        job.update(total_files=total_items)
+                elif "%" in line:
+                    progress_match = re.search(r"(\d+\.\d+)%", line)
+                    if progress_match:
+                        progress_value = float(progress_match.group(1))
+                        overall = progress_value
+                        if total_items:
+                            overall = min(
+                                98,
+                                ((processed - 1) / max(total_items, 1) * 100)
+                                + (progress_value / max(total_items, 1)),
+                            )
+                        job.update(
+                            progress=overall,
+                            stage_progress=progress_value,
+                            detailed_status=(
+                                f"Downloading: {current_file} ({progress_value:.1f}%)"
+                            ),
+                        )
+                else:
+                    job.update(message=line)
+
+        process.wait()
+        if job:
+            job.process = None
+        if process.returncode != 0:
+            if job:
+                job.update(
+                    status="failed",
+                    stage="failed",
+                    detailed_status="Audio download failed",
+                    message=f"yt-dlp exited with code {process.returncode}",
+                )
+            log_job(
+                job_id,
+                logging.ERROR,
+                f"Audio download failed with return code {process.returncode}",
+            )
+            return []
+    except Exception as exc:
+        if job:
+            job.update(
+                status="failed",
+                stage="failed",
+                detailed_status="Audio download failed",
+                message=f"Audio download error: {exc}",
+            )
+        log_job(job_id, logging.ERROR, f"Audio download error: {exc}")
+        return []
+
+    audio_exts = {".mp3", ".m4a", ".opus", ".ogg", ".webm", ".flac", ".wav", ".aac"}
+    downloaded = [
+        p
+        for p in Path(folder).iterdir()
+        if p.suffix.lower() in audio_exts and not p.name.startswith("._")
+    ]
+    downloaded.sort()
+
+    if job:
+        job.update(
+            status="downloaded",
+            stage="downloading_audio",
+            progress=100,
+            stage_progress=100,
+            detailed_status="Audio download completed",
+            message="Finished downloading audio tracks",
+        )
+
+    return downloaded
+
+
+def _ensure_mp3(
+    source: Path,
+    job_id: str,
+    job,
+) -> Path:
+    """Convert audio file to MP3 if not already MP3."""
+    if source.suffix.lower() == ".mp3":
+        return source
+
+    target = source.with_suffix(".mp3")
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-i",
+        str(source),
+        "-vn",
+        "-ar",
+        "44100",
+        "-ac",
+        "2",
+        "-b:a",
+        "320k",
+        str(target),
+    ]
+
+    if job:
+        job.update(
+            stage="converting_audio",
+            detailed_status=f"Converting {source.name} to MP3",
+            message=f"Converting {source.name} to MP3",
+        )
+
+    log_job(job_id, logging.INFO, f"Converting {source.name} to MP3 via ffmpeg")
+    result = run_subprocess(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        log_job(
+            job_id,
+            logging.ERROR,
+            f"ffmpeg failed for {source.name}: {result.stderr}",
+        )
+        raise RuntimeError(f"ffmpeg conversion failed for {source.name}")
+
+    source.unlink()
+    return target
+
+
+def _apply_track_metadata(
+    file_path: Path,
+    metadata: "TrackMetadata",
+    job_id: str,
+) -> None:
+    """Apply ID3 tags to MP3 file using mutagen."""
+    try:
+        tags = ID3(str(file_path))
+        tags.clear()
+    except ID3NoHeaderError:
+        tags = ID3()
+
+    tags.add(TIT2(encoding=3, text=metadata.title))
+    tags.add(TPE1(encoding=3, text=metadata.artist))
+    tags.add(TALB(encoding=3, text=metadata.album))
+    album_artist = metadata.album_artist or metadata.artist
+    tags.add(TPE2(encoding=3, text=album_artist))
+
+    track_text = str(metadata.track_number)
+    if metadata.total_tracks:
+        track_text = f"{track_text}/{metadata.total_tracks}"
+    tags.add(TRCK(encoding=3, text=track_text))
+    if metadata.disc_number:
+        disc_text = str(metadata.disc_number)
+        if metadata.total_discs:
+            disc_text = f"{disc_text}/{metadata.total_discs}"
+        tags.add(TPOS(encoding=3, text=disc_text))
+    if metadata.release_date:
+        tags.add(TDRC(encoding=3, text=str(metadata.release_date)))
+    if metadata.genres:
+        tags.add(TCON(encoding=3, text=", ".join(metadata.genres) if isinstance(metadata.genres, list) else metadata.genres))
+
+    cover_url = metadata.cover_url or (metadata.extra.get("cover_url") if metadata.extra else None)
+    if cover_url:
+        try:
+            response = requests.get(cover_url, timeout=15)
+            response.raise_for_status()
+            image_data = response.content
+            tags.add(
+                APIC(
+                    encoding=3,
+                    mime="image/jpeg",
+                    type=3,
+                    desc="Cover",
+                    data=image_data,
+                )
+            )
+        except Exception as exc:
+            log_job(job_id, logging.WARNING, f"Failed to download cover art: {exc}")
+
+    tags.save(str(file_path))
+    log_job(job_id, logging.INFO, f"Applied ID3 tags to {file_path.name}")
+
+
+def prepare_music_tracks(
+    app,
+    folder: str,
+    tracks: Sequence["TrackMetadata"],
+    downloaded_files: Sequence[Path],
+    job_id: str,
+) -> List[Path]:
+    """Process downloaded audio tracks: convert to MP3, rename, and tag."""
+    job = app.jobs.get(job_id)
+    prepared_files: List[Path] = []
+    total = min(len(tracks), len(downloaded_files))
+
+    if job:
+        job.update(
+            stage="processing_tracks",
+            detailed_status=f"Processing {total} tracks",
+            total_files=total,
+            processed_files=0,
+        )
+
+    for index, (track_meta, source_path) in enumerate(
+        zip(tracks, downloaded_files), start=1
+    ):
+        if job and job.status == "cancelled":
+            break
+
+        if job:
+            job.update(
+                current_file=source_path.name,
+                detailed_status=f"Preparing track {index}/{total}: {track_meta.title}",
+            )
+
+        try:
+            mp3_path = _ensure_mp3(source_path, job_id, job)
+        except RuntimeError:
+            return prepared_files
+
+        clean_title = track_meta.title
+        if app.config.get("clean_filenames", True):
+            clean_title = clean_filename(clean_title)
+        sanitized_title = sanitize_name(clean_title)
+        final_name = f"{track_meta.track_number:02d} - {sanitized_title}.mp3"
+        final_path = Path(folder) / final_name
+        if mp3_path != final_path:
+            if final_path.exists():
+                final_path.unlink()
+            mp3_path.rename(final_path)
+
+        if job:
+            job.update(stage="tagging", detailed_status=f"Tagging {track_meta.title}")
+
+        _apply_track_metadata(final_path, track_meta, job_id)
+        prepared_files.append(final_path)
+
+        if job:
+            remaining = list(job.remaining_files)
+            if remaining:
+                remaining.pop(0)
+                job.remaining_files = remaining
+            job.update(
+                processed_files=index,
+                progress=min(95, int(index / max(total, 1) * 90)),
+                file_name=final_path.name,
+                message=f"Processed track {track_meta.track_number}: {track_meta.title}",
+            )
+
+    return prepared_files
 
 
 def list_media(app) -> List[Dict]:
