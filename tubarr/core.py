@@ -9,6 +9,7 @@ import uuid
 import logging
 from pathlib import Path
 from typing import Dict, List, Optional
+from pathlib import Path as PathType
 
 from .config import _load_config, logger
 from .jobs import (
@@ -34,7 +35,10 @@ from .playlist import (
 from .media import (
     create_folder_structure,
     create_movie_folder,
+    create_music_album_folder,
     download_playlist,
+    download_music_tracks,
+    prepare_music_tracks,
     process_metadata,
     process_movie_metadata,
     convert_movie_file,
@@ -50,6 +54,7 @@ from .media import (
 from .jellyfin import (
     copy_to_jellyfin,
     copy_movie_to_jellyfin,
+    copy_music_to_jellyfin,
     trigger_jellyfin_scan,
 )
 from .utils import sanitize_name, clean_filename, check_dependencies, log_job
@@ -403,6 +408,73 @@ class YTToJellyfin:
         finally:
             self._on_job_complete(job_id)
 
+    def process_music_job(self, job_id: str) -> None:
+        """Process a music download job from start to completion."""
+        job = self.jobs.get(job_id)
+        if not job:
+            log_job(job_id, logging.ERROR, "Job not found")
+            return
+
+        try:
+            job.update(status="in_progress", message="Starting music job")
+            if not self.check_dependencies():
+                job.update(status="failed", message="Missing dependencies")
+                return
+
+            folder = self.create_music_album_folder(job.album_name, job.artist_name)
+            job.update(
+                message=f"Created music folder structure at {folder}",
+                detailed_status="Preparing album folder",
+            )
+
+            downloaded_files = self.download_music_tracks(
+                job.playlist_url,
+                folder,
+                job_id,
+                job.playlist_start,
+            )
+
+            if job.status == "cancelled":
+                return
+
+            if not downloaded_files:
+                job.update(status="failed", message="Audio download failed")
+                return
+
+            prepared = self.prepare_music_tracks(
+                folder,
+                job.tracks,
+                downloaded_files,
+                job_id,
+            )
+
+            if job.status == "cancelled":
+                return
+
+            if not prepared:
+                job.update(status="failed", message="Failed to prepare music tracks")
+                return
+
+            if (
+                self.config.get("jellyfin_enabled", False)
+                and self.config.get("jellyfin_music_path")
+            ):
+                self.copy_music_to_jellyfin(job.album_name, job.artist_name, job_id)
+
+            job.update(
+                status="completed",
+                progress=100,
+                stage="completed",
+                detailed_status="Music job completed",
+                message="Music job completed successfully",
+            )
+            log_job(job_id, logging.INFO, "Music job completed successfully")
+        except Exception as exc:
+            logger.exception(f"Job {job_id}: Error processing music job: {exc}")
+            job.update(status="failed", message=f"Error: {exc}")
+        finally:
+            self._on_job_complete(job_id)
+
     def _on_job_complete(self, job_id: str) -> None:
         """Start the next queued job if available."""
         with self.job_lock:
@@ -424,6 +496,11 @@ class YTToJellyfin:
 
     def create_movie_folder(self, movie_name: str) -> str:
         return create_movie_folder(self, movie_name)
+
+    def create_music_album_folder(
+        self, album_name: str, artist_name: Optional[str] = None
+    ) -> str:
+        return create_music_album_folder(self, album_name, artist_name)
 
     def download_playlist(
         self,
@@ -471,6 +548,24 @@ class YTToJellyfin:
     ) -> None:
         create_nfo_files(self, folder, show_name, season_num, job_id)
 
+    def download_music_tracks(
+        self,
+        playlist_url: str,
+        folder: str,
+        job_id: str,
+        playlist_start: Optional[int] = None,
+    ) -> List[PathType]:
+        return download_music_tracks(self, playlist_url, folder, job_id, playlist_start)
+
+    def prepare_music_tracks(
+        self,
+        folder: str,
+        tracks,
+        downloaded_files,
+        job_id: str,
+    ) -> List[PathType]:
+        return prepare_music_tracks(self, folder, tracks, downloaded_files, job_id)
+
     def list_media(self) -> List[Dict]:
         return list_media(self)
 
@@ -488,6 +583,9 @@ class YTToJellyfin:
 
     def copy_movie_to_jellyfin(self, movie_name: str, job_id: str) -> None:
         copy_movie_to_jellyfin(self, movie_name, job_id)
+
+    def copy_music_to_jellyfin(self, album_name: str, artist_name: str, job_id: str) -> None:
+        copy_music_to_jellyfin(self, album_name, artist_name, job_id)
 
     def trigger_jellyfin_scan(self, job_id: str) -> None:
         trigger_jellyfin_scan(self, job_id)
