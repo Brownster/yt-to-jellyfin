@@ -2,11 +2,30 @@ import os
 import uuid
 import threading
 import subprocess
+from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from .config import logger
 from .utils import terminate_process
+
+
+@dataclass
+class TrackMetadata:
+    """Metadata describing a single music track."""
+
+    title: str
+    artist: str
+    album: str
+    track_number: int
+    total_tracks: Optional[int] = None
+    disc_number: Optional[int] = None
+    total_discs: Optional[int] = None
+    release_date: Optional[str] = None
+    genres: List[str] = field(default_factory=list)
+    cover_url: Optional[str] = None
+    album_artist: Optional[str] = None
+    extra: Dict[str, Any] = field(default_factory=dict)
 
 
 class DownloadJob:
@@ -22,6 +41,9 @@ class DownloadJob:
         playlist_start=None,
         media_type="tv",
         movie_name="",
+        album_name="",
+        artist_name="",
+        tracks: Optional[List[TrackMetadata]] = None,
         subscription_id=None,
         music_request=None,
     ):
@@ -33,6 +55,9 @@ class DownloadJob:
         self.playlist_start = playlist_start
         self.media_type = media_type
         self.movie_name = movie_name
+        self.album_name = album_name
+        self.artist_name = artist_name
+        self.tracks: List[TrackMetadata] = tracks or []
         self.subscription_id = subscription_id
         self.music_request = music_request or {}
         self.status = "queued"
