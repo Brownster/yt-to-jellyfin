@@ -2,11 +2,30 @@ import os
 import uuid
 import threading
 import subprocess
+from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from .config import logger
 from .utils import terminate_process
+
+
+@dataclass
+class TrackMetadata:
+    """Metadata describing a single music track."""
+
+    title: str
+    artist: str
+    album: str
+    track_number: int
+    total_tracks: Optional[int] = None
+    disc_number: Optional[int] = None
+    total_discs: Optional[int] = None
+    release_date: Optional[str] = None
+    genres: List[str] = field(default_factory=list)
+    cover_url: Optional[str] = None
+    album_artist: Optional[str] = None
+    extra: Dict[str, Any] = field(default_factory=dict)
 
 
 class DownloadJob:
@@ -22,6 +41,9 @@ class DownloadJob:
         playlist_start=None,
         media_type="tv",
         movie_name="",
+        album_name="",
+        artist_name="",
+        tracks: Optional[List[TrackMetadata]] = None,
         subscription_id=None,
         music_request=None,
     ):
@@ -33,6 +55,9 @@ class DownloadJob:
         self.playlist_start = playlist_start
         self.media_type = media_type
         self.movie_name = movie_name
+        self.album_name = album_name
+        self.artist_name = artist_name
+        self.tracks: List[TrackMetadata] = tracks or []
         self.subscription_id = subscription_id
         self.music_request = music_request or {}
         self.status = "queued"
@@ -248,53 +273,68 @@ __all__ = [
 ]
 
 
-def create_music_job(app, music_request: Dict, *, start_thread: bool = True) -> str:
-    """Register a music download job request."""
+def create_music_job(
+    app,
+    playlist_url: str,
+    album_name: str,
+    artist_name: str = "",
+    tracks: Optional[List[TrackMetadata]] = None,
+    playlist_start: Optional[int] = None,
+    *,
+    start_thread: bool = True,
+) -> str:
+    """Register a music download job request.
 
-    if not isinstance(music_request, dict):
-        raise ValueError("music_request must be a mapping")
+    Args:
+        app: Application instance
+        playlist_url: URL of the YouTube playlist/video to download
+        album_name: Name of the album
+        artist_name: Name of the artist (optional)
+        tracks: List of TrackMetadata objects describing each track
+        playlist_start: Starting index in playlist (1-based)
+        start_thread: Whether to start processing thread immediately
 
-    source_url = music_request.get("source_url", "")
-    collection = music_request.get("collection", {}) or {}
-    job_type = music_request.get("job_type", "music")
-
-    display_name = (
-        music_request.get("display_name")
-        or collection.get("title")
-        or collection.get("name")
-        or (music_request.get("track") or {}).get("title")
-        or music_request.get("track_title")
-        or job_type.title()
-    )
-
-    tracks = music_request.get("tracks")
-    if tracks is not None and not isinstance(tracks, list):
-        raise ValueError("tracks must be a list when provided")
-
+    Returns:
+        Job ID string
+    """
     job_id = str(uuid.uuid4())
+
+    # Use album_name as display name
+    display_name = album_name or "Unknown Album"
+
     job = DownloadJob(
         job_id,
-        source_url,
+        playlist_url,
         display_name,
-        collection.get("year") or collection.get("disc") or "--",
-        "1",
-        playlist_start=None,
+        "",  # season_num not used for music
+        "1",  # episode_start not used for music
+        playlist_start,
         media_type="music",
-        music_request=music_request,
+        album_name=album_name,
+        artist_name=artist_name,
+        tracks=tracks or [],
     )
 
-    if isinstance(tracks, list):
+    # Populate remaining_files from tracks
+    if tracks:
         for track in tracks:
-            if isinstance(track, dict):
-                title = track.get("title") or track.get("name")
-                if title:
-                    job.remaining_files.append(title)
+            if isinstance(track, TrackMetadata):
+                job.remaining_files.append(track.title)
 
     with app.job_lock:
         app.jobs[job_id] = job
         job.update(
-            detailed_status="Awaiting music processor",
-            message="Music job queued",
+            detailed_status="Music job queued",
+            message="Music job created and queued for processing",
         )
+
+        # Handle job queue and threading
+        if len(app.active_jobs) < app.config.get("max_concurrent_jobs", 1):
+            app.active_jobs.append(job_id)
+            if start_thread:
+                threading.Thread(target=app.process_music_job, args=(job_id,)).start()
+        else:
+            app.job_queue.append(job_id)
+            job.update(message="Job queued - waiting for available slot")
 
     return job_id
