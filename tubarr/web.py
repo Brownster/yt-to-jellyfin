@@ -121,6 +121,14 @@ def movies():
             return jsonify({"error": str(exc)}), 400
         use_h265_override = _parse_optional_bool(use_h265_raw)
 
+        optional_kwargs = {}
+        if quality_override is not None:
+            optional_kwargs["quality"] = quality_override
+        if use_h265_override is not None:
+            optional_kwargs["use_h265"] = use_h265_override
+        if crf_override is not None:
+            optional_kwargs["crf"] = crf_override
+
         if ytj._is_playlist_url(video_url):
             videos = ytj.get_playlist_videos(video_url)
             job_ids = []
@@ -134,9 +142,7 @@ def movies():
                     ytj.create_movie_job(
                         url,
                         title,
-                        quality=quality_override,
-                        use_h265=use_h265_override,
-                        crf=crf_override,
+                        **optional_kwargs,
                     )
                 )
             return jsonify({"job_ids": job_ids})
@@ -144,9 +150,7 @@ def movies():
             job_id = ytj.create_movie_job(
                 video_url,
                 movie_name,
-                quality=quality_override,
-                use_h265=use_h265_override,
-                crf=crf_override,
+                **optional_kwargs,
             )
             return jsonify({"job_id": job_id})
     else:
