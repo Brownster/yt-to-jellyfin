@@ -1,6 +1,6 @@
 import json
 import unittest
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 from tubarr.web import app
 
@@ -65,6 +65,9 @@ class FrontendIntegrationTests(unittest.TestCase):
             "01",
             playlist_start=None,
             track_playlist=True,
+            quality=None,
+            use_h265=None,
+            crf=None,
         )
 
     def test_music_job_creation_errors_without_payload(self):
@@ -87,6 +90,66 @@ class FrontendIntegrationTests(unittest.TestCase):
         self.assertEqual(payload["job_id"], "music-1")
         self.mock_ytj.create_music_job.assert_called_once_with(job_request)
 
+    def test_music_job_creation_with_optional_metadata(self):
+        job_request = {
+            "job_type": "album",
+            "source_url": "https://youtube.com/playlist?list=ALBUM",
+            "display_name": "Live Album",
+            "collection": {
+                "title": "Live Album",
+                "artist": "Demo Band",
+                "year": "2024",
+                "genres": ["Rock", "Live"],
+                "cover_url": "https://img.example/cover.jpg",
+                "embed_cover": True,
+            },
+            "tracks": [
+                {
+                    "title": "Opening",
+                    "artist": "Demo Band",
+                    "album": "Live Album",
+                    "track_number": 1,
+                    "disc_number": 1,
+                    "genres": ["Rock"],
+                    "tags": {"mood": "energetic"},
+                    "year": "2024",
+                    "source_url": "https://youtu.be/track1",
+                }
+            ],
+        }
+        self.mock_ytj.create_music_job.return_value = "music-opt"
+
+        response = self.client.post(
+            "/music/jobs",
+            data=json.dumps(job_request),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.data.decode())
+        self.assertEqual(payload["job_id"], "music-opt")
+        self.mock_ytj.create_music_job.assert_called_once_with(job_request)
+
+    def test_music_job_creation_schema_validation_error(self):
+        job_request = {"job_type": "album", "source_url": "", "tracks": []}
+        self.mock_ytj.create_music_job.side_effect = ValueError(
+            "Missing required field: source_url"
+        )
+
+        response = self.client.post(
+            "/music/jobs",
+            data=json.dumps(job_request),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        payload = json.loads(response.data.decode())
+        self.assertEqual(
+            payload,
+            {"error": "Missing required field: source_url"},
+        )
+        self.mock_ytj.create_music_job.assert_called_once_with(job_request)
+
     def test_music_jobs_list_filters_only_music(self):
         self.mock_ytj.get_jobs.return_value = [
             {"job_id": "a", "media_type": "music"},
@@ -98,6 +161,81 @@ class FrontendIntegrationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         payload = json.loads(response.data.decode())
         self.assertEqual(payload, [{"job_id": "a", "media_type": "music"}])
+
+    def test_music_jobs_list_preserves_music_request_metadata(self):
+        music_job = {
+            "job_id": "m1",
+            "media_type": "music",
+            "music_request": {"job_type": "album", "display_name": "Sampler"},
+        }
+        self.mock_ytj.get_jobs.return_value = [
+            music_job,
+            {"job_id": "tv1", "media_type": "tv"},
+        ]
+
+        response = self.client.get("/music/jobs")
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.data.decode())
+        self.assertEqual(payload, [music_job])
+
+    def test_music_job_detail_returns_job_payload(self):
+        job_detail = {
+            "job_id": "music-55",
+            "media_type": "music",
+            "status": "queued",
+            "music_request": {"display_name": "Mixtape"},
+        }
+        self.mock_ytj.get_job.return_value = job_detail
+
+        response = self.client.get("/music/jobs/music-55")
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.loads(response.data.decode())
+        self.assertEqual(payload, job_detail)
+        self.mock_ytj.get_job.assert_called_once_with("music-55")
+
+    def test_music_job_detail_missing_returns_404(self):
+        self.mock_ytj.get_job.return_value = None
+
+        response = self.client.get("/music/jobs/not-real")
+
+        self.assertEqual(response.status_code, 404)
+        payload = json.loads(response.data.decode())
+        self.assertEqual(payload, {"error": "Job not found"})
+        self.mock_ytj.get_job.assert_called_once_with("not-real")
+
+    def test_music_job_duplicate_submissions_create_unique_jobs(self):
+        job_request = {
+            "job_type": "single",
+            "source_url": "https://youtu.be/song",
+            "display_name": "Song",
+            "collection": {"title": "Song"},
+            "tracks": [],
+        }
+        self.mock_ytj.create_music_job.side_effect = ["music-100", "music-101"]
+
+        first_response = self.client.post(
+            "/music/jobs",
+            data=json.dumps(job_request),
+            content_type="application/json",
+        )
+        second_response = self.client.post(
+            "/music/jobs",
+            data=json.dumps(job_request),
+            content_type="application/json",
+        )
+
+        self.assertEqual(first_response.status_code, 200)
+        self.assertEqual(second_response.status_code, 200)
+        first_payload = json.loads(first_response.data.decode())
+        second_payload = json.loads(second_response.data.decode())
+        self.assertEqual(first_payload, {"job_id": "music-100"})
+        self.assertEqual(second_payload, {"job_id": "music-101"})
+        self.assertEqual(
+            self.mock_ytj.create_music_job.call_args_list,
+            [call(job_request), call(job_request)],
+        )
 
 
 if __name__ == "__main__":
