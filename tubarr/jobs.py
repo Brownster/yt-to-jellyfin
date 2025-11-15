@@ -1,4 +1,5 @@
 import os
+import copy
 import uuid
 import threading
 import subprocess
@@ -289,38 +290,135 @@ __all__ = [
 ]
 
 
+def _normalize_optional_int(value: Any) -> Optional[int]:
+    if value in (None, "", "null"):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _is_playlist_request(job_type: str, collection: Dict[str, Any]) -> bool:
+    playlist_markers = {"playlist", "mix", "standard", "channel", "artist"}
+    normalized_type = (job_type or "").strip().lower()
+    if not normalized_type:
+        normalized_type = ""
+    if normalized_type in playlist_markers or normalized_type.startswith("playlist"):
+        return True
+    variant = str(collection.get("variant", "")).strip().lower()
+    return variant in playlist_markers
+
+
+def _coerce_track_metadata(
+    index: int,
+    track: Any,
+    album_name: str,
+    default_artist: str,
+) -> TrackMetadata:
+    if isinstance(track, TrackMetadata):
+        return track
+    if not isinstance(track, dict):
+        raise ValueError("Tracks must be TrackMetadata instances or dictionaries")
+
+    title = (track.get("title") or f"Track {index}").strip()
+    if not title:
+        raise ValueError(f"Track {index} is missing a title")
+
+    artist = track.get("artist") or default_artist or ""
+    album = track.get("album") or album_name or ""
+    track_number = _normalize_optional_int(track.get("track_number")) or index
+    disc_number = _normalize_optional_int(track.get("disc_number")) or 1
+    total_tracks = _normalize_optional_int(track.get("total_tracks"))
+    total_discs = _normalize_optional_int(track.get("total_discs"))
+
+    release_date = track.get("release_date") or track.get("year")
+    if release_date is not None:
+        release_date = str(release_date)
+
+    genres_value = track.get("genres") or []
+    if isinstance(genres_value, str):
+        genres = [g.strip() for g in genres_value.split(";") if g.strip()]
+    elif isinstance(genres_value, list):
+        genres = [str(g) for g in genres_value]
+    else:
+        genres = []
+
+    cover_url = track.get("cover_url") or track.get("cover") or track.get("thumbnail")
+    album_artist = track.get("album_artist") or default_artist or ""
+
+    extra_fields: Dict[str, Any] = {}
+    for key in ("duration", "source_url", "thumbnail", "notes", "tags"):
+        if key in track and track[key] not in (None, ""):
+            extra_fields[key] = copy.deepcopy(track[key])
+    if cover_url:
+        extra_fields.setdefault("cover_url", cover_url)
+
+    return TrackMetadata(
+        title=title,
+        artist=artist,
+        album=album,
+        track_number=track_number,
+        total_tracks=total_tracks,
+        disc_number=disc_number,
+        total_discs=total_discs,
+        release_date=release_date,
+        genres=genres,
+        cover_url=cover_url,
+        album_artist=album_artist or None,
+        extra=extra_fields,
+    )
+
+
 def create_music_job(
     app,
-    playlist_url: str,
-    album_name: str,
-    artist_name: str = "",
-    tracks: Optional[List[TrackMetadata]] = None,
-    playlist_start: Optional[int] = None,
+    music_request: Dict[str, Any],
     *,
     start_thread: bool = True,
 ) -> str:
-    """Register a music download job request.
+    """Register a music download job request from a JSON payload."""
 
-    Args:
-        app: Application instance
-        playlist_url: URL of the YouTube playlist/video to download
-        album_name: Name of the album
-        artist_name: Name of the artist (optional)
-        tracks: List of TrackMetadata objects describing each track
-        playlist_start: Starting index in playlist (1-based)
-        start_thread: Whether to start processing thread immediately
+    if not isinstance(music_request, dict):
+        raise ValueError("music_request must be a dictionary")
 
-    Returns:
-        Job ID string
-    """
+    request = copy.deepcopy(music_request)
+    job_type = str(request.get("job_type") or "").strip()
+    collection = request.get("collection") or {}
+    source_url = request.get("source_url") or collection.get("source_url")
+    if not source_url:
+        raise ValueError("source_url is required for music jobs")
+
+    display_name = request.get("display_name") or collection.get("title") or "Untitled Music"
+    album_name = collection.get("title") or display_name
+    artist_name = (
+        collection.get("artist")
+        or collection.get("owner")
+        or request.get("artist_name")
+        or ""
+    )
+
+    playlist_start = request.get("playlist_start")
+    if playlist_start is None:
+        playlist_start = collection.get("playlist_start")
+    playlist_start = _normalize_optional_int(playlist_start)
+
+    create_m3u = bool(request.get("create_m3u"))
+    if create_m3u and not _is_playlist_request(job_type, collection):
+        raise ValueError("create_m3u is only supported for playlist jobs")
+
+    tracks_payload = request.get("tracks")
+    if not isinstance(tracks_payload, list) or not tracks_payload:
+        raise ValueError("tracks must be a non-empty list")
+
+    converted_tracks = [
+        _coerce_track_metadata(idx, track, album_name, artist_name)
+        for idx, track in enumerate(tracks_payload, start=1)
+    ]
+
     job_id = str(uuid.uuid4())
-
-    # Use album_name as display name
-    display_name = album_name or "Unknown Album"
-
     job = DownloadJob(
         job_id,
-        playlist_url,
+        source_url,
         display_name,
         "",  # season_num not used for music
         "1",  # episode_start not used for music
@@ -328,14 +426,11 @@ def create_music_job(
         media_type="music",
         album_name=album_name,
         artist_name=artist_name,
-        tracks=tracks or [],
+        tracks=converted_tracks,
+        music_request=request,
     )
 
-    # Populate remaining_files from tracks
-    if tracks:
-        for track in tracks:
-            if isinstance(track, TrackMetadata):
-                job.remaining_files.append(track.title)
+    job.remaining_files = [track.title for track in converted_tracks]
 
     with app.job_lock:
         app.jobs[job_id] = job
@@ -344,7 +439,6 @@ def create_music_job(
             message="Music job created and queued for processing",
         )
 
-        # Handle job queue and threading
         if len(app.active_jobs) < app.config.get("max_concurrent_jobs", 1):
             app.active_jobs.append(job_id)
             if start_thread:
