@@ -44,7 +44,8 @@ Tubarr is a Python application that downloads YouTube playlists and processes th
    ```
 
 3. **Install system dependencies**:
-   - **yt-dlp**: Download from https://github.com/yt-dlp/yt-dlp/releases and make sure it is executable
+   - **yt-dlp**: Download the latest release binary from https://github.com/yt-dlp/yt-dlp/releases and make sure it is executable
+   - **Deno**: Install version 2.0.0 or later from https://deno.com/ and ensure `deno` is available on your `PATH`
    - **ffmpeg**: Required for downloads, remuxing, thumbnail extraction, and music tagging
    - **ImageMagick** (`convert` and `montage` binaries): Used for poster and collage generation
    - **Optional**: `ffprobe` (ships with ffmpeg) for codec inspection during H.265 conversion
@@ -53,6 +54,7 @@ Tubarr is a Python application that downloads YouTube playlists and processes th
 
    ```bash
    yt-dlp --version
+   deno --version
    ffmpeg -version
    convert -version
    montage -version
@@ -234,6 +236,10 @@ editing the `imdb` section in `config.yml`.
 If `YTDLP_PATH` is not provided, Tubarr will search common locations
 (`/usr/local/bin/yt-dlp`, `/usr/bin/yt-dlp`) and fall back to simply
 `yt-dlp` in the current `PATH`.
+
+> **Note:** yt-dlp 2025.11.12 and later requires an external JavaScript runtime for
+> full YouTube support. This project recommends Deno 2.0.0+ and the official
+> Docker image installs it automatically.
 
 ### Using a Cookies File
 
