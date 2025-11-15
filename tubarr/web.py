@@ -42,7 +42,16 @@ def _parse_optional_bool(value):
 @app.route("/")
 def index():
     """Main web interface page."""
-    return render_template("index.html", jobs=ytj.get_jobs(), media=ytj.list_media())
+    music_defaults = {
+        "music_output_dir": ytj.config.get("music_output_dir", ""),
+        "jellyfin_music_path": ytj.config.get("jellyfin_music_path", ""),
+    }
+    return render_template(
+        "index.html",
+        jobs=ytj.get_jobs(),
+        media=ytj.list_media(),
+        music_defaults=music_defaults,
+    )
 
 
 @app.route("/jobs", methods=["GET", "POST"])

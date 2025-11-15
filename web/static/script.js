@@ -134,6 +134,32 @@ document.addEventListener('DOMContentLoaded', function() {
         return { select, input };
     }
 
+    function configurePlaylistM3uControls(form) {
+        const toggle = form.querySelector('#music_playlist_create_m3u');
+        const pathInput = form.querySelector('#music_playlist_m3u_path');
+        const container = form.querySelector('#music-playlist-m3u-group');
+        if (!toggle || !pathInput || !container) {
+            return;
+        }
+
+        const dataset = form.dataset || {};
+        const jellyfinPath = dataset.jellyfinMusicPath || '';
+        const musicOutputDir = dataset.musicOutputDir || '';
+        const resolved = jellyfinPath || musicOutputDir;
+        if (resolved && !pathInput.value) {
+            pathInput.value = resolved;
+        }
+
+        const updateState = () => {
+            const enabled = toggle.checked;
+            pathInput.disabled = !enabled;
+            container.classList.toggle('opacity-50', !enabled);
+        };
+
+        toggle.addEventListener('change', updateState);
+        updateState();
+    }
+
     function setupJobFilterControls() {
         const group = document.getElementById('job-type-filter');
         if (!group) {
@@ -212,6 +238,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const playlistForm = document.getElementById('music-playlist-form');
         if (playlistForm) {
+            configurePlaylistM3uControls(playlistForm);
             playlistForm.addEventListener('submit', handleMusicPlaylistSubmit);
         }
 
@@ -1863,10 +1890,30 @@ function handleMusicPlaylistSubmit(event) {
         tracks: musicState.playlistTracks.map((track, idx) => serializeMusicTrack(track, idx)),
     };
 
+    const createM3uToggle = document.getElementById('music_playlist_create_m3u');
+    const m3uPathInput = document.getElementById('music_playlist_m3u_path');
+    if (createM3uToggle?.checked) {
+        payload.create_m3u = true;
+        const m3uPath = m3uPathInput?.value.trim();
+        if (m3uPath) {
+            payload.m3u_path = m3uPath;
+        }
+    }
+
     postMusicJob(payload, () => {
         event.currentTarget.reset();
         musicState.playlistTracks = [];
         renderMusicTrackTable('playlist');
+        if (createM3uToggle) {
+            createM3uToggle.checked = false;
+            createM3uToggle.dispatchEvent(new Event('change'));
+        }
+        if (m3uPathInput) {
+            const playlistFormEl = document.getElementById('music-playlist-form');
+            const dataset = playlistFormEl?.dataset || {};
+            const fallbackPath = dataset.jellyfinMusicPath || dataset.musicOutputDir || '';
+            m3uPathInput.value = fallbackPath;
+        }
     }).finally(() => toggleButtonLoading(submitButton, false));
 }
 

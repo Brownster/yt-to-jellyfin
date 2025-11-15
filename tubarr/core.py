@@ -39,6 +39,7 @@ from .media import (
     download_playlist,
     download_music_tracks,
     prepare_music_tracks,
+    write_m3u_playlist,
     process_metadata,
     process_movie_metadata,
     convert_movie_file,
@@ -467,6 +468,58 @@ class YTToJellyfin:
                 job.update(status="failed", message="Failed to prepare music tracks")
                 return
 
+            if isinstance(prepared, list):
+                prepared_files = prepared
+            elif isinstance(prepared, tuple):
+                prepared_files = list(prepared)
+            else:
+                prepared_files = [prepared] if isinstance(prepared, Path) else []
+
+            prepared_files = [Path(p) for p in prepared_files]
+
+            playlist_request = job.music_request or {}
+            collection = playlist_request.get("collection") or {}
+            playlist_markers = {"playlist", "mix", "standard", "channel", "artist"}
+            job_type = str(playlist_request.get("job_type") or "").strip().lower()
+            variant = str(collection.get("variant") or "").strip().lower()
+            is_playlist_job = (
+                job_type.startswith("playlist")
+                or job_type in playlist_markers
+                or variant in playlist_markers
+            )
+
+            if (
+                prepared_files
+                and playlist_request.get("create_m3u")
+                and is_playlist_job
+            ):
+                base_path = (
+                    playlist_request.get("m3u_path")
+                    or self.config.get("music_output_dir")
+                )
+                playlist_name = (
+                    playlist_request.get("display_name")
+                    or collection.get("title")
+                    or job.album_name
+                )
+                try:
+                    playlist_file = self.write_m3u_playlist(
+                        prepared_files,
+                        base_path=base_path,
+                        playlist_name=playlist_name,
+                    )
+                    job.update(
+                        detailed_status="Generated playlist file",
+                        message=f"Created M3U playlist at {playlist_file}",
+                    )
+                except Exception as exc:  # pragma: no cover - defensive logging
+                    log_job(
+                        job_id,
+                        logging.ERROR,
+                        f"Failed to create M3U playlist: {exc}",
+                    )
+                    job.update(message=f"Failed to create M3U playlist: {exc}")
+
             if (
                 self.config.get("jellyfin_enabled", False)
                 and self.config.get("jellyfin_music_path")
@@ -577,6 +630,20 @@ class YTToJellyfin:
         job_id: str,
     ) -> List[PathType]:
         return prepare_music_tracks(self, folder, tracks, downloaded_files, job_id)
+
+    def write_m3u_playlist(
+        self,
+        prepared_files,
+        *,
+        base_path: Optional[str] = None,
+        playlist_name: Optional[str] = None,
+    ):
+        return write_m3u_playlist(
+            self,
+            prepared_files,
+            base_path=base_path,
+            playlist_name=playlist_name,
+        )
 
     def list_media(self) -> List[Dict]:
         return list_media(self)

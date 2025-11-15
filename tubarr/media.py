@@ -52,6 +52,44 @@ def create_music_album_folder(
     return str(album_folder)
 
 
+def write_m3u_playlist(
+    app,
+    prepared_files: Sequence[Path],
+    *,
+    base_path: Optional[str] = None,
+    playlist_name: Optional[str] = None,
+) -> Path:
+    """Write an M3U playlist alongside the prepared tracks."""
+
+    files = [Path(p) for p in prepared_files if p]
+    if not files:
+        raise ValueError("prepared_files must contain at least one track")
+
+    base_dir = Path(base_path or app.config["music_output_dir"]).expanduser().resolve()
+    playlist_dir = files[0].parent
+    playlist_dir.mkdir(parents=True, exist_ok=True)
+
+    safe_name = sanitize_name(playlist_name) if playlist_name else playlist_dir.name
+    if not safe_name:
+        safe_name = "playlist"
+    playlist_path = playlist_dir / f"{safe_name}.m3u"
+
+    entries: List[str] = []
+    for file_path in files:
+        resolved = file_path.resolve()
+        try:
+            relative = resolved.relative_to(base_dir)
+            entries.append(relative.as_posix())
+        except ValueError:
+            entries.append(resolved.as_posix())
+
+    playlist_path.write_text("\n".join(entries) + "\n", encoding="utf-8")
+    logger.info(
+        "Wrote M3U playlist with %s entries to %s", len(entries), playlist_path
+    )
+    return playlist_path
+
+
 def download_playlist(
     app,
     playlist_url: str,
@@ -1696,6 +1734,7 @@ __all__ = [
     "create_folder_structure",
     "create_movie_folder",
     "download_playlist",
+    "write_m3u_playlist",
     "process_metadata",
     "process_movie_metadata",
     "convert_movie_file",
