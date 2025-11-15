@@ -14,7 +14,21 @@ sanitize_name() {
 }
 
 # --- Check Dependencies ---
-YTDLP_CMD="./yt-dlp"  # Local yt-dlp executable
+YTDLP_CMD="$(command -v yt-dlp || true)"
+
+if [ -z "$YTDLP_CMD" ]; then
+  echo "Error: yt-dlp executable not found in PATH."
+  echo "Please download the latest release binary from https://github.com/yt-dlp/yt-dlp/releases,"
+  echo "make it executable, and ensure it is available on your PATH."
+  exit 1
+fi
+
+if ! command -v deno &> /dev/null; then
+  echo "Error: deno runtime is required by yt-dlp for YouTube downloads but was not found."
+  echo "Install Deno 2.0.0 or later from https://deno.com/ and ensure it is available on your PATH."
+  exit 1
+fi
+
 for cmd in jq ffmpeg convert montage "$YTDLP_CMD"; do
   if ! command -v "$cmd" &> /dev/null; then
     echo "Error: $cmd is required but not installed."

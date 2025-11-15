@@ -33,6 +33,7 @@ ENV/
 
 # Application specific
 media/
+yt-dlp
 *.log
 cookies.txt
 config/*.txt

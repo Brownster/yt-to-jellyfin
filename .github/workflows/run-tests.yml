@@ -38,6 +38,11 @@ jobs:
         curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /tmp/yt-dlp
         chmod a+rx /tmp/yt-dlp
         sudo mv /tmp/yt-dlp /usr/local/bin/yt-dlp
+
+    - name: Install Deno
+      uses: denoland/setup-deno@v1
+      with:
+        deno-version: v2.x
     
     - name: Run basic tests
       run: python run_tests.py --type basic
