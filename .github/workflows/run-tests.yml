@@ -40,7 +40,7 @@ jobs:
         sudo mv /tmp/yt-dlp /usr/local/bin/yt-dlp
 
     - name: Install Deno
-      uses: denoland/setup-deno@v1
+      uses: denoland/setup-deno@v2
       with:
         deno-version: v2.x
     
