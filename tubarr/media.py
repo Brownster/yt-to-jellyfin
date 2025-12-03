@@ -266,6 +266,26 @@ def download_playlist(
         return False
 
 
+def _normalize_upload_date(upload_date: str) -> str:
+    """Convert various upload date formats to ``YYYY-MM-DD``.
+
+    yt-dlp commonly returns dates as ``YYYYMMDD``. This helper also tolerates
+    already-normalized values while safely falling back to an empty string when
+    parsing fails.
+    """
+
+    if not upload_date:
+        return ""
+
+    date_str = str(upload_date)
+    for fmt in ("%Y%m%d", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(date_str, fmt).strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    return ""
+
+
 def process_metadata(
     app,
     folder: str,
@@ -307,18 +327,22 @@ def process_metadata(
     for json_file in json_files:
         with open(json_file, "r") as f:
             data = json.load(f)
-        entries.append(
-            EpisodeMetadata(
-                title=data.get("title", "Unknown Title"),
-                description=(
-                    data.get("description", "").split("\n")[0]
-                    if data.get("description")
-                    else ""
-                ),
-                upload_date=data.get("upload_date", ""),
-                playlist_index=data.get("playlist_index", 0),
-                base_path=str(json_file).replace(".info.json", ""),
-            )
+        title = data.get("title", "Unknown Title")
+        description = (
+            data.get("description", "").split("\n")[0]
+            if data.get("description")
+            else ""
+        )
+        upload_date = data.get("upload_date", "")
+        air_date = _normalize_upload_date(upload_date)
+        original_ep = data.get("playlist_index", 0)
+        new_ep = original_ep + episode_offset
+        new_ep_padded = f"{new_ep:02d}"
+        base_file = str(json_file).replace(".info.json", "")
+        new_base = re.sub(
+            rf"(\s?)?(S{season_num}E)[0-9]+",
+            lambda m: f"{m.group(1) or ' '}{m.group(2)}{new_ep_padded}",
+            base_file,
         )
 
     matches: List[EpisodeMatch]
