@@ -195,6 +195,33 @@ def music_jobs():
     return jsonify(jobs)
 
 
+@app.route("/audiobooks/jobs", methods=["GET", "POST"])
+def audiobook_jobs():
+    """Create or list audiobook download jobs."""
+
+    if request.method == "POST":
+        data = request.get_json(silent=True) or {}
+        url = data.get("url")
+        title = data.get("title")
+        author = data.get("author")
+        cover_url = data.get("cover_url") or None
+
+        if not url or not title or not author:
+            return jsonify({"error": "Missing required parameters"}), 400
+
+        try:
+            job_id = ytj.create_audiobook_job(
+                url, title, author, cover_url=cover_url
+            )
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+
+        return jsonify({"job_id": job_id})
+
+    jobs = [job for job in ytj.get_jobs() if job.get("media_type") == "audiobook"]
+    return jsonify(jobs)
+
+
 @app.route("/music/jobs/<job_id>", methods=["GET"])
 def music_job_detail(job_id):
     """Return details for a single music job."""

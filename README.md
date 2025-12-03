@@ -14,6 +14,7 @@ Tubarr is a Python application that downloads YouTube playlists and processes th
 - **Episode Renumbering**: Set custom starting episode numbers for proper sequencing
 - **H.265 Conversion**: Convert videos to H.265 for better compression and playback performance
 - **Artwork Generation**: Auto-generate show posters, season artwork, and episode thumbnails
+- **Audiobook Downloads**: Capture single audiobook sources, fetch cover art from Google Books, and convert to tagged M4B files
 - **TMDb Movie Metadata**: Fetch movie details and posters from The Movie Database when an API key is provided
 - **IMDb Movie Metadata**: Retrieve movie info from IMDb when enabled
 - **Filename Cleaning**: Automatically replaces underscores with spaces in filenames for better readability
@@ -215,6 +216,8 @@ You can configure it by editing the `docker-compose.yml` file and the `config/co
 | WEB_HOST | Host for the web interface (0.0.0.0 for all interfaces) | 0.0.0.0 |
 | COMPLETED_JOBS_LIMIT | Number of completed jobs to keep in history | 10 |
 | MAX_CONCURRENT_JOBS | Number of playlists processed simultaneously | 1 |
+| MUSIC_OUTPUT_DIR | Base folder for music downloads | ./music |
+| AUDIOBOOK_OUTPUT_DIR | Base folder for audiobook downloads | /mnt/storage/audiobooks |
 | UPDATE_CHECKER_ENABLED | Automatically check playlists for updates | false |
 | UPDATE_CHECKER_INTERVAL | Minutes between update checks | 60 |
 | CONFIG_FILE | Path to configuration file | config/config.yml |

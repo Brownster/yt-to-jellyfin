@@ -44,6 +44,9 @@ class DownloadJob:
         movie_name="",
         album_name="",
         artist_name="",
+        book_title: str = "",
+        book_author: str = "",
+        cover_url: str = "",
         tracks: Optional[List[TrackMetadata]] = None,
         subscription_id=None,
         music_request=None,
@@ -64,6 +67,9 @@ class DownloadJob:
         self.movie_name = movie_name
         self.album_name = album_name
         self.artist_name = artist_name
+        self.book_title = book_title
+        self.book_author = book_author
+        self.cover_url = cover_url
         self.tracks: List[TrackMetadata] = tracks or []
         self.subscription_id = subscription_id
         self.music_request = music_request or {}
@@ -152,6 +158,9 @@ class DownloadJob:
             "playlist_start": self.playlist_start,
             "media_type": self.media_type,
             "movie_name": self.movie_name,
+            "book_title": self.book_title,
+            "book_author": self.book_author,
+            "cover_url": self.cover_url,
             "subscription_id": self.subscription_id,
             "music_request": self.music_request,
             "status": self.status,
@@ -256,7 +265,7 @@ def create_job(
         if len(app.active_jobs) < app.config.get("max_concurrent_jobs", 1):
             app.active_jobs.append(job_id)
             if start_thread:
-                threading.Thread(target=app.process_job, args=(job_id,)).start()
+                app._start_job(job_id, start_thread=True)
         else:
             app.job_queue.append(job_id)
             job.update(message="Job queued")
@@ -296,6 +305,7 @@ __all__ = [
     "DownloadJob",
     "create_job",
     "create_music_job",
+    "create_audiobook_job",
     "get_job",
     "get_jobs",
     "cancel_job",
@@ -454,7 +464,72 @@ def create_music_job(
         if len(app.active_jobs) < app.config.get("max_concurrent_jobs", 1):
             app.active_jobs.append(job_id)
             if start_thread:
-                threading.Thread(target=app.process_music_job, args=(job_id,)).start()
+                app._start_job(job_id, start_thread=True)
+        else:
+            app.job_queue.append(job_id)
+            job.update(message="Job queued - waiting for available slot")
+
+    return job_id
+
+
+def create_audiobook_job(
+    app,
+    *,
+    url: str,
+    title: str,
+    author: str,
+    cover_url: str = "",
+    start_thread: bool = True,
+) -> str:
+    """Register a single audiobook download job.
+
+    Only one audiobook job is allowed at a time to keep processing sequential.
+    """
+
+    if not url:
+        raise ValueError("source_url is required for audiobook jobs")
+    if not title:
+        raise ValueError("Book title is required for audiobook jobs")
+    if not author:
+        raise ValueError("Author is required for audiobook jobs")
+
+    active_audiobooks = [
+        j
+        for j in app.jobs.values()
+        if j.media_type == "audiobook"
+        and j.status not in {"completed", "failed", "cancelled"}
+    ]
+    if active_audiobooks:
+        raise ValueError(
+            "Another audiobook job is already queued or running. Please wait for it to finish."
+        )
+
+    job_id = str(uuid.uuid4())
+    job = DownloadJob(
+        job_id,
+        url,
+        title,
+        "",
+        "1",
+        media_type="audiobook",
+        album_name=title,
+        artist_name=author,
+        book_title=title,
+        book_author=author,
+        cover_url=cover_url or "",
+    )
+
+    with app.job_lock:
+        app.jobs[job_id] = job
+        job.update(
+            detailed_status="Audiobook job queued",
+            message="Audiobook job created and queued",
+        )
+
+        if len(app.active_jobs) < app.config.get("max_concurrent_jobs", 1):
+            app.active_jobs.append(job_id)
+            if start_thread:
+                app._start_job(job_id, start_thread=True)
         else:
             app.job_queue.append(job_id)
             job.update(message="Job queued - waiting for available slot")

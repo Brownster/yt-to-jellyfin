@@ -41,6 +41,17 @@ def create_movie_folder(app, movie_name: str) -> str:
     return str(folder)
 
 
+def create_audiobook_folder(app, title: str, author: str) -> str:
+    """Create folder structure for audiobooks: Audiobooks/[Author]/Title."""
+
+    base_folder = Path(app.config.get("audiobook_output_dir", "./audiobooks"))
+    safe_author = sanitize_name(author) or "Unknown Author"
+    safe_title = sanitize_name(title) or "Untitled Book"
+    folder = base_folder / safe_author / safe_title
+    folder.mkdir(parents=True, exist_ok=True)
+    return str(folder)
+
+
 def create_music_album_folder(
     app, album_name: str, artist_name: Optional[str] = None
 ) -> str:
@@ -1248,6 +1259,240 @@ def create_nfo_files(
         job.update(progress=100, message="Created NFO files")
 
 
+def fetch_book_cover(
+    app,
+    title: str,
+    author: str,
+    folder: str,
+    job_id: str,
+    fallback_url: Optional[str] = None,
+) -> Optional[Path]:
+    """Fetch cover art for an audiobook using the Google Books API."""
+
+    job = app.jobs.get(job_id)
+    query_parts = []
+    if title:
+        query_parts.append(f"intitle:{title}")
+    if author:
+        query_parts.append(f"inauthor:{author}")
+    query = "+".join(part.replace(" ", "+") for part in query_parts)
+    api_url = f"https://www.googleapis.com/books/v1/volumes?q={query or title or author}".strip()
+
+    try:
+        response = requests.get(api_url, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        image_url = None
+        for item in data.get("items", []):
+            links = item.get("volumeInfo", {}).get("imageLinks") or {}
+            image_url = links.get("thumbnail") or links.get("smallThumbnail")
+            if image_url:
+                break
+
+        if not image_url:
+            image_url = fallback_url
+
+        if not image_url:
+            return None
+
+        cover_response = requests.get(image_url, timeout=10)
+        cover_response.raise_for_status()
+        cover_path = Path(folder) / "cover.jpg"
+        cover_path.write_bytes(cover_response.content)
+        if job:
+            job.update(
+                message="Fetched audiobook cover art",
+                detailed_status="Downloaded cover image",
+            )
+        log_job(job_id, logging.INFO, f"Saved audiobook cover art to {cover_path}")
+        return cover_path
+    except Exception as exc:  # pragma: no cover - defensive logging
+        log_job(job_id, logging.WARNING, f"Unable to fetch cover art: {exc}")
+        if job:
+            job.update(message="Unable to fetch cover art automatically")
+        return None
+
+
+def download_audiobook_audio(app, url: str, folder: str, job_id: str) -> Optional[Path]:
+    """Download a single audiobook audio source using yt-dlp."""
+
+    output_template = f"{folder}/%(title)s.%(ext)s"
+    ytdlp_path = app.config["ytdlp_path"]
+    if not os.path.isabs(ytdlp_path):
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        local_ytdlp = os.path.join(script_dir, ytdlp_path)
+        if os.path.exists(local_ytdlp) and os.access(local_ytdlp, os.X_OK):
+            ytdlp_path = local_ytdlp
+
+    cmd = [
+        ytdlp_path,
+        "--ignore-errors",
+        "--no-warnings",
+        "-f",
+        "bestaudio/best",
+        "-o",
+        output_template,
+        "--write-info-json",
+        "--restrict-filenames",
+        "--progress",
+        "--no-playlist",
+        "--no-cookies-from-browser",
+        url,
+    ]
+
+    if app.config.get("cookies") and os.path.exists(app.config["cookies"]):
+        cmd.insert(1, f'--cookies={app.config["cookies"]}')
+    else:
+        cmd.insert(1, "--no-cookies")
+
+    job = app.jobs.get(job_id)
+    if job:
+        job.update(
+            status="downloading",
+            stage="downloading_audio",
+            progress=0,
+            detailed_status="Downloading audiobook audio",
+            message=f"Starting audiobook download: {url}",
+        )
+
+    log_job(job_id, logging.INFO, f"Starting audiobook download from {url}")
+
+    try:
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            universal_newlines=True,
+            start_new_session=True,
+        )
+        if job:
+            job.process = process
+
+        for raw_line in process.stdout:
+            if job and job.status == "cancelled":
+                terminate_process(process)
+                break
+            line = raw_line.strip()
+            log_job(job_id, logging.INFO, line)
+            if job and "Destination:" in line:
+                job.update(detailed_status=line)
+
+        process.wait()
+        if process.returncode not in (0, None):
+            raise subprocess.CalledProcessError(process.returncode, cmd)
+    except Exception as exc:
+        log_job(job_id, logging.ERROR, f"Audiobook download error: {exc}")
+        if job:
+            job.update(status="failed", message=f"Download failed: {exc}")
+        return None
+
+    audio_exts = {".mp3", ".m4a", ".opus", ".ogg", ".webm", ".flac", ".wav", ".aac"}
+    downloaded = [
+        p
+        for p in Path(folder).iterdir()
+        if p.suffix.lower() in audio_exts and not p.name.startswith("._")
+    ]
+    downloaded.sort()
+    if job:
+        job.update(
+            status="downloaded",
+            stage="downloading_audio",
+            stage_progress=100,
+            detailed_status="Audiobook download completed",
+            message="Finished downloading audiobook audio",
+        )
+    return downloaded[0] if downloaded else None
+
+
+def build_audiobook_file(
+    app,
+    source_path: Path,
+    folder: str,
+    title: str,
+    author: str,
+    cover_path: Optional[Path],
+    job_id: str,
+) -> Optional[Path]:
+    """Convert audio to an M4B with embedded metadata and cover art."""
+
+    job = app.jobs.get(job_id)
+    safe_title = sanitize_name(title) or "Audiobook"
+    target = Path(folder) / f"{safe_title}.m4b"
+    cmd = ["ffmpeg", "-y", "-i", str(source_path)]
+
+    if cover_path and Path(cover_path).exists():
+        cmd.extend(
+            [
+                "-i",
+                str(cover_path),
+                "-map",
+                "0:a",
+                "-map",
+                "1",
+                "-c:a",
+                "aac",
+                "-b:a",
+                "128k",
+                "-c:v",
+                "mjpeg",
+                "-disposition:v:0",
+                "attached_pic",
+            ]
+        )
+    else:
+        cmd.extend(["-vn", "-c:a", "aac", "-b:a", "128k"])
+
+    cmd.extend(
+        [
+            "-metadata",
+            f"title={title}",
+            "-metadata",
+            f"album={title}",
+            "-metadata",
+            f"artist={author}",
+            "-metadata",
+            f"album_artist={author}",
+            "-metadata",
+            f"author={author}",
+            "-movflags",
+            "+faststart",
+            str(target),
+        ]
+    )
+
+    if job:
+        job.update(
+            stage="converting_audio",
+            detailed_status="Building M4B audiobook",
+            message=f"Creating M4B for {title}",
+        )
+
+    result = run_subprocess(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        log_job(
+            job_id,
+            logging.ERROR,
+            f"ffmpeg failed creating audiobook: {result.stderr}",
+        )
+        if job:
+            job.update(status="failed", message="Failed to create audiobook")
+        return None
+
+    try:
+        if source_path.exists():
+            source_path.unlink()
+    except OSError:
+        pass
+
+    if job:
+        job.update(
+            status="processing_metadata",
+            detailed_status="Finished encoding audiobook",
+        )
+
+    return target
+
+
 def download_music_tracks(
     app,
     playlist_url: str,
@@ -1802,12 +2047,16 @@ def _entry_source_url(entry: Dict) -> str:
 __all__ = [
     "create_folder_structure",
     "create_movie_folder",
+    "create_audiobook_folder",
     "download_playlist",
     "write_m3u_playlist",
+    "fetch_book_cover",
     "process_metadata",
     "process_movie_metadata",
     "convert_movie_file",
     "convert_video_files",
+    "download_audiobook_audio",
+    "build_audiobook_file",
     "generate_movie_artwork",
     "generate_artwork",
     "create_nfo_files",
