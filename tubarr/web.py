@@ -362,6 +362,7 @@ def config():
             ]
 
             should_restart_update = False
+            should_reinit_tvdb = False
             # Update only allowed keys
             for key in allowed_keys:
                 if key in new_config:
@@ -386,6 +387,9 @@ def config():
                     if key in ["update_checker_enabled", "update_checker_interval"]:
                         should_restart_update = True
 
+                    if key in ["tvdb_api_key", "tvdb_pin"]:
+                        should_reinit_tvdb = True
+
             # Special handling for cookies_path
             if "cookies_path" in new_config:
                 cookies_path = new_config["cookies_path"]
@@ -408,6 +412,31 @@ def config():
                     ytj.stop_update_checker()
                 if ytj.config.get("update_checker_enabled"):
                     ytj.start_update_checker()
+
+            # Reinitialize TVDB client if credentials changed
+            if should_reinit_tvdb:
+                from .tvdb import TVDBClient, TVDBAuthenticationError
+                ytj.tvdb_client = None
+                tvdb_key = ytj.config.get("tvdb_api_key")
+                if tvdb_key:
+                    try:
+                        ytj.tvdb_client = TVDBClient(
+                            tvdb_key,
+                            ytj.config.get("tvdb_pin") or None
+                        )
+                        logger.info("TVDB client initialized successfully")
+                    except TVDBAuthenticationError as exc:
+                        logger.warning("Failed to authenticate with TVDB: %s", exc)
+                    except Exception as exc:
+                        logger.warning("Failed to initialize TVDB client: %s", exc)
+
+            # Save configuration to file
+            from .config import _save_config
+            try:
+                _save_config(ytj.config)
+            except Exception as e:
+                logger.error(f"Failed to save configuration: {e}")
+                return jsonify({"error": f"Failed to save configuration: {str(e)}"}), 500
 
             return jsonify({"success": True, "message": "Configuration updated"})
 

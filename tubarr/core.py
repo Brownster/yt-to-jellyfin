@@ -365,6 +365,8 @@ class YTToJellyfin:
             job.detected_seasons = seasons_processed
             if job.status == "cancelled":
                 return
+            if job.status == "failed":
+                return
             season_targets = seasons_processed or [job.season_num]
             for season in season_targets:
                 season_folder = (
