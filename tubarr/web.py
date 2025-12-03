@@ -63,6 +63,8 @@ def jobs():
         show_name = request.form.get("show_name")
         season_num = request.form.get("season_num")
         episode_start = request.form.get("episode_start")
+        auto_detect = bool(_parse_optional_bool(request.form.get("auto_detect_episodes")))
+        detection_profile = request.form.get("detection_profile") or None
         playlist_start = request.form.get("playlist_start")
         track_playlist = request.form.get("track_playlist", "true").lower() != "false"
         quality_val = request.form.get("quality")
@@ -76,8 +78,13 @@ def jobs():
             return jsonify({"error": str(exc)}), 400
         use_h265_override = _parse_optional_bool(use_h265_raw)
 
-        if not playlist_url or not show_name or not season_num or not episode_start:
+        if not playlist_url or not show_name:
             return jsonify({"error": "Missing required parameters"}), 400
+        if not auto_detect and (not season_num or not episode_start):
+            return jsonify({"error": "Season and episode start are required"}), 400
+        if auto_detect:
+            season_num = season_num or "00"
+            episode_start = episode_start or "01"
 
         playlist_start_int = int(playlist_start) if playlist_start else None
         if playlist_start_int is not None:
@@ -91,6 +98,8 @@ def jobs():
                 quality=quality_override,
                 use_h265=use_h265_override,
                 crf=crf_override,
+                auto_detect=auto_detect,
+                detection_profile=detection_profile,
             )
         else:
             job_id = ytj.create_job(
@@ -103,6 +112,8 @@ def jobs():
                 quality=quality_override,
                 use_h265=use_h265_override,
                 crf=crf_override,
+                auto_detect=auto_detect,
+                detection_profile=detection_profile,
             )
         return jsonify({"job_id": job_id})
     else:
@@ -341,6 +352,8 @@ def config():
                 "jellyfin_port",
                 "jellyfin_api_key",
                 "tmdb_api_key",
+                "tvdb_api_key",
+                "tvdb_pin",
                 "imdb_enabled",
                 "imdb_api_key",
                 "clean_filenames",

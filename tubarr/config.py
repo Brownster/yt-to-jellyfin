@@ -1,7 +1,9 @@
 import os
-import yaml
 import logging
+import os
 from typing import Dict, Optional
+
+import yaml
 from pydantic import BaseModel, Field, ValidationError, validator
 
 # Configure root logger if not already set
@@ -37,6 +39,8 @@ class ConfigModel(BaseModel):
     jellyfin_port: int = Field(8096, ge=1, le=65535)
     jellyfin_api_key: str = ""
     tmdb_api_key: str = ""
+    tvdb_api_key: str = ""
+    tvdb_pin: str = ""
     imdb_enabled: bool = False
     imdb_api_key: str = ""
     clean_filenames: bool = True
@@ -97,6 +101,8 @@ def _load_config() -> Dict:
         "imdb_enabled": os.environ.get("IMDB_ENABLED", "false").lower()
         == "true",
         "imdb_api_key": os.environ.get("IMDB_API_KEY", ""),
+        "tvdb_api_key": os.environ.get("TVDB_API_KEY", ""),
+        "tvdb_pin": os.environ.get("TVDB_PIN", ""),
         "clean_filenames": os.environ.get("CLEAN_FILENAMES", "true").lower() == "true",
         "music_output_dir": os.environ.get("MUSIC_OUTPUT_DIR", "./music"),
         "music_default_genre": os.environ.get("MUSIC_DEFAULT_GENRE", ""),
@@ -193,6 +199,12 @@ def _load_config() -> Dict:
                 if "tmdb" in file_config and isinstance(file_config["tmdb"], dict):
                     if "api_key" in file_config["tmdb"]:
                         config["tmdb_api_key"] = file_config["tmdb"]["api_key"]
+
+                if "tvdb" in file_config and isinstance(file_config["tvdb"], dict):
+                    if "api_key" in file_config["tvdb"]:
+                        config["tvdb_api_key"] = file_config["tvdb"]["api_key"]
+                    if "pin" in file_config["tvdb"]:
+                        config["tvdb_pin"] = file_config["tvdb"].get("pin", "")
 
                 if "imdb" in file_config and isinstance(file_config["imdb"], dict):
                     if "enabled" in file_config["imdb"]:

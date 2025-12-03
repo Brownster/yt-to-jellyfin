@@ -39,6 +39,11 @@ jellyfin:
 tmdb:
   api_key: ""  # Optional TMDb API key for movie metadata
 
+# TVDB Integration
+tvdb:
+  api_key: ""  # API key used for air-date episode detection
+  pin: ""      # Optional user PIN if your API key requires it
+
 # IMDb Integration
 imdb:
   enabled: false  # Enable IMDb metadata lookups

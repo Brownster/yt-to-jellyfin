@@ -348,6 +348,13 @@
                                         <input type="text" class="form-control" id="episode_start" placeholder="01" pattern="[0-9]+" required
                                                data-bs-toggle="tooltip" title="Starting episode number. The first video in the playlist will be this episode number.">
                                     </div>
+                                    <div class="col-lg-4 d-flex align-items-end">
+                                        <div class="form-check form-switch mt-3">
+                                            <input class="form-check-input" type="checkbox" id="auto_detect_episodes">
+                                            <label class="form-check-label" for="auto_detect_episodes">Auto-detect with TVDB</label>
+                                        </div>
+                                        <input type="hidden" id="detection_profile" value="airdate">
+                                    </div>
                                 </div>
 
                                 <div class="mb-3">
