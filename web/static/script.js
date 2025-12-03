@@ -59,6 +59,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setupJobFilterControls();
     setupHistoryFilterControls();
     initializeMusicForms();
+    initializeAudiobookForm();
     initializeTipCallouts();
 
     // CRF sliders
@@ -883,6 +884,54 @@ function initializeTipCallouts() {
     });
 }
 
+function initializeAudiobookForm() {
+    const form = document.getElementById('audiobook-form');
+    if (!form) {
+        return;
+    }
+
+    const submitButton = document.getElementById('audiobook-submit');
+
+    form.addEventListener('submit', event => {
+        event.preventDefault();
+        const url = document.getElementById('audiobook_url').value.trim();
+        const title = document.getElementById('audiobook_title').value.trim();
+        const author = document.getElementById('audiobook_author').value.trim();
+        const cover = document.getElementById('audiobook_cover').value.trim();
+
+        if (!url || !title || !author) {
+            showToast('Error', 'URL, title, and author are required');
+            return;
+        }
+
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Starting...';
+
+        fetch('/audiobooks/jobs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url, title, author, cover_url: cover || undefined })
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    showToast('Error', data.error);
+                    return;
+                }
+                showToast('Success', `Audiobook job created (${data.job_id})`);
+                form.reset();
+                loadJobs();
+            })
+            .catch(() => {
+                showToast('Error', 'Failed to create audiobook job');
+            })
+            .finally(() => {
+                submitButton.disabled = false;
+                submitButton.textContent = 'Start Download';
+            });
+    });
+}
+
 function loadDashboard() {
     // Load jobs data
     fetch('/jobs')
@@ -922,10 +971,12 @@ function loadJobs() {
         .then(jobs => {
             const musicJobs = jobs.filter(j => j.media_type === 'music');
             const movieJobs = jobs.filter(j => j.media_type === 'movie');
-            const tvJobs = jobs.filter(j => j.media_type !== 'movie' && j.media_type !== 'music');
+            const audiobookJobs = jobs.filter(j => j.media_type === 'audiobook');
+            const tvJobs = jobs.filter(j => !['movie', 'music', 'audiobook'].includes(j.media_type));
             updateJobsTable(tvJobs);
             updateMovieJobsTable(movieJobs);
             updateMusicJobsTable(musicJobs);
+            updateAudiobookJobsTable(audiobookJobs);
         })
         .catch(error => {
             console.error('Error fetching jobs:', error);
@@ -938,11 +989,13 @@ function updateJobsData() {
         .then(jobs => {
             const musicJobs = jobs.filter(j => j.media_type === 'music');
             const movieJobs = jobs.filter(j => j.media_type === 'movie');
-            const tvJobs = jobs.filter(j => j.media_type !== 'movie' && j.media_type !== 'music');
+            const audiobookJobs = jobs.filter(j => j.media_type === 'audiobook');
+            const tvJobs = jobs.filter(j => !['movie', 'music', 'audiobook'].includes(j.media_type));
             if (document.querySelector('#jobs:not(.d-none)')) {
                 updateJobsTable(tvJobs);
                 updateMovieJobsTable(movieJobs);
                 updateMusicJobsTable(musicJobs);
+                updateAudiobookJobsTable(audiobookJobs);
             }
             if (document.querySelector('#dashboard:not(.d-none)')) {
                 updateDashboardStats(jobs);
@@ -1530,16 +1583,110 @@ function updateMusicJobsTable(jobs) {
     });
 }
 
+function updateAudiobookJobsTable(jobs) {
+    const tableEl = document.getElementById('audiobook-jobs-table');
+    if (!tableEl) {
+        return;
+    }
+
+    const tbody = tableEl.querySelector('tbody');
+    tbody.innerHTML = '';
+
+    if (!jobs || jobs.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = '<td colspan="7" class="text-center">No jobs found</td>';
+        tbody.appendChild(row);
+        return;
+    }
+
+    jobs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    jobs.forEach(job => {
+        const row = document.createElement('tr');
+        const shortId = job.job_id.substring(0, 8);
+        const statusClass = getStatusBadgeClass(job.status);
+        const title = job.book_title || job.show_name || 'Audiobook';
+        const author = job.book_author || job.artist_name || 'Unknown';
+
+        let progressDisplay = `
+            <div class="progress">
+                <div class="progress-bar" role="progressbar" style="width: ${job.progress}%"
+                    aria-valuenow="${job.progress}" aria-valuemin="0" aria-valuemax="100">
+                    ${Math.round(job.progress)}%
+                </div>
+            </div>`;
+
+        if (job.current_file && job.status !== 'completed' && job.status !== 'failed') {
+            progressDisplay += `
+                <small class="d-block text-truncate" style="max-width: 200px;" title="${job.current_file}">
+                    ${job.current_file}
+                </small>`;
+        }
+
+        const canCancel = !['completed', 'failed', 'cancelled'].includes(job.status);
+        const cancelBtn = canCancel ? `
+                <button class="btn btn-sm btn-danger cancel-job" data-job-id="${job.job_id}">
+                    <i class="bi bi-x-circle"></i>
+                </button>` : '';
+
+        row.innerHTML = `
+            <td title="${job.job_id}">${shortId}...</td>
+            <td>${escapeHtml(title)}</td>
+            <td>${escapeHtml(author)}</td>
+            <td><span class="badge ${statusClass}">${job.status}</span></td>
+            <td>${progressDisplay}</td>
+            <td>${formatDate(job.created_at)}</td>
+            <td>
+                <button class="btn btn-sm btn-info view-job" data-job-id="${job.job_id}">
+                    <i class="bi bi-eye"></i>
+                </button>
+                ${cancelBtn}
+            </td>
+        `;
+
+        tbody.appendChild(row);
+    });
+
+    tbody.querySelectorAll('.cancel-job').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const jobId = this.getAttribute('data-job-id');
+            if (confirm('Cancel this job?')) {
+                fetch(`/jobs/${jobId}`, { method: 'DELETE' })
+                    .then(r => {
+                        if (r.ok) {
+                            showToast('Success', 'Job cancelled');
+                            updateJobsData();
+                        } else {
+                            r.json().then(d => {
+                                showToast('Error', d.error || 'Failed to cancel job');
+                            });
+                        }
+                    })
+                    .catch(() => showToast('Error', 'Failed to cancel job'));
+            }
+        });
+    });
+
+    tbody.querySelectorAll('.view-job').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const jobId = this.getAttribute('data-job-id');
+            showJobDetails(jobId);
+        });
+    });
+}
+
 function loadHistory() {
     fetch('/history')
         .then(response => response.json())
         .then(jobs => {
             const musicJobs = jobs.filter(j => j.media_type === 'music');
             const movieJobs = jobs.filter(j => j.media_type === 'movie');
-            const tvJobs = jobs.filter(j => j.media_type !== 'movie' && j.media_type !== 'music');
+            const audiobookJobs = jobs.filter(j => j.media_type === 'audiobook');
+            const tvJobs = jobs.filter(j => !['movie', 'music', 'audiobook'].includes(j.media_type));
             updateHistoryTable(tvJobs);
             updateMovieHistoryTable(movieJobs);
             updateMusicHistoryTable(musicJobs);
+            updateAudiobookHistoryTable(audiobookJobs);
         })
         .catch(error => {
             console.error('Error fetching history:', error);
@@ -1682,6 +1829,63 @@ function updateMusicHistoryTable(jobs) {
             <td title="${job.job_id}">${shortId}...</td>
             <td>${escapeHtml(collectionName)}</td>
             <td>${escapeHtml(displayType)}</td>
+            <td><span class="badge ${statusClass}">${job.status}</span></td>
+            <td>${progressDisplay}</td>
+            <td>${formatDate(job.updated_at || job.created_at)}</td>
+            <td>
+                <button class="btn btn-sm btn-info view-job" data-job-id="${job.job_id}">
+                    <i class="bi bi-eye"></i>
+                </button>
+            </td>`;
+
+        tbody.appendChild(row);
+    });
+
+    tbody.querySelectorAll('.view-job').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const jobId = this.getAttribute('data-job-id');
+            showJobDetails(jobId);
+        });
+    });
+}
+
+function updateAudiobookHistoryTable(jobs) {
+    const tableEl = document.getElementById('audiobook-history-table');
+    if (!tableEl) {
+        return;
+    }
+
+    const tbody = tableEl.querySelector('tbody');
+    tbody.innerHTML = '';
+
+    if (!jobs || jobs.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = '<td colspan="7" class="text-center">No jobs found</td>';
+        tbody.appendChild(row);
+        return;
+    }
+
+    jobs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    jobs.forEach(job => {
+        const row = document.createElement('tr');
+        const shortId = job.job_id.substring(0, 8);
+        const statusClass = getStatusBadgeClass(job.status);
+        const title = job.book_title || job.show_name || 'Audiobook';
+        const author = job.book_author || job.artist_name || 'Unknown';
+
+        let progressDisplay = `
+            <div class="progress">
+                <div class="progress-bar" role="progressbar" style="width: ${job.progress}%"
+                    aria-valuenow="${job.progress}" aria-valuemin="0" aria-valuemax="100">
+                    ${Math.round(job.progress)}%
+                </div>
+            </div>`;
+
+        row.innerHTML = `
+            <td title="${job.job_id}">${shortId}...</td>
+            <td>${escapeHtml(title)}</td>
+            <td>${escapeHtml(author)}</td>
             <td><span class="badge ${statusClass}">${job.status}</span></td>
             <td>${progressDisplay}</td>
             <td>${formatDate(job.updated_at || job.created_at)}</td>
@@ -2472,6 +2676,10 @@ function getMediaTypeMeta(job) {
         const title = request.display_name || collection.title || job.show_name || 'Music job';
         return { icon: 'bi-music-note-beamed', title };
     }
+    if (job.media_type === 'audiobook') {
+        const title = job.book_title || job.show_name || 'Audiobook job';
+        return { icon: 'bi-journal-richtext', title };
+    }
     return { icon: 'bi-tv', title: job.show_name || 'TV job' };
 }
 
@@ -2488,6 +2696,10 @@ function buildJobSubtitle(job) {
     }
     if (job.media_type === 'movie') {
         return 'Movie download';
+    }
+    if (job.media_type === 'audiobook') {
+        const author = job.book_author || job.artist_name || '';
+        return author ? `${author} • m4b` : 'Audiobook download';
     }
     return `Season ${job.season_num || ''}`.trim();
 }

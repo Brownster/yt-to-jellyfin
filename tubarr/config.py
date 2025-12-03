@@ -48,6 +48,7 @@ class ConfigModel(BaseModel):
     music_output_dir: str = Field(..., min_length=1)
     music_default_genre: str = ""
     music_default_year: Optional[int] = Field(default=None, ge=0)
+    audiobook_output_dir: str = Field(..., min_length=1)
 
     @validator("jellyfin_tv_path", always=True)
     def validate_jellyfin_tv_path(cls, v, values):
@@ -105,6 +106,9 @@ def _load_config() -> Dict:
         "tvdb_pin": os.environ.get("TVDB_PIN", ""),
         "clean_filenames": os.environ.get("CLEAN_FILENAMES", "true").lower() == "true",
         "music_output_dir": os.environ.get("MUSIC_OUTPUT_DIR", "./music"),
+        "audiobook_output_dir": os.environ.get(
+            "AUDIOBOOK_OUTPUT_DIR", "/mnt/storage/audiobooks"
+        ),
         "music_default_genre": os.environ.get("MUSIC_DEFAULT_GENRE", ""),
         "music_default_year": None,
         "jellyfin_music_path": os.environ.get("JELLYFIN_MUSIC_PATH", ""),

@@ -16,6 +16,7 @@ from .jobs import (
     DownloadJob,
     create_job,
     create_music_job,
+    create_audiobook_job,
     get_job,
     get_jobs,
     cancel_job,
@@ -35,14 +36,18 @@ from .playlist import (
 from .media import (
     create_folder_structure,
     create_movie_folder,
+    create_audiobook_folder,
     create_music_album_folder,
     download_playlist,
+    download_audiobook_audio,
     download_music_tracks,
     prepare_music_tracks,
     write_m3u_playlist,
+    fetch_book_cover,
     process_metadata,
     process_movie_metadata,
     convert_movie_file,
+    build_audiobook_file,
     convert_video_files,
     generate_artwork,
     generate_movie_artwork,
@@ -122,6 +127,26 @@ class YTToJellyfin:
     # wrapper helpers
     def check_dependencies(self) -> bool:
         return check_dependencies(self.config["ytdlp_path"])
+
+    def _start_job(self, job_id: str, *, start_thread: bool = True) -> None:
+        """Start the correct worker for a job based on its media type."""
+
+        job = self.jobs.get(job_id)
+        if not job:
+            return
+
+        target = self.process_job
+        if job.media_type == "music":
+            target = self.process_music_job
+        elif job.media_type == "movie":
+            target = self.process_movie_job
+        elif job.media_type == "audiobook":
+            target = self.process_audiobook_job
+
+        if start_thread:
+            threading.Thread(target=target, args=(job_id,)).start()
+        else:
+            target(job_id)
 
     # playlist helpers
     def _save_playlists(self) -> None:
@@ -290,10 +315,7 @@ class YTToJellyfin:
             if len(self.active_jobs) < self.config.get("max_concurrent_jobs", 1):
                 self.active_jobs.append(job_id)
                 if start_thread:
-                    threading.Thread(
-                        target=self.process_movie_job,
-                        args=(job_id,),
-                    ).start()
+                    self._start_job(job_id, start_thread=True)
             else:
                 self.job_queue.append(job_id)
                 job.update(message="Job queued")
@@ -306,6 +328,24 @@ class YTToJellyfin:
         start_thread: bool = True,
     ) -> str:
         return create_music_job(self, music_request, start_thread=start_thread)
+
+    def create_audiobook_job(
+        self,
+        url: str,
+        title: str,
+        author: str,
+        *,
+        cover_url: str = "",
+        start_thread: bool = True,
+    ) -> str:
+        return create_audiobook_job(
+            self,
+            url=url,
+            title=title,
+            author=author,
+            cover_url=cover_url,
+            start_thread=start_thread,
+        )
 
     def get_job(self, job_id: str) -> Optional[Dict]:
         return get_job(self, job_id)
@@ -592,6 +632,77 @@ class YTToJellyfin:
         finally:
             self._on_job_complete(job_id)
 
+    def process_audiobook_job(self, job_id: str) -> None:
+        """Process a single audiobook download and conversion."""
+
+        job = self.jobs.get(job_id)
+        if not job:
+            log_job(job_id, logging.ERROR, "Job not found")
+            return
+
+        title = job.book_title or job.show_name or "Untitled Audiobook"
+        author = job.book_author or job.artist_name or "Unknown Author"
+
+        try:
+            job.update(
+                status="in_progress",
+                message="Starting audiobook job",
+                detailed_status="Preparing audiobook",
+            )
+            if not self.check_dependencies():
+                job.update(status="failed", message="Missing dependencies")
+                return
+
+            folder = self.create_audiobook_folder(title, author)
+            job.update(
+                message=f"Created audiobook folder at {folder}",
+                detailed_status="Folder ready",
+            )
+
+            downloaded_audio = self.download_audiobook_audio(
+                job.playlist_url, folder, job_id
+            )
+
+            if job.status == "cancelled":
+                return
+
+            if not downloaded_audio:
+                job.update(status="failed", message="Audiobook download failed")
+                return
+
+            cover_path = self.fetch_book_cover(
+                title,
+                author,
+                folder,
+                job_id,
+                fallback_url=job.cover_url or None,
+            )
+
+            final_file = self.build_audiobook_file(
+                downloaded_audio, folder, title, author, cover_path, job_id
+            )
+
+            if job.status == "cancelled":
+                return
+
+            if not final_file:
+                job.update(status="failed", message="Failed to build audiobook file")
+                return
+
+            job.update(
+                status="completed",
+                progress=100,
+                stage="completed",
+                detailed_status="Audiobook ready",
+                message=f"Audiobook saved to {final_file}",
+            )
+            log_job(job_id, logging.INFO, "Audiobook job completed successfully")
+        except Exception as exc:  # pragma: no cover - defensive logging
+            logger.exception(f"Job {job_id}: Error processing audiobook job: {exc}")
+            job.update(status="failed", message=f"Error: {exc}")
+        finally:
+            self._on_job_complete(job_id)
+
     def _on_job_complete(self, job_id: str) -> None:
         """Start the next queued job if available."""
         with self.job_lock:
@@ -602,10 +713,7 @@ class YTToJellyfin:
             ):
                 next_id = self.job_queue.pop(0)
                 self.active_jobs.append(next_id)
-                threading.Thread(
-                    target=self.process_job,
-                    args=(next_id,),
-                ).start()
+                self._start_job(next_id, start_thread=True)
 
     # media functions
     def create_folder_structure(self, show_name: str, season_num: str) -> str:
@@ -613,6 +721,9 @@ class YTToJellyfin:
 
     def create_movie_folder(self, movie_name: str) -> str:
         return create_movie_folder(self, movie_name)
+
+    def create_audiobook_folder(self, title: str, author: str) -> str:
+        return create_audiobook_folder(self, title, author)
 
     def create_music_album_folder(
         self, album_name: str, artist_name: Optional[str] = None
@@ -654,6 +765,42 @@ class YTToJellyfin:
 
     def convert_video_files(self, folder: str, season_num: str, job_id: str) -> None:
         convert_video_files(self, folder, season_num, job_id)
+
+    def download_audiobook_audio(
+        self, url: str, folder: str, job_id: str
+    ) -> Optional[PathType]:
+        return download_audiobook_audio(self, url, folder, job_id)
+
+    def fetch_book_cover(
+        self,
+        title: str,
+        author: str,
+        folder: str,
+        job_id: str,
+        *,
+        fallback_url: Optional[str] = None,
+    ) -> Optional[PathType]:
+        return fetch_book_cover(
+            self,
+            title,
+            author,
+            folder,
+            job_id,
+            fallback_url=fallback_url,
+        )
+
+    def build_audiobook_file(
+        self,
+        source_path: PathType,
+        folder: str,
+        title: str,
+        author: str,
+        cover_path: Optional[PathType],
+        job_id: str,
+    ) -> Optional[PathType]:
+        return build_audiobook_file(
+            self, source_path, folder, title, author, cover_path, job_id
+        )
 
     def generate_artwork(
         self, folder: str, show_name: str, season_num: str, job_id: str

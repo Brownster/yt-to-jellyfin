@@ -61,6 +61,12 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="#" data-section="new-audiobook">
+                            <i class="bi bi-journal-richtext"></i>
+                            <span>New Audiobook Download</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="#" data-section="jobs">
                             <i class="bi bi-list-task"></i>
                             <span>Jobs</span>
@@ -718,6 +724,61 @@
                     </div>
                 </section>
 
+                <!-- New Audiobook Section -->
+                <section id="new-audiobook" class="content-section">
+                    <h2>New Audiobook Download</h2>
+
+                    <div class="tip-callout" data-tip-id="new-audiobook">
+                        <div class="tip-icon">
+                            <i class="bi bi-journal-richtext"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-2">Audiobook Workflow Tips</h6>
+                            <div class="tip-content">
+                                <ul class="tip-list mb-0">
+                                    <li>Each request processes a single book to keep conversions predictable.</li>
+                                    <li>We save finished <code>.m4b</code> files to <code>/mnt/storage/audiobooks</code> by default.</li>
+                                    <li>Cover art is fetched from Google Books when possible and embedded into the final file.</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <button class="tip-toggle" aria-label="Toggle tip">
+                            <i class="bi bi-chevron-up"></i>
+                        </button>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="m-0">Create Audiobook Job</h6>
+                        </div>
+                        <div class="card-body">
+                            <form id="audiobook-form" class="row g-3">
+                                <div class="col-12">
+                                    <label for="audiobook_url" class="form-label">Source URL</label>
+                                    <input type="url" class="form-control" id="audiobook_url" placeholder="https://youtube.com/watch?v=..." required>
+                                    <div class="form-text">Provide the URL that contains the audiobook audio.</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="audiobook_title" class="form-label">Book Title</label>
+                                    <input type="text" class="form-control" id="audiobook_title" placeholder="Book title" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="audiobook_author" class="form-label">Author</label>
+                                    <input type="text" class="form-control" id="audiobook_author" placeholder="Author name" required>
+                                </div>
+                                <div class="col-12">
+                                    <label for="audiobook_cover" class="form-label">Custom Cover URL (optional)</label>
+                                    <input type="url" class="form-control" id="audiobook_cover" placeholder="https://.../cover.jpg">
+                                    <div class="form-text">If left blank, the downloader will try to fetch artwork from Google Books.</div>
+                                </div>
+                                <div class="text-end">
+                                    <button type="submit" class="btn btn-primary" id="audiobook-submit">Start Download</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- Jobs Section -->
                 <section id="jobs" class="content-section">
                     <h2>Download Jobs</h2>
@@ -754,6 +815,9 @@
                             </button>
                             <button type="button" class="btn btn-outline-primary" data-job-filter="music">
                                 <i class="bi bi-music-note-beamed"></i> Music
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" data-job-filter="audiobook">
+                                <i class="bi bi-journal-richtext"></i> Audiobooks
                             </button>
                         </div>
                     </div>
@@ -828,6 +892,30 @@
                             </div>
                         </div>
                     </div>
+
+                    <div class="card mt-4 job-panel" data-job-type="audiobook">
+                        <div class="card-header">
+                            <h6 class="m-0">Active Audiobook Jobs</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table" id="audiobook-jobs-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Title</th>
+                                            <th>Author</th>
+                                            <th>Status</th>
+                                            <th>Progress</th>
+                                            <th>Created</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </section>
 
                 <!-- History Section -->
@@ -866,6 +954,9 @@
                             </button>
                             <button type="button" class="btn btn-outline-secondary" data-history-filter="music">
                                 <i class="bi bi-music-note-beamed"></i> Music
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" data-history-filter="audiobook">
+                                <i class="bi bi-journal-richtext"></i> Audiobooks
                             </button>
                         </div>
                     </div>
@@ -929,6 +1020,30 @@
                                             <th>ID</th>
                                             <th>Collection</th>
                                             <th>Type</th>
+                                            <th>Status</th>
+                                            <th>Progress</th>
+                                            <th>Completed</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mt-4 history-panel" data-history-type="audiobook">
+                        <div class="card-header">
+                            <h6 class="m-0">Audiobook History</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table" id="audiobook-history-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Book</th>
+                                            <th>Author</th>
                                             <th>Status</th>
                                             <th>Progress</th>
                                             <th>Completed</th>

@@ -10,10 +10,12 @@ services:
     volumes:
       - ./media:/media
       - ./config:/config
+      - ./audiobooks:/mnt/storage/audiobooks
     ports:
       - "8000:8000"
     environment:
       - OUTPUT_DIR=/media
+      - AUDIOBOOK_OUTPUT_DIR=/mnt/storage/audiobooks
       - VIDEO_QUALITY=1080
       - USE_H265=true
       - CRF=28
