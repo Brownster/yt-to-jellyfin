@@ -58,6 +58,7 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertIsNone(kwargs.get("playlist_start"))
         self.assertTrue(kwargs.get("track_playlist", True))
         self.assertIsNone(kwargs.get("subscription_id"))
+        self.assertFalse(kwargs.get("auto_detect", False))
 
         # Test missing parameters
         response = self.client.post(

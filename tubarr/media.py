@@ -11,6 +11,7 @@ from datetime import datetime
 from mutagen.id3 import ID3, TIT2, TPE1, TPE2, TALB, TRCK, TPOS, TDRC, TCON, APIC, ID3NoHeaderError
 
 from .config import logger
+from .episode_detection import EpisodeDetectionError, EpisodeMatch, EpisodeMetadata
 from .utils import (
     sanitize_name,
     clean_filename,
@@ -286,8 +287,14 @@ def _normalize_upload_date(upload_date: str) -> str:
 
 
 def process_metadata(
-    app, folder: str, show_name: str, season_num: str, episode_start: int, job_id: str
-) -> None:
+    app,
+    folder: str,
+    show_name: str,
+    season_num: str,
+    episode_start: int,
+    job_id: str,
+    episode_mapper=None,
+) -> List[str]:
     job = app.jobs.get(job_id)
     if job:
         job.update(
@@ -306,18 +313,18 @@ def process_metadata(
                 detailed_status="No metadata files found",
             )
         log_job(job_id, logging.WARNING, "No JSON metadata files found")
-        return
+        return []
     with open(json_files[0], "r") as f:
         first_data = json.load(f)
         first_index = first_data.get("playlist_index", 1)
-    episode_offset = episode_start - first_index
     total_files = len(json_files)
     if job:
         job.update(
             total_files=total_files,
             detailed_status=f"Processing metadata for {total_files} videos",
         )
-    for i, json_file in enumerate(json_files):
+    entries: List[EpisodeMetadata] = []
+    for json_file in json_files:
         with open(json_file, "r") as f:
             data = json.load(f)
         title = data.get("title", "Unknown Title")
@@ -337,46 +344,90 @@ def process_metadata(
             lambda m: f"{m.group(1) or ' '}{m.group(2)}{new_ep_padded}",
             base_file,
         )
-        file_name = os.path.basename(new_base)
+
+    matches: List[EpisodeMatch]
+    processed_seasons = set()
+    if episode_mapper:
+        try:
+            matches = episode_mapper.map_episodes(entries)
+        except EpisodeDetectionError as exc:
+            if job:
+                job.update(status="failed", message=str(exc), detailed_status=str(exc))
+            log_job(job_id, logging.ERROR, str(exc))
+            return []
+    else:
+        episode_offset = episode_start - first_index
+        matches = []
+        for entry in entries:
+            new_ep = entry.playlist_index + episode_offset
+            matches.append(
+                EpisodeMatch(
+                    season=int(season_num),
+                    episode=int(new_ep),
+                    air_date=_normalize_upload_date(entry.upload_date),
+                    base_path=entry.base_path,
+                    title=entry.title,
+                    description=entry.description,
+                )
+            )
+
+    seasons_last_episode: Dict[int, int] = {}
+    for i, match in enumerate(matches):
+        season_padded = f"{match.season:02d}"
+        processed_seasons.add(season_padded)
+        show_folder = Path(app.config["output_dir"]) / sanitize_name(show_name)
+        dest_folder = show_folder / f"Season {season_padded}"
+        dest_folder.mkdir(parents=True, exist_ok=True)
+
+        file_name = os.path.basename(match.base_path)
         if job:
             job.update(
                 file_name=file_name,
                 processed_files=i + 1,
                 detailed_status=f"Processing metadata: {file_name}",
-                message=f"Processing metadata for {title}",
+                message=f"Processing metadata for {match.title}",
             )
+
+        new_base = dest_folder / f"{match.title} S{season_padded}E{match.episode:02d}"
+        clean_base = new_base
+        if app.config.get("clean_filenames", True):
+            clean_base = dest_folder / clean_filename(new_base.name)
+
         for ext in ["mp4", "mkv", "webm"]:
-            original = f"{base_file}.{ext}"
+            original = f"{match.base_path}.{ext}"
             if os.path.exists(original):
-                basename = os.path.basename(new_base)
-                if app.config.get("clean_filenames", True):
-                    basename = clean_filename(basename)
-                new_file = os.path.join(os.path.dirname(new_base), f"{basename}.{ext}")
+                new_file = f"{clean_base}.{ext}"
                 os.rename(original, new_file)
                 if job:
                     job.update(message=f"Renamed file to {os.path.basename(new_file)}")
                 break
+
         nfo_content = (
             "<?xml version='1.0' encoding='UTF-8' standalone='yes'?>\n"
             "<episodedetails>\n"
-            f"  <title>{title}</title>\n"
-            f"  <season>{season_num}</season>\n"
-            f"  <episode>{new_ep_padded}</episode>\n"
-            f"  <plot>{description}</plot>\n"
-            f"  <aired>{air_date}</aired>\n"
+            f"  <title>{match.title}</title>\n"
+            f"  <season>{season_padded}</season>\n"
+            f"  <episode>{match.episode:02d}</episode>\n"
+            f"  <plot>{match.description}</plot>\n"
+            f"  <aired>{match.air_date or ''}</aired>\n"
             "  <studio>YouTube</studio>\n"
             f"  <showtitle>{show_name}</showtitle>\n"
             "</episodedetails>\n"
         )
-        basename = os.path.basename(new_base)
-        if app.config.get("clean_filenames", True):
-            basename = clean_filename(basename)
-        nfo_file = os.path.join(os.path.dirname(new_base), f"{basename}.nfo")
+        nfo_file = f"{clean_base}.nfo"
         with open(nfo_file, "w") as f:
             f.write(nfo_content)
         if job:
-            job.update(message=f"Created NFO file for {title}")
-        os.remove(json_file)
+            job.update(message=f"Created NFO file for {match.title}")
+
+        json_file = Path(f"{match.base_path}.info.json")
+        if json_file.exists():
+            os.remove(json_file)
+
+        seasons_last_episode[match.season] = max(
+            seasons_last_episode.get(match.season, 0), match.episode
+        )
+
         if job and total_files:
             progress = int((i + 1) / total_files * 100)
             job.update(
@@ -385,8 +436,10 @@ def process_metadata(
                 detailed_status=f"Processed {i+1} of {total_files} files",
             )
 
-    last_episode = episode_start + total_files - 1
-    app.update_last_episode(show_name, season_num, last_episode)
+    for season, last_ep in seasons_last_episode.items():
+        app.update_last_episode(show_name, f"{season:02d}", last_ep)
+
+    return sorted(processed_seasons)
 
 
 def convert_video_files(app, folder: str, season_num: str, job_id: str) -> None:

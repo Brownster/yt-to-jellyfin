@@ -3,7 +3,10 @@ import unittest
 import tempfile
 import shutil
 import json
+from pathlib import Path
 from unittest.mock import patch, MagicMock
+
+from tubarr.episode_detection import EpisodeMatch
 
 from tubarr.core import YTToJellyfin, DownloadJob
 
@@ -282,6 +285,48 @@ class TestJobManagement(unittest.TestCase):
             )  # 3 reads + 2 NFO writes + 1 tracker save
             self.assertEqual(mock_remove.call_count, 2)  # Remove two JSON files
             self.assertEqual(mock_rename.call_count, 2)  # Rename two video files
+
+    def test_process_metadata_with_mapper(self):
+        """process_metadata should respect custom episode mappings."""
+
+        base_name = os.path.join(self.temp_dir, "Video 1 S00E01")
+        json_path = f"{base_name}.info.json"
+        with open(json_path, "w") as f:
+            json.dump(
+                {
+                    "title": "Video 1",
+                    "description": "Auto detected",
+                    "upload_date": "",
+                    "playlist_index": 1,
+                },
+                f,
+            )
+        with open(f"{base_name}.mp4", "w") as f:
+            f.write("data")
+
+        class DummyMapper:
+            def map_episodes(self, entries):
+                return [
+                    EpisodeMatch(
+                        season=2,
+                        episode=5,
+                        air_date="2019-05-01",
+                        base_path=entries[0].base_path,
+                        title=entries[0].title,
+                        description=entries[0].description,
+                    )
+                ]
+
+        job_id = "mapper-job"
+        self.app.jobs[job_id] = DownloadJob(job_id, "url", "Test Show", "00", "")
+
+        seasons = self.app.process_metadata(
+            self.temp_dir, "Test Show", "00", 1, job_id, DummyMapper()
+        )
+
+        target_file = Path(self.temp_dir) / "Test Show" / "Season 02" / "Video 1 S02E05.mp4"
+        self.assertTrue(target_file.exists())
+        self.assertEqual(seasons, ["02"])
 
     def test_get_job(self):
         """Test getting a specific job"""

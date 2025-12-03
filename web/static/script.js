@@ -328,6 +328,30 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
+        const seasonInput = document.getElementById('season_num');
+        const episodeInput = document.getElementById('episode_start');
+        const autoDetectToggle = document.getElementById('auto_detect_episodes');
+
+        function syncAutoDetectState() {
+            if (!autoDetectToggle || !seasonInput || !episodeInput) return;
+            if (autoDetectToggle.checked) {
+                seasonInput.disabled = true;
+                episodeInput.disabled = true;
+                seasonInput.required = false;
+                episodeInput.required = false;
+            } else {
+                seasonInput.disabled = false;
+                episodeInput.disabled = false;
+                seasonInput.required = true;
+                episodeInput.required = true;
+            }
+        }
+
+        if (autoDetectToggle) {
+            autoDetectToggle.addEventListener('change', syncAutoDetectState);
+            syncAutoDetectState();
+        }
+
         newJobForm.addEventListener('submit', function(e) {
             e.preventDefault();
 
@@ -343,6 +367,14 @@ document.addEventListener('DOMContentLoaded', function() {
             formData.append('show_name', document.getElementById('show_name').value);
             formData.append('season_num', document.getElementById('season_num').value);
             formData.append('episode_start', document.getElementById('episode_start').value);
+            const autoDetect = document.getElementById('auto_detect_episodes');
+            const detectionProfile = document.getElementById('detection_profile');
+            if (autoDetect) {
+                formData.append('auto_detect_episodes', autoDetect.checked ? 'true' : 'false');
+            }
+            if (detectionProfile) {
+                formData.append('detection_profile', detectionProfile.value || 'airdate');
+            }
             const playlistStartVal = document.getElementById('playlist_start').value;
             if (playlistStartVal) {
                 formData.append('playlist_start', playlistStartVal);

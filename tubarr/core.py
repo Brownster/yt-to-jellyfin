@@ -52,12 +52,14 @@ from .media import (
     get_playlist_videos,
     get_music_playlist_details,
 )
+from .episode_detection import AirdateEpisodeDetector
 from .jellyfin import (
     copy_to_jellyfin,
     copy_movie_to_jellyfin,
     copy_music_to_jellyfin,
     trigger_jellyfin_scan,
 )
+from .tvdb import TVDBAuthenticationError, TVDBClient
 from .utils import sanitize_name, clean_filename, check_dependencies, log_job
 from .episodes import (
     _load_episode_tracker,
@@ -88,6 +90,16 @@ class YTToJellyfin:
     def __init__(self):
         self.temp_dir = tempfile.mkdtemp()
         self.config = self._load_config()
+        self.tvdb_client: Optional[TVDBClient] = None
+        if self.config.get("tvdb_api_key"):
+            try:
+                self.tvdb_client = TVDBClient(
+                    self.config.get("tvdb_api_key"), self.config.get("tvdb_pin") or None
+                )
+            except TVDBAuthenticationError as exc:
+                logger.warning("Failed to authenticate with TVDB: %s", exc)
+            except Exception as exc:  # pragma: no cover - safety net
+                logger.warning("Failed to initialize TVDB client: %s", exc)
         self.jobs: Dict[str, DownloadJob] = {}
         self.job_lock = threading.Lock()
         self.job_queue: List[str] = []
@@ -231,6 +243,8 @@ class YTToJellyfin:
         quality: Optional[int] = None,
         use_h265: Optional[bool] = None,
         crf: Optional[int] = None,
+        auto_detect: bool = False,
+        detection_profile: Optional[str] = None,
     ) -> str:
         return create_job(
             self,
@@ -244,6 +258,8 @@ class YTToJellyfin:
             quality=quality,
             use_h265=use_h265,
             crf=crf,
+            auto_detect=auto_detect,
+            detection_profile=detection_profile,
         )
 
     def create_movie_job(
@@ -311,11 +327,13 @@ class YTToJellyfin:
                 job.update(status="failed", message="Missing dependencies")
                 return
             try:
-                episode_start = int(job.episode_start)
+                episode_start = int(job.episode_start) if job.episode_start else 1
             except ValueError:
                 job.update(status="failed", message="Invalid episode start")
                 return
-            folder = self.create_folder_structure(job.show_name, job.season_num)
+            season_for_download = job.season_num or "00"
+            job.season_num = season_for_download
+            folder = self.create_folder_structure(job.show_name, season_for_download)
             job.update(message=f"Created folder structure: {folder}")
             if job.playlist_start is not None:
                 dl_success = self.download_playlist(
@@ -330,24 +348,56 @@ class YTToJellyfin:
             if not dl_success:
                 job.update(status="failed", message="Download failed")
                 return
-            self.process_metadata(
-                folder, job.show_name, job.season_num, episode_start, job_id
+            mapper = None
+            if job.auto_detect_episodes:
+                if not self.tvdb_client:
+                    job.update(
+                        status="failed",
+                        message="TVDB API key required for auto-detect",
+                        detailed_status="Missing TVDB API key",
+                    )
+                    return
+                mapper = AirdateEpisodeDetector(self.tvdb_client, job.show_name)
+
+            seasons_processed = self.process_metadata(
+                folder, job.show_name, job.season_num, episode_start, job_id, mapper
             )
+            job.detected_seasons = seasons_processed
             if job.status == "cancelled":
                 return
-            self.convert_video_files(folder, job.season_num, job_id)
+            season_targets = seasons_processed or [job.season_num]
+            for season in season_targets:
+                season_folder = (
+                    Path(self.config["output_dir"])
+                    / self.sanitize_name(job.show_name)
+                    / f"Season {season}"
+                )
+                self.convert_video_files(str(season_folder), season, job_id)
             if job.status == "cancelled":
                 return
-            self.generate_artwork(folder, job.show_name, job.season_num, job_id)
+            for season in season_targets:
+                season_folder = (
+                    Path(self.config["output_dir"])
+                    / self.sanitize_name(job.show_name)
+                    / f"Season {season}"
+                )
+                self.generate_artwork(str(season_folder), job.show_name, season, job_id)
             if job.status == "cancelled":
                 return
-            self.create_nfo_files(folder, job.show_name, job.season_num, job_id)
+            for season in season_targets:
+                season_folder = (
+                    Path(self.config["output_dir"])
+                    / self.sanitize_name(job.show_name)
+                    / f"Season {season}"
+                )
+                self.create_nfo_files(str(season_folder), job.show_name, season, job_id)
             if job.status == "cancelled":
                 return
             if self.config.get("jellyfin_enabled", False) and self.config.get(
                 "jellyfin_tv_path"
             ):
-                self.copy_to_jellyfin(job.show_name, job.season_num, job_id)
+                for season in season_targets:
+                    self.copy_to_jellyfin(job.show_name, season, job_id)
             job.update(
                 status="completed", progress=100, message="Job completed successfully"
             )
@@ -586,8 +636,11 @@ class YTToJellyfin:
         season_num: str,
         episode_start: int,
         job_id: str,
-    ) -> None:
-        process_metadata(self, folder, show_name, season_num, episode_start, job_id)
+        episode_mapper=None,
+    ) -> List[str]:
+        return process_metadata(
+            self, folder, show_name, season_num, episode_start, job_id, episode_mapper
+        )
 
     def process_movie_metadata(
         self, folder: str, movie_name: str, job_id: str, json_index: int = 0
