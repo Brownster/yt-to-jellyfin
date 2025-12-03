@@ -265,6 +265,26 @@ def download_playlist(
         return False
 
 
+def _normalize_upload_date(upload_date: str) -> str:
+    """Convert various upload date formats to ``YYYY-MM-DD``.
+
+    yt-dlp commonly returns dates as ``YYYYMMDD``. This helper also tolerates
+    already-normalized values while safely falling back to an empty string when
+    parsing fails.
+    """
+
+    if not upload_date:
+        return ""
+
+    date_str = str(upload_date)
+    for fmt in ("%Y%m%d", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(date_str, fmt).strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    return ""
+
+
 def process_metadata(
     app, folder: str, show_name: str, season_num: str, episode_start: int, job_id: str
 ) -> None:
@@ -307,13 +327,7 @@ def process_metadata(
             else ""
         )
         upload_date = data.get("upload_date", "")
-        if upload_date:
-            try:
-                air_date = datetime.strptime(upload_date, "%Y%m%d").strftime("%Y-%m-%d")
-            except ValueError:
-                air_date = ""
-        else:
-            air_date = ""
+        air_date = _normalize_upload_date(upload_date)
         original_ep = data.get("playlist_index", 0)
         new_ep = original_ep + episode_offset
         new_ep_padded = f"{new_ep:02d}"
