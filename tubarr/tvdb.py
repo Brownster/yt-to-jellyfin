@@ -101,7 +101,19 @@ class TVDBClient:
                 response.status_code,
             )
             return None
-        episodes = response.json().get("data") or []
+        data = response.json().get("data")
+        if not data:
+            return None
+
+        # Handle both list and dict responses
+        if isinstance(data, dict):
+            episodes = data.get("episodes") or []
+        elif isinstance(data, list):
+            episodes = data
+        else:
+            logger.warning("Unexpected TVDB response structure for %s on %s", series_name, air_date)
+            return None
+
         if not episodes:
             return None
         episode = episodes[0]

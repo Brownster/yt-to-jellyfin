@@ -269,4 +269,72 @@ def _load_config() -> Dict:
     return result
 
 
-__all__ = ["_load_config", "logger"]
+def _save_config(config: Dict) -> None:
+    """Save configuration to YAML file."""
+    config_file = os.environ.get("CONFIG_FILE", "config/config.yml")
+
+    # Create config directory if it doesn't exist
+    config_dir = os.path.dirname(config_file)
+    if config_dir and not os.path.exists(config_dir):
+        os.makedirs(config_dir, exist_ok=True)
+
+    # Structure the config for YAML output
+    yaml_config = {
+        "media": {
+            "output_dir": config.get("output_dir", "./media"),
+            "quality": int(config.get("quality", 1080)),
+            "use_h265": config.get("use_h265", True),
+            "crf": int(config.get("crf", 28)),
+            "clean_filenames": config.get("clean_filenames", True),
+        },
+        "cookies_path": config.get("cookies_path", "./config/cookies.txt"),
+        "ytdlp_path": config.get("ytdlp_path", "yt-dlp"),
+        "web": {
+            "enabled": config.get("web_enabled", True),
+            "port": int(config.get("web_port", 8000)),
+            "host": config.get("web_host", "0.0.0.0"),
+        },
+        "completed_jobs_limit": int(config.get("completed_jobs_limit", 10)),
+        "max_concurrent_jobs": int(config.get("max_concurrent_jobs", 1)),
+        "update_checker": {
+            "enabled": config.get("update_checker_enabled", False),
+            "interval_minutes": int(config.get("update_checker_interval", 60)),
+        },
+        "jellyfin": {
+            "enabled": config.get("jellyfin_enabled", False),
+            "tv_path": config.get("jellyfin_tv_path", ""),
+            "movie_path": config.get("jellyfin_movie_path", ""),
+            "music_path": config.get("jellyfin_music_path", ""),
+            "host": config.get("jellyfin_host", "localhost"),
+            "port": int(config.get("jellyfin_port", 8096)),
+            "api_key": config.get("jellyfin_api_key", ""),
+        },
+        "tmdb": {
+            "api_key": config.get("tmdb_api_key", ""),
+        },
+        "tvdb": {
+            "api_key": config.get("tvdb_api_key", ""),
+            "pin": config.get("tvdb_pin", ""),
+        },
+        "imdb": {
+            "enabled": config.get("imdb_enabled", False),
+            "api_key": config.get("imdb_api_key", ""),
+        },
+        "music": {
+            "output_dir": config.get("music_output_dir", "./music"),
+            "default_genre": config.get("music_default_genre", ""),
+            "default_year": config.get("music_default_year") if config.get("music_default_year") else None,
+        },
+        "defaults": config.get("defaults", {}),
+    }
+
+    try:
+        with open(config_file, "w") as f:
+            yaml.safe_dump(yaml_config, f, default_flow_style=False, sort_keys=False)
+        logger.info(f"Configuration saved to {config_file}")
+    except (IOError, yaml.YAMLError) as e:
+        logger.error(f"Error saving config file: {e}")
+        raise
+
+
+__all__ = ["_load_config", "_save_config", "logger"]

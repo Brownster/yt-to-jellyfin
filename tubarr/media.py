@@ -334,15 +334,17 @@ def process_metadata(
             else ""
         )
         upload_date = data.get("upload_date", "")
-        air_date = _normalize_upload_date(upload_date)
-        original_ep = data.get("playlist_index", 0)
-        new_ep = original_ep + episode_offset
-        new_ep_padded = f"{new_ep:02d}"
+        playlist_index = data.get("playlist_index", 0)
         base_file = str(json_file).replace(".info.json", "")
-        new_base = re.sub(
-            rf"(\s?)?(S{season_num}E)[0-9]+",
-            lambda m: f"{m.group(1) or ' '}{m.group(2)}{new_ep_padded}",
-            base_file,
+
+        entries.append(
+            EpisodeMetadata(
+                title=title,
+                description=description,
+                upload_date=upload_date,
+                playlist_index=playlist_index,
+                base_path=base_file,
+            )
         )
 
     matches: List[EpisodeMatch]
@@ -420,8 +422,8 @@ def process_metadata(
         if job:
             job.update(message=f"Created NFO file for {match.title}")
 
-        json_file = Path(f"{match.base_path}.info.json")
-        if json_file.exists():
+        json_file = f"{match.base_path}.info.json"
+        if os.path.exists(json_file):
             os.remove(json_file)
 
         seasons_last_episode[match.season] = max(

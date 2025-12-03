@@ -69,6 +69,7 @@ class TestIntegration(unittest.TestCase):
 
         # Setup mocks
         mock_download.return_value = True
+        mock_process_metadata.return_value = ["01"]  # Return list of processed seasons
 
         # Create a folder structure to simulate a successful download
         show_dir = os.path.join(self.output_dir, "Test Show")

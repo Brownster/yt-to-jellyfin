@@ -47,13 +47,14 @@ def _normalize_upload_date(upload_date: Optional[str]) -> Optional[str]:
 
 
 def _parse_jeremy_kyle_date(title: str) -> Optional[str]:
-    """Parse dates like "1st May 2019" from the title string.
+    """Parse dates like "1st May 2019" or "9th_March_2018" from the title string.
 
     This is intentionally separated so we can easily register additional
     patterns later without touching the core mapping logic.
     """
 
-    match = re.search(r"(\d{1,2})(st|nd|rd|th)?\s+([A-Za-z]+)\s+(\d{4})", title)
+    # Handle both spaces and underscores as separators
+    match = re.search(r"(\d{1,2})(st|nd|rd|th)?[\s_]+([A-Za-z]+)[\s_]+(\d{4})", title)
     if not match:
         return None
     day = match.group(1)

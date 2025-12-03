@@ -718,6 +718,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         function toggleUpdateSchedule() {
+            if (!updateSchedule) return;
             if (autoCheck.checked) {
                 updateSchedule.style.display = 'flex';
             } else {
@@ -726,6 +727,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         function toggleConcurrency() {
+            if (!concurrencyRow) return;
             if (useH265.checked) {
                 concurrencyRow.style.display = 'flex';
             } else {
@@ -736,14 +738,14 @@ document.addEventListener('DOMContentLoaded', function() {
         // Set initial state
        toggleJellyfinSettings();
         toggleImdbSettings();
-       toggleUpdateSchedule();
-       toggleConcurrency();
+       if (updateSchedule && autoCheck) toggleUpdateSchedule();
+       if (concurrencyRow && useH265) toggleConcurrency();
 
         // Add event listener for toggle
        jellyfinEnabled.addEventListener('change', toggleJellyfinSettings);
         imdbEnabled.addEventListener('change', toggleImdbSettings);
-       autoCheck.addEventListener('change', toggleUpdateSchedule);
-       useH265.addEventListener('change', toggleConcurrency);
+       if (autoCheck) autoCheck.addEventListener('change', toggleUpdateSchedule);
+       if (useH265) useH265.addEventListener('change', toggleConcurrency);
         
         // Form submission handler
         settingsForm.addEventListener('submit', function(e) {
@@ -769,7 +771,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 jellyfin_api_key: document.getElementById('jellyfin_api_key').value,
                 // IMDb settings
                 imdb_enabled: document.getElementById('imdb_enabled').checked,
-                imdb_api_key: document.getElementById('imdb_api_key').value
+                imdb_api_key: document.getElementById('imdb_api_key').value,
+                // TMDb settings
+                tmdb_api_key: document.getElementById('tmdb_api_key').value,
+                // TVDB settings
+                tvdb_api_key: document.getElementById('tvdb_api_key').value,
+                tvdb_pin: document.getElementById('tvdb_pin').value
             };
             
             // Send request to update settings
@@ -2584,6 +2591,13 @@ function loadSettings() {
             const imdbEnabled = document.getElementById('imdb_enabled');
             imdbEnabled.checked = config.imdb_enabled === true;
             document.getElementById('imdb_api_key').value = config.imdb_api_key || '';
+
+            // TMDb settings
+            document.getElementById('tmdb_api_key').value = config.tmdb_api_key || '';
+
+            // TVDB settings
+            document.getElementById('tvdb_api_key').value = config.tvdb_api_key || '';
+            document.getElementById('tvdb_pin').value = config.tvdb_pin || '';
 
             // Trigger the toggle to show/hide Jellyfin settings
             if (jellyfinEnabled) {
