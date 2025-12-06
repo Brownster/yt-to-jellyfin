@@ -25,18 +25,40 @@ if TYPE_CHECKING:
     from .jobs import TrackMetadata
 
 
-def create_folder_structure(app, show_name: str, season_num: str) -> str:
-    folder = (
-        Path(app.config["output_dir"])
-        / sanitize_name(show_name)
-        / f"Season {season_num}"
-    )
+def create_folder_structure(
+    app, show_name: str, season_num: str, *, base_path: Optional[str] = None
+) -> str:
+    """Create the working folder for a TV season.
+
+    If a ``base_path`` is provided (e.g., a Sonarr blackhole directory), use it
+    directly without creating additional subfolders so the files land exactly
+    where the caller expects. Otherwise, build the usual Show/Season structure
+    under the configured ``output_dir``.
+    """
+
+    if base_path:
+        folder = Path(base_path)
+        folder.mkdir(parents=True, exist_ok=True)
+        return str(folder)
+
+    root = Path(app.config["output_dir"])
+    folder = root / sanitize_name(show_name) / f"Season {season_num}"
     folder.mkdir(parents=True, exist_ok=True)
     return str(folder)
 
 
-def create_movie_folder(app, movie_name: str) -> str:
-    folder = Path(app.config["output_dir"]) / sanitize_name(movie_name)
+def create_movie_folder(app, movie_name: str, *, base_path: Optional[str] = None) -> str:
+    """Create the working folder for a movie download.
+
+    When ``base_path`` is provided (e.g., a Radarr blackhole directory), use it
+    directly without adding additional nesting. Otherwise, place the movie in a
+    dedicated folder beneath ``output_dir``.
+    """
+
+    if base_path:
+        folder = Path(base_path)
+    else:
+        folder = Path(app.config["output_dir"]) / sanitize_name(movie_name)
     folder.mkdir(parents=True, exist_ok=True)
     return str(folder)
 

@@ -11,11 +11,15 @@ services:
       - ./media:/media
       - ./config:/config
       - ./audiobooks:/mnt/storage/audiobooks
+      - ./sonarr-blackhole:/mnt/blackhole/sonarr
+      - ./radarr-blackhole:/mnt/blackhole/radarr
     ports:
       - "8000:8000"
     environment:
       - OUTPUT_DIR=/media
       - AUDIOBOOK_OUTPUT_DIR=/mnt/storage/audiobooks
+      - SONARR_BLACKHOLE_PATH=/mnt/blackhole/sonarr
+      - RADARR_BLACKHOLE_PATH=/mnt/blackhole/radarr
       - VIDEO_QUALITY=1080
       - USE_H265=true
       - CRF=28

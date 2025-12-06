@@ -270,6 +270,8 @@ class YTToJellyfin:
         crf: Optional[int] = None,
         auto_detect: bool = False,
         detection_profile: Optional[str] = None,
+        destination_path: Optional[str] = None,
+        destination_label: Optional[str] = None,
     ) -> str:
         return create_job(
             self,
@@ -285,6 +287,8 @@ class YTToJellyfin:
             crf=crf,
             auto_detect=auto_detect,
             detection_profile=detection_profile,
+            destination_path=destination_path,
+            destination_label=destination_label,
         )
 
     def create_movie_job(
@@ -296,6 +300,8 @@ class YTToJellyfin:
         quality: Optional[int] = None,
         use_h265: Optional[bool] = None,
         crf: Optional[int] = None,
+        destination_path: Optional[str] = None,
+        destination_label: Optional[str] = None,
     ) -> str:
         job_id = str(uuid.uuid4())
         job = DownloadJob(
@@ -309,6 +315,8 @@ class YTToJellyfin:
             quality_override=quality,
             use_h265_override=use_h265,
             crf_override=crf,
+            destination_path=destination_path,
+            destination_label=destination_label,
         )
         with self.job_lock:
             self.jobs[job_id] = job
@@ -373,7 +381,9 @@ class YTToJellyfin:
                 return
             season_for_download = job.season_num or "00"
             job.season_num = season_for_download
-            folder = self.create_folder_structure(job.show_name, season_for_download)
+            folder = self.create_folder_structure(
+                job.show_name, season_for_download, base_path=job.destination_path
+            )
             job.update(message=f"Created folder structure: {folder}")
             if job.playlist_start is not None:
                 dl_success = self.download_playlist(
@@ -409,29 +419,35 @@ class YTToJellyfin:
                 return
             season_targets = seasons_processed or [job.season_num]
             for season in season_targets:
-                season_folder = (
-                    Path(self.config["output_dir"])
-                    / self.sanitize_name(job.show_name)
-                    / f"Season {season}"
-                )
+                if job.destination_path:
+                    season_folder = Path(folder)
+                else:
+                    season_folder = (
+                        Path(self.config["output_dir"]) / self.sanitize_name(job.show_name)
+                        / f"Season {season}"
+                    )
                 self.convert_video_files(str(season_folder), season, job_id)
             if job.status == "cancelled":
                 return
             for season in season_targets:
-                season_folder = (
-                    Path(self.config["output_dir"])
-                    / self.sanitize_name(job.show_name)
-                    / f"Season {season}"
-                )
+                if job.destination_path:
+                    season_folder = Path(folder)
+                else:
+                    season_folder = (
+                        Path(self.config["output_dir"]) / self.sanitize_name(job.show_name)
+                        / f"Season {season}"
+                    )
                 self.generate_artwork(str(season_folder), job.show_name, season, job_id)
             if job.status == "cancelled":
                 return
             for season in season_targets:
-                season_folder = (
-                    Path(self.config["output_dir"])
-                    / self.sanitize_name(job.show_name)
-                    / f"Season {season}"
-                )
+                if job.destination_path:
+                    season_folder = Path(folder)
+                else:
+                    season_folder = (
+                        Path(self.config["output_dir"]) / self.sanitize_name(job.show_name)
+                        / f"Season {season}"
+                    )
                 self.create_nfo_files(str(season_folder), job.show_name, season, job_id)
             if job.status == "cancelled":
                 return
@@ -480,7 +496,9 @@ class YTToJellyfin:
             if not self.check_dependencies():
                 job.update(status="failed", message="Missing dependencies")
                 return
-            folder = self.create_movie_folder(job.movie_name)
+            folder = self.create_movie_folder(
+                job.movie_name, base_path=job.destination_path
+            )
             job.update(message=f"Created folder structure: {folder}")
             dl_success = self.download_playlist(job.playlist_url, folder, "01", job_id)
             if job.status == "cancelled":
@@ -716,11 +734,15 @@ class YTToJellyfin:
                 self._start_job(next_id, start_thread=True)
 
     # media functions
-    def create_folder_structure(self, show_name: str, season_num: str) -> str:
-        return create_folder_structure(self, show_name, season_num)
+    def create_folder_structure(
+        self, show_name: str, season_num: str, *, base_path: Optional[str] = None
+    ) -> str:
+        return create_folder_structure(self, show_name, season_num, base_path=base_path)
 
-    def create_movie_folder(self, movie_name: str) -> str:
-        return create_movie_folder(self, movie_name)
+    def create_movie_folder(
+        self, movie_name: str, *, base_path: Optional[str] = None
+    ) -> str:
+        return create_movie_folder(self, movie_name, base_path=base_path)
 
     def create_audiobook_folder(self, title: str, author: str) -> str:
         return create_audiobook_folder(self, title, author)

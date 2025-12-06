@@ -49,6 +49,8 @@ class ConfigModel(BaseModel):
     music_default_genre: str = ""
     music_default_year: Optional[int] = Field(default=None, ge=0)
     audiobook_output_dir: str = Field(..., min_length=1)
+    sonarr_blackhole_path: str = ""
+    radarr_blackhole_path: str = ""
 
     @validator("jellyfin_tv_path", always=True)
     def validate_jellyfin_tv_path(cls, v, values):
@@ -112,6 +114,8 @@ def _load_config() -> Dict:
         "music_default_genre": os.environ.get("MUSIC_DEFAULT_GENRE", ""),
         "music_default_year": None,
         "jellyfin_music_path": os.environ.get("JELLYFIN_MUSIC_PATH", ""),
+        "sonarr_blackhole_path": os.environ.get("SONARR_BLACKHOLE_PATH", ""),
+        "radarr_blackhole_path": os.environ.get("RADARR_BLACKHOLE_PATH", ""),
     }
 
     music_year_env = os.environ.get("MUSIC_DEFAULT_YEAR", "").strip()
@@ -199,6 +203,20 @@ def _load_config() -> Dict:
                             config["jellyfin_port"] = str(value)
                         elif key == "api_key":
                             config["jellyfin_api_key"] = value
+
+                if "blackhole" in file_config and isinstance(
+                    file_config["blackhole"], dict
+                ):
+                    for key, value in file_config["blackhole"].items():
+                        if key == "sonarr":
+                            config["sonarr_blackhole_path"] = value
+                        elif key == "radarr":
+                            config["radarr_blackhole_path"] = value
+
+                if "sonarr_blackhole_path" in file_config:
+                    config["sonarr_blackhole_path"] = file_config["sonarr_blackhole_path"]
+                if "radarr_blackhole_path" in file_config:
+                    config["radarr_blackhole_path"] = file_config["radarr_blackhole_path"]
 
                 if "tmdb" in file_config and isinstance(file_config["tmdb"], dict):
                     if "api_key" in file_config["tmdb"]:
@@ -328,6 +346,10 @@ def _save_config(config: Dict) -> None:
             "output_dir": config.get("music_output_dir", "./music"),
             "default_genre": config.get("music_default_genre", ""),
             "default_year": config.get("music_default_year") if config.get("music_default_year") else None,
+        },
+        "blackhole": {
+            "sonarr": config.get("sonarr_blackhole_path", ""),
+            "radarr": config.get("radarr_blackhole_path", ""),
         },
         "defaults": config.get("defaults", {}),
     }
