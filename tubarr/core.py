@@ -410,7 +410,13 @@ class YTToJellyfin:
                 mapper = AirdateEpisodeDetector(self.tvdb_client, job.show_name)
 
             seasons_processed = self.process_metadata(
-                folder, job.show_name, job.season_num, episode_start, job_id, mapper
+                folder,
+                job.show_name,
+                job.season_num,
+                episode_start,
+                job_id,
+                mapper,
+                destination_path=job.destination_path,
             )
             job.detected_seasons = seasons_processed
             if job.status == "cancelled":
@@ -772,9 +778,17 @@ class YTToJellyfin:
         episode_start: int,
         job_id: str,
         episode_mapper=None,
+        destination_path: Optional[str] = None,
     ) -> List[str]:
         return process_metadata(
-            self, folder, show_name, season_num, episode_start, job_id, episode_mapper
+            self,
+            folder,
+            show_name,
+            season_num,
+            episode_start,
+            job_id,
+            episode_mapper,
+            destination_path,
         )
 
     def process_movie_metadata(

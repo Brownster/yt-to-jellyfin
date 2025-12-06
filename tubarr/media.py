@@ -327,6 +327,7 @@ def process_metadata(
     episode_start: int,
     job_id: str,
     episode_mapper=None,
+    destination_path: Optional[str] = None,
 ) -> List[str]:
     job = app.jobs.get(job_id)
     if job:
@@ -410,8 +411,11 @@ def process_metadata(
     for i, match in enumerate(matches):
         season_padded = f"{match.season:02d}"
         processed_seasons.add(season_padded)
-        show_folder = Path(app.config["output_dir"]) / sanitize_name(show_name)
-        dest_folder = show_folder / f"Season {season_padded}"
+        if destination_path:
+            dest_folder = Path(destination_path)
+        else:
+            show_folder = Path(app.config["output_dir"]) / sanitize_name(show_name)
+            dest_folder = show_folder / f"Season {season_padded}"
         dest_folder.mkdir(parents=True, exist_ok=True)
 
         file_name = os.path.basename(match.base_path)

@@ -328,6 +328,49 @@ class TestJobManagement(unittest.TestCase):
         self.assertTrue(target_file.exists())
         self.assertEqual(seasons, ["02"])
 
+    def test_process_metadata_destination_path(self):
+        """Files should remain in the destination path when provided."""
+
+        dest_path = Path(self.temp_dir) / "blackhole"
+        dest_path.mkdir()
+
+        base_name = dest_path / "Video 1"
+        json_path = f"{base_name}.info.json"
+        with open(json_path, "w") as f:
+            json.dump(
+                {
+                    "title": "Video 1",
+                    "description": "Test description",
+                    "upload_date": "20230101",
+                    "playlist_index": 1,
+                },
+                f,
+            )
+        with open(f"{base_name}.mp4", "w") as f:
+            f.write("data")
+
+        job_id = "destination-job"
+        job = DownloadJob(job_id, "url", "Test Show", "01", "01")
+        job.destination_path = str(dest_path)
+        self.app.jobs[job_id] = job
+
+        seasons = self.app.process_metadata(
+            str(dest_path),
+            "Test Show",
+            "01",
+            1,
+            job_id,
+            destination_path=str(dest_path),
+        )
+
+        target_file = dest_path / "Video 1 S01E01.mp4"
+        self.assertTrue(target_file.exists())
+        self.assertTrue((dest_path / "Video 1 S01E01.nfo").exists())
+        self.assertEqual(seasons, ["01"])
+
+        show_folder = Path(self.temp_dir) / "Test Show"
+        self.assertFalse(show_folder.exists())
+
     def test_get_job(self):
         """Test getting a specific job"""
         # Add test jobs
