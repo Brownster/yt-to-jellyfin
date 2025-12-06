@@ -377,6 +377,14 @@
                                     </div>
                                 </div>
 
+                                <div class="mb-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="send_to_sonarr">
+                                        <label class="form-check-label" for="send_to_sonarr">Send to Sonarr for processing</label>
+                                        <div class="form-text">Uses the Sonarr blackhole directory configured in Settings.</div>
+                                    </div>
+                                </div>
+
                                 <div class="row mb-3">
                                     <div class="col-lg-6">
                                         <label for="quality" class="form-label">Maximum Video Quality</label>
@@ -449,6 +457,14 @@
                                     <div class="form-check form-switch">
                                         <input class="form-check-input" type="checkbox" id="movie_use_h265" checked>
                                         <label class="form-check-label" for="movie_use_h265">Convert to H.265 (Recommended for smaller file size)</label>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="send_to_radarr">
+                                        <label class="form-check-label" for="send_to_radarr">Send to Radarr for processing</label>
+                                        <div class="form-text">Uses the Radarr blackhole directory configured in Settings.</div>
                                     </div>
                                 </div>
                                 <div class="row mb-3">
@@ -1090,6 +1106,19 @@
                                         <label for="cookies_path" class="form-label">Cookies File Path</label>
                                         <input type="text" class="form-control" id="cookies_path">
                                         <div class="form-text">Optional: Path to cookies file for authenticated content</div>
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-lg-6">
+                                        <label for="sonarr_blackhole_path" class="form-label">Sonarr Blackhole Directory</label>
+                                        <input type="text" class="form-control" id="sonarr_blackhole_path" placeholder="/path/to/sonarr/blackhole">
+                                        <div class="form-text">Used when "Send to Sonarr" is enabled on TV downloads.</div>
+                                    </div>
+                                    <div class="col-lg-6">
+                                        <label for="radarr_blackhole_path" class="form-label">Radarr Blackhole Directory</label>
+                                        <input type="text" class="form-control" id="radarr_blackhole_path" placeholder="/path/to/radarr/blackhole">
+                                        <div class="form-text">Used when "Send to Radarr" is enabled on movie downloads.</div>
                                     </div>
                                 </div>
 

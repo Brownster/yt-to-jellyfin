@@ -392,6 +392,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (crfInput) {
                 formData.append('crf', crfInput.value);
             }
+            const sendToSonarr = document.getElementById('send_to_sonarr');
+            if (sendToSonarr) {
+                formData.append('send_to_sonarr', sendToSonarr.checked ? 'true' : 'false');
+            }
 
             // Send request to create job
             fetch('/jobs', {
@@ -445,6 +449,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const movieCrf = document.getElementById('movie_crf');
             if (movieCrf) {
                 formData.append('crf', movieCrf.value);
+            }
+            const sendToRadarr = document.getElementById('send_to_radarr');
+            if (sendToRadarr) {
+                formData.append('send_to_radarr', sendToRadarr.checked ? 'true' : 'false');
             }
 
             fetch('/movies', {
@@ -777,7 +785,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 tmdb_api_key: document.getElementById('tmdb_api_key').value,
                 // TVDB settings
                 tvdb_api_key: document.getElementById('tvdb_api_key').value,
-                tvdb_pin: document.getElementById('tvdb_pin').value
+                tvdb_pin: document.getElementById('tvdb_pin').value,
+                // Download client settings
+                sonarr_blackhole_path: document.getElementById('sonarr_blackhole_path').value,
+                radarr_blackhole_path: document.getElementById('radarr_blackhole_path').value
             };
             
             // Send request to update settings
@@ -2764,6 +2775,8 @@ function loadSettings() {
             document.getElementById('max-concurrent-value').textContent = config.max_concurrent_jobs || 1;
             document.getElementById('auto_check_updates').checked = config.update_checker_enabled === true;
             document.getElementById('update_interval').value = config.update_checker_interval || 60;
+            document.getElementById('sonarr_blackhole_path').value = config.sonarr_blackhole_path || '';
+            document.getElementById('radarr_blackhole_path').value = config.radarr_blackhole_path || '';
             
             // Cookies file settings
             const cookiesInput = document.getElementById('cookies_path');
