@@ -419,29 +419,35 @@ class YTToJellyfin:
                 return
             season_targets = seasons_processed or [job.season_num]
             for season in season_targets:
-                season_folder = (
-                    Path(job.destination_path or self.config["output_dir"])
-                    / self.sanitize_name(job.show_name)
-                    / f"Season {season}"
-                )
+                if job.destination_path:
+                    season_folder = Path(folder)
+                else:
+                    season_folder = (
+                        Path(self.config["output_dir"]) / self.sanitize_name(job.show_name)
+                        / f"Season {season}"
+                    )
                 self.convert_video_files(str(season_folder), season, job_id)
             if job.status == "cancelled":
                 return
             for season in season_targets:
-                season_folder = (
-                    Path(job.destination_path or self.config["output_dir"])
-                    / self.sanitize_name(job.show_name)
-                    / f"Season {season}"
-                )
+                if job.destination_path:
+                    season_folder = Path(folder)
+                else:
+                    season_folder = (
+                        Path(self.config["output_dir"]) / self.sanitize_name(job.show_name)
+                        / f"Season {season}"
+                    )
                 self.generate_artwork(str(season_folder), job.show_name, season, job_id)
             if job.status == "cancelled":
                 return
             for season in season_targets:
-                season_folder = (
-                    Path(job.destination_path or self.config["output_dir"])
-                    / self.sanitize_name(job.show_name)
-                    / f"Season {season}"
-                )
+                if job.destination_path:
+                    season_folder = Path(folder)
+                else:
+                    season_folder = (
+                        Path(self.config["output_dir"]) / self.sanitize_name(job.show_name)
+                        / f"Season {season}"
+                    )
                 self.create_nfo_files(str(season_folder), job.show_name, season, job_id)
             if job.status == "cancelled":
                 return
