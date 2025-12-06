@@ -70,6 +70,9 @@ def jobs():
         quality_val = request.form.get("quality")
         use_h265_raw = request.form.get("use_h265")
         crf_val = request.form.get("crf")
+        send_to_sonarr = _parse_optional_bool(request.form.get("send_to_sonarr"))
+        destination_path = None
+        destination_label = None
 
         try:
             quality_override = _parse_optional_int(quality_val, "quality")
@@ -77,6 +80,12 @@ def jobs():
         except ValueError as exc:
             return jsonify({"error": str(exc)}), 400
         use_h265_override = _parse_optional_bool(use_h265_raw)
+
+        if send_to_sonarr:
+            destination_path = ytj.config.get("sonarr_blackhole_path") or None
+            destination_label = "sonarr"
+            if not destination_path:
+                return jsonify({"error": "Sonarr blackhole path is not configured"}), 400
 
         if not playlist_url or not show_name:
             return jsonify({"error": "Missing required parameters"}), 400
@@ -100,6 +109,8 @@ def jobs():
                 crf=crf_override,
                 auto_detect=auto_detect,
                 detection_profile=detection_profile,
+                destination_path=destination_path,
+                destination_label=destination_label,
             )
         else:
             job_id = ytj.create_job(
@@ -114,6 +125,8 @@ def jobs():
                 crf=crf_override,
                 auto_detect=auto_detect,
                 detection_profile=detection_profile,
+                destination_path=destination_path,
+                destination_label=destination_label,
             )
         return jsonify({"job_id": job_id})
     else:
@@ -130,6 +143,9 @@ def movies():
         quality_val = data.get("quality")
         use_h265_raw = data.get("use_h265")
         crf_val = data.get("crf")
+        send_to_radarr = _parse_optional_bool(data.get("send_to_radarr"))
+        destination_path = None
+        destination_label = None
 
         if not video_url or not movie_name:
             return jsonify({"error": "Missing required parameters"}), 400
@@ -141,6 +157,12 @@ def movies():
             return jsonify({"error": str(exc)}), 400
         use_h265_override = _parse_optional_bool(use_h265_raw)
 
+        if send_to_radarr:
+            destination_path = ytj.config.get("radarr_blackhole_path") or None
+            destination_label = "radarr"
+            if not destination_path:
+                return jsonify({"error": "Radarr blackhole path is not configured"}), 400
+
         optional_kwargs = {}
         if quality_override is not None:
             optional_kwargs["quality"] = quality_override
@@ -148,6 +170,9 @@ def movies():
             optional_kwargs["use_h265"] = use_h265_override
         if crf_override is not None:
             optional_kwargs["crf"] = crf_override
+        if destination_path:
+            optional_kwargs["destination_path"] = destination_path
+            optional_kwargs["destination_label"] = destination_label
 
         if ytj._is_playlist_url(video_url):
             videos = ytj.get_playlist_videos(video_url)
@@ -386,6 +411,8 @@ def config():
                 "clean_filenames",
                 "update_checker_enabled",
                 "update_checker_interval",
+                "sonarr_blackhole_path",
+                "radarr_blackhole_path",
             ]
 
             should_restart_update = False

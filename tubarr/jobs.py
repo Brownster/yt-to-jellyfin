@@ -56,6 +56,8 @@ class DownloadJob:
         crf_override: Optional[int] = None,
         auto_detect_episodes: bool = False,
         detection_profile: Optional[str] = None,
+        destination_path: Optional[str] = None,
+        destination_label: Optional[str] = None,
     ):
         self.job_id = job_id
         self.playlist_url = playlist_url
@@ -78,6 +80,8 @@ class DownloadJob:
         self.crf_override = crf_override
         self.auto_detect_episodes = auto_detect_episodes
         self.detection_profile = detection_profile or "airdate"
+        self.destination_path = destination_path
+        self.destination_label = destination_label
         self.detected_seasons: List[str] = []
         self.status = "queued"
         self.progress = 0
@@ -178,6 +182,8 @@ class DownloadJob:
             "quality_override": self.quality_override,
             "use_h265_override": self.use_h265_override,
             "crf_override": self.crf_override,
+            "destination_path": self.destination_path,
+            "destination_label": self.destination_label,
             "auto_detect_episodes": self.auto_detect_episodes,
             "detection_profile": self.detection_profile,
             "detected_seasons": self.detected_seasons,
@@ -203,6 +209,8 @@ def create_job(
     crf: Optional[int] = None,
     auto_detect: bool = False,
     detection_profile: Optional[str] = None,
+    destination_path: Optional[str] = None,
+    destination_label: Optional[str] = None,
 ) -> str:
     job_id = str(uuid.uuid4())
     job = DownloadJob(
@@ -218,6 +226,8 @@ def create_job(
         crf_override=crf,
         auto_detect_episodes=auto_detect,
         detection_profile=detection_profile,
+        destination_path=destination_path,
+        destination_label=destination_label,
     )
 
     try:
