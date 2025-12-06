@@ -324,7 +324,12 @@ class TestJobManagement(unittest.TestCase):
             self.temp_dir, "Test Show", "00", 1, job_id, DummyMapper()
         )
 
-        target_file = Path(self.temp_dir) / "Test Show" / "Season 02" / "Video 1 S02E05.mp4"
+        target_file = (
+            Path(self.temp_dir)
+            / "Test Show"
+            / "Season 02"
+            / "Test Show - S02E05 - Video 1.mp4"
+        )
         self.assertTrue(target_file.exists())
         self.assertEqual(seasons, ["02"])
 
@@ -363,9 +368,9 @@ class TestJobManagement(unittest.TestCase):
             destination_path=str(dest_path),
         )
 
-        target_file = dest_path / "Video 1 S01E01.mp4"
+        target_file = dest_path / "Test Show - S01E01 - Video 1.mp4"
         self.assertTrue(target_file.exists())
-        self.assertTrue((dest_path / "Video 1 S01E01.nfo").exists())
+        self.assertTrue((dest_path / "Test Show - S01E01 - Video 1.nfo").exists())
         self.assertEqual(seasons, ["01"])
 
         show_folder = Path(self.temp_dir) / "Test Show"
