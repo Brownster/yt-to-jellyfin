@@ -427,7 +427,15 @@ def process_metadata(
                 message=f"Processing metadata for {match.title}",
             )
 
-        new_base = dest_folder / f"{match.title} S{season_padded}E{match.episode:02d}"
+        episode_title = re.sub(
+            r"\s*-?\s*S\d{1,2}E\d{1,2}\s*-?\s*", " ", match.title, flags=re.IGNORECASE
+        ).strip(" -")
+
+        base_name = f"{show_name} - S{season_padded}E{match.episode:02d}"
+        if episode_title:
+            base_name = f"{base_name} - {episode_title}"
+
+        new_base = dest_folder / base_name
         clean_base = new_base
         if app.config.get("clean_filenames", True):
             clean_base = dest_folder / clean_filename(new_base.name)

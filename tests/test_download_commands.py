@@ -158,8 +158,8 @@ class TestMetadataTagging(unittest.TestCase):
             job_id=self.job_id,
         )
 
-        renamed_video = folder / "Cool Show Title S01E05.mp4"
-        nfo_file = folder / "Cool Show Title S01E05.nfo"
+        renamed_video = folder / "Cool Show - S01E05 - Cool Show Title.mp4"
+        nfo_file = folder / "Cool Show - S01E05 - Cool Show Title.nfo"
 
         self.assertTrue(renamed_video.exists())
         self.assertTrue(nfo_file.exists())
