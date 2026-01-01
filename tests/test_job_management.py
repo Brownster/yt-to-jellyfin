@@ -328,7 +328,7 @@ class TestJobManagement(unittest.TestCase):
             Path(self.temp_dir)
             / "Test Show"
             / "Season 02"
-            / "Test Show - S02E05 - Video 1.mp4"
+            / "Test Show - S02E05.mp4"
         )
         self.assertTrue(target_file.exists())
         self.assertEqual(seasons, ["02"])
@@ -368,9 +368,9 @@ class TestJobManagement(unittest.TestCase):
             destination_path=str(dest_path),
         )
 
-        target_file = dest_path / "Test Show - S01E01 - Video 1.mp4"
+        target_file = dest_path / "Test Show - S01E01.mp4"
         self.assertTrue(target_file.exists())
-        self.assertTrue((dest_path / "Test Show - S01E01 - Video 1.nfo").exists())
+        self.assertTrue((dest_path / "Test Show - S01E01.nfo").exists())
         self.assertEqual(seasons, ["01"])
 
         show_folder = Path(self.temp_dir) / "Test Show"
@@ -518,6 +518,57 @@ class TestJobManagement(unittest.TestCase):
                 playlist_start=3,
             )
             self.assertEqual(jobs, ["job-42"])
+
+    def test_process_metadata_zero_playlist_index(self):
+        """Test that playlist_index of 0 is handled correctly (E00 bug fix)."""
+        # Create temporary test files with playlist_index = 0
+        base_name = Path(self.temp_dir) / "Video 1"
+        json_path = f"{base_name}.info.json"
+        with open(json_path, "w") as f:
+            json.dump(
+                {
+                    "title": "Video 1",
+                    "description": "Test video",
+                    "upload_date": "20230101",
+                    "playlist_index": 0,  # This was causing E00 bug
+                },
+                f,
+            )
+        with open(f"{base_name}.mp4", "w") as f:
+            f.write("data")
+
+        job_id = "zero-index-job"
+        self.app.jobs[job_id] = DownloadJob(job_id, "url", "Test Show", "01", "01")
+
+        # Process metadata with episode_start=1
+        seasons = self.app.process_metadata(
+            self.temp_dir, "Test Show", "01", 1, job_id
+        )
+
+        # Verify that episode is numbered E01, not E00
+        target_file = (
+            Path(self.temp_dir) / "Test Show" / "Season 01" / "Test Show - S01E01.mp4"
+        )
+        self.assertTrue(
+            target_file.exists(),
+            f"Expected file not found. Directory contents: {list(Path(self.temp_dir).rglob('*'))}",
+        )
+
+        # Verify NFO was created
+        nfo_file = (
+            Path(self.temp_dir) / "Test Show" / "Season 01" / "Test Show - S01E01.nfo"
+        )
+        self.assertTrue(nfo_file.exists())
+
+        # Verify that E00 file does NOT exist
+        wrong_file = (
+            Path(self.temp_dir) / "Test Show" / "Season 01" / "Test Show - S01E00.mp4"
+        )
+        self.assertFalse(
+            wrong_file.exists(), "E00 file should not exist (this was the bug)"
+        )
+
+        self.assertEqual(seasons, ["01"])
 
 
 if __name__ == "__main__":

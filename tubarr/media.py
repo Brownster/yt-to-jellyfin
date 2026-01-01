@@ -131,8 +131,10 @@ def download_playlist(
     season_num: str,
     job_id: str,
     playlist_start: Optional[int] = None,
+    redownload: bool = False,
 ) -> bool:
-    output_template = f"{folder}/%(title)s S{season_num}E%(playlist_index)02d.%(ext)s"
+    # Simple naming: just season and episode number, no title to avoid underscores
+    output_template = f"{folder}/S{season_num}E%(playlist_index)02d.%(ext)s"
     ytdlp_path = app.config["ytdlp_path"]
     if not os.path.isabs(ytdlp_path):
         script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -162,15 +164,20 @@ def download_playlist(
         "--no-cookies-from-browser",
         playlist_url,
     ]
-    archive_file = app._get_archive_file(playlist_url)
-    os.makedirs(os.path.dirname(archive_file), exist_ok=True)
-    cmd.extend(["--download-archive", archive_file])
+    # Only use download archive if not redownloading
+    if not redownload:
+        archive_file = app._get_archive_file(playlist_url)
+        os.makedirs(os.path.dirname(archive_file), exist_ok=True)
+        cmd.extend(["--download-archive", archive_file])
+
     if playlist_start:
         cmd.extend(["--playlist-start", str(playlist_start)])
-    elif not os.path.exists(archive_file):
-        existing_max = app._get_existing_max_index(folder, season_num)
-        if existing_max:
-            cmd.extend(["--playlist-start", str(existing_max + 1)])
+    elif not redownload:
+        archive_file = app._get_archive_file(playlist_url)
+        if not os.path.exists(archive_file):
+            existing_max = app._get_existing_max_index(folder, season_num)
+            if existing_max:
+                cmd.extend(["--playlist-start", str(existing_max + 1)])
     if app.config["cookies"] and os.path.exists(app.config["cookies"]):
         cmd.insert(1, f'--cookies={app.config["cookies"]}')
     else:
@@ -351,6 +358,9 @@ def process_metadata(
     with open(json_files[0], "r") as f:
         first_data = json.load(f)
         first_index = first_data.get("playlist_index", 1)
+        # Apply same fallback logic as individual entries to prevent E00 bug
+        if first_index == 0:
+            first_index = 1
     total_files = len(json_files)
     if job:
         job.update(
@@ -358,7 +368,7 @@ def process_metadata(
             detailed_status=f"Processing metadata for {total_files} videos",
         )
     entries: List[EpisodeMetadata] = []
-    for json_file in json_files:
+    for idx, json_file in enumerate(json_files, start=1):
         with open(json_file, "r") as f:
             data = json.load(f)
         title = data.get("title", "Unknown Title")
@@ -368,7 +378,10 @@ def process_metadata(
             else ""
         )
         upload_date = data.get("upload_date", "")
-        playlist_index = data.get("playlist_index", 0)
+        # Use playlist_index from metadata, but fallback to sequential numbering if missing or 0
+        playlist_index = data.get("playlist_index")
+        if not playlist_index or playlist_index == 0:
+            playlist_index = idx
         base_file = str(json_file).replace(".info.json", "")
 
         entries.append(
@@ -427,13 +440,9 @@ def process_metadata(
                 message=f"Processing metadata for {match.title}",
             )
 
-        episode_title = re.sub(
-            r"\s*-?\s*S\d{1,2}E\d{1,2}\s*-?\s*", " ", match.title, flags=re.IGNORECASE
-        ).strip(" -")
-
+        # Sonarr prefers simple naming: just show name, season, and episode number
+        # Episode title is stored in the NFO file for metadata
         base_name = f"{show_name} - S{season_padded}E{match.episode:02d}"
-        if episode_title:
-            base_name = f"{base_name} - {episode_title}"
 
         new_base = dest_folder / base_name
         clean_base = new_base

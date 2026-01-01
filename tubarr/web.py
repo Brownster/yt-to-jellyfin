@@ -71,6 +71,7 @@ def jobs():
         use_h265_raw = request.form.get("use_h265")
         crf_val = request.form.get("crf")
         send_to_sonarr = _parse_optional_bool(request.form.get("send_to_sonarr"))
+        redownload = _parse_optional_bool(request.form.get("redownload"))
         destination_path = None
         destination_label = None
 
@@ -91,6 +92,16 @@ def jobs():
             return jsonify({"error": "Missing required parameters"}), 400
         if not auto_detect and (not season_num or not episode_start):
             return jsonify({"error": "Season and episode start are required"}), 400
+
+        # Validate episode_start is a valid integer
+        if not auto_detect and episode_start:
+            try:
+                episode_start_int = int(episode_start)
+                if episode_start_int < 0:
+                    return jsonify({"error": "Episode start must be non-negative"}), 400
+            except ValueError:
+                return jsonify({"error": "Episode start must be a valid integer"}), 400
+
         if auto_detect:
             season_num = season_num or "00"
             episode_start = episode_start or "01"
@@ -111,6 +122,7 @@ def jobs():
                 detection_profile=detection_profile,
                 destination_path=destination_path,
                 destination_label=destination_label,
+                redownload=redownload,
             )
         else:
             job_id = ytj.create_job(
@@ -127,6 +139,7 @@ def jobs():
                 detection_profile=detection_profile,
                 destination_path=destination_path,
                 destination_label=destination_label,
+                redownload=redownload,
             )
         return jsonify({"job_id": job_id})
     else:
@@ -144,6 +157,7 @@ def movies():
         use_h265_raw = data.get("use_h265")
         crf_val = data.get("crf")
         send_to_radarr = _parse_optional_bool(data.get("send_to_radarr"))
+        redownload = _parse_optional_bool(data.get("redownload"))
         destination_path = None
         destination_label = None
 
@@ -173,6 +187,8 @@ def movies():
         if destination_path:
             optional_kwargs["destination_path"] = destination_path
             optional_kwargs["destination_label"] = destination_label
+        if redownload is not None:
+            optional_kwargs["redownload"] = redownload
 
         if ytj._is_playlist_url(video_url):
             videos = ytj.get_playlist_videos(video_url)
@@ -468,6 +484,7 @@ def config():
                     ytj.start_update_checker()
 
             # Reinitialize TVDB client if credentials changed
+            tvdb_error = None
             if should_reinit_tvdb:
                 from .tvdb import TVDBClient, TVDBAuthenticationError
                 ytj.tvdb_client = None
@@ -480,9 +497,11 @@ def config():
                         )
                         logger.info("TVDB client initialized successfully")
                     except TVDBAuthenticationError as exc:
-                        logger.warning("Failed to authenticate with TVDB: %s", exc)
+                        tvdb_error = f"TVDB authentication failed: {exc}"
+                        logger.warning(tvdb_error)
                     except Exception as exc:
-                        logger.warning("Failed to initialize TVDB client: %s", exc)
+                        tvdb_error = f"TVDB initialization failed: {exc}"
+                        logger.warning(tvdb_error)
 
             # Save configuration to file
             from .config import _save_config
@@ -492,7 +511,11 @@ def config():
                 logger.error(f"Failed to save configuration: {e}")
                 return jsonify({"error": f"Failed to save configuration: {str(e)}"}), 500
 
-            return jsonify({"success": True, "message": "Configuration updated"})
+            # Return success with warning if TVDB had issues
+            message = "Configuration updated"
+            if tvdb_error:
+                message += f" (Warning: {tvdb_error})"
+            return jsonify({"success": True, "message": message})
 
         return jsonify({"error": "Invalid configuration data"}), 400
     else:

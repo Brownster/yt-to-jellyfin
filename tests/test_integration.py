@@ -105,6 +105,7 @@ class TestIntegration(unittest.TestCase):
             os.path.join(self.output_dir, "Test Show", "Season 01"),
             "01",
             job_id,
+            redownload=False,
         )
 
         # Verify at least one call was made to each function in this test

@@ -58,6 +58,7 @@ class DownloadJob:
         detection_profile: Optional[str] = None,
         destination_path: Optional[str] = None,
         destination_label: Optional[str] = None,
+        redownload: bool = False,
     ):
         self.job_id = job_id
         self.playlist_url = playlist_url
@@ -82,6 +83,7 @@ class DownloadJob:
         self.detection_profile = detection_profile or "airdate"
         self.destination_path = destination_path
         self.destination_label = destination_label
+        self.redownload = redownload
         self.detected_seasons: List[str] = []
         self.status = "queued"
         self.progress = 0
@@ -211,6 +213,7 @@ def create_job(
     detection_profile: Optional[str] = None,
     destination_path: Optional[str] = None,
     destination_label: Optional[str] = None,
+    redownload: bool = False,
 ) -> str:
     job_id = str(uuid.uuid4())
     job = DownloadJob(
@@ -228,6 +231,7 @@ def create_job(
         detection_profile=detection_profile,
         destination_path=destination_path,
         destination_label=destination_label,
+        redownload=redownload,
     )
 
     try:
@@ -297,17 +301,26 @@ def get_jobs(app) -> List[Dict]:
 
 
 def cancel_job(app, job_id: str) -> bool:
-    job = app.jobs.get(job_id)
-    if not job or job.status in {"completed", "failed", "cancelled"}:
-        return False
-    process = getattr(job, "process", None)
+    # Acquire lock to safely read and modify job state
+    with app.job_lock:
+        job = app.jobs.get(job_id)
+        if not job or job.status in {"completed", "failed", "cancelled"}:
+            return False
+
+        # Capture process before clearing to avoid race conditions
+        process = getattr(job, "process", None)
+        job.process = None  # Clear immediately to prevent reuse
+        job.update(status="cancelled", message="Job cancelled")
+
+    # Terminate process outside lock to avoid deadlock
     if process and process.poll() is None:
         try:
             terminate_process(process)
         except Exception as e:  # pragma: no cover - best effort cleanup
             logger.error(f"Failed to terminate process for job {job_id}: {e}")
-    job.process = None
-    job.update(status="cancelled", message="Job cancelled")
+
+    # Trigger the next job in the queue (has its own locking)
+    app._on_job_complete(job_id)
     return True
 
 
