@@ -396,6 +396,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (sendToSonarr) {
                 formData.append('send_to_sonarr', sendToSonarr.checked ? 'true' : 'false');
             }
+            const redownload = document.getElementById('redownload');
+            if (redownload) {
+                formData.append('redownload', redownload.checked ? 'true' : 'false');
+            }
 
             // Send request to create job
             fetch('/jobs', {
@@ -453,6 +457,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const sendToRadarr = document.getElementById('send_to_radarr');
             if (sendToRadarr) {
                 formData.append('send_to_radarr', sendToRadarr.checked ? 'true' : 'false');
+            }
+            const movieRedownload = document.getElementById('movie_redownload');
+            if (movieRedownload) {
+                formData.append('redownload', movieRedownload.checked ? 'true' : 'false');
             }
 
             fetch('/movies', {
@@ -980,10 +988,12 @@ function loadJobs() {
     fetch('/jobs')
         .then(response => response.json())
         .then(jobs => {
-            const musicJobs = jobs.filter(j => j.media_type === 'music');
-            const movieJobs = jobs.filter(j => j.media_type === 'movie');
-            const audiobookJobs = jobs.filter(j => j.media_type === 'audiobook');
-            const tvJobs = jobs.filter(j => !['movie', 'music', 'audiobook'].includes(j.media_type));
+            // Filter out completed, failed, and cancelled jobs for the "Active Jobs" sections
+            const activeJobs = jobs.filter(j => !['completed', 'failed', 'cancelled'].includes(j.status));
+            const musicJobs = activeJobs.filter(j => j.media_type === 'music');
+            const movieJobs = activeJobs.filter(j => j.media_type === 'movie');
+            const audiobookJobs = activeJobs.filter(j => j.media_type === 'audiobook');
+            const tvJobs = activeJobs.filter(j => !['movie', 'music', 'audiobook'].includes(j.media_type));
             updateJobsTable(tvJobs);
             updateMovieJobsTable(movieJobs);
             updateMusicJobsTable(musicJobs);
@@ -998,10 +1008,12 @@ function updateJobsData() {
     fetch('/jobs')
         .then(response => response.json())
         .then(jobs => {
-            const musicJobs = jobs.filter(j => j.media_type === 'music');
-            const movieJobs = jobs.filter(j => j.media_type === 'movie');
-            const audiobookJobs = jobs.filter(j => j.media_type === 'audiobook');
-            const tvJobs = jobs.filter(j => !['movie', 'music', 'audiobook'].includes(j.media_type));
+            // Filter out completed, failed, and cancelled jobs for the "Active Jobs" sections
+            const activeJobs = jobs.filter(j => !['completed', 'failed', 'cancelled'].includes(j.status));
+            const musicJobs = activeJobs.filter(j => j.media_type === 'music');
+            const movieJobs = activeJobs.filter(j => j.media_type === 'movie');
+            const audiobookJobs = activeJobs.filter(j => j.media_type === 'audiobook');
+            const tvJobs = activeJobs.filter(j => !['movie', 'music', 'audiobook'].includes(j.media_type));
             if (document.querySelector('#jobs:not(.d-none)')) {
                 updateJobsTable(tvJobs);
                 updateMovieJobsTable(movieJobs);
@@ -2848,7 +2860,7 @@ function loadSettings() {
 }
 
 function updateDashboardStats(jobs) {
-    const activeJobs = jobs.filter(job => !['completed', 'failed'].includes(job.status)).length;
+    const activeJobs = jobs.filter(job => !['completed', 'failed', 'cancelled'].includes(job.status)).length;
     document.getElementById('active-jobs').textContent = activeJobs;
 }
 
