@@ -12,6 +12,7 @@ Tubarr is a Python application that downloads YouTube playlists and processes th
 - **Optional Playlist Tracking**: Choose whether a playlist should be tracked for updates
 - **Proper Metadata**: Generate NFO files that Jellyfin uses to display episode details
 - **Episode Renumbering**: Set custom starting episode numbers for proper sequencing
+- **Title-Based Episode Detection**: Read `SxxExx` markers from mixed-season source titles and resolve unmatched items before downloading
 - **H.265 Conversion**: Convert videos to H.265 for better compression and playback performance
 - **Artwork Generation**: Auto-generate show posters, season artwork, and episode thumbnails
 - **Audiobook Downloads**: Capture single audiobook sources, fetch cover art from Google Books, and convert to tagged M4B files
