@@ -129,6 +129,33 @@ class TestJobManagement(unittest.TestCase):
         mock_thread.assert_called_once()
         mock_thread.return_value.start.assert_called_once()
 
+    @patch.object(YTToJellyfin, "get_playlist_videos")
+    def test_create_filename_mapping_job_reuses_preflight_results(self, mock_videos):
+        mappings = [
+            {
+                "id": "archive-item",
+                "index": 1,
+                "season": 24,
+                "episode": 28,
+                "title": "Episode title",
+            }
+        ]
+        job_id = self.app.create_job(
+            "https://archive.org/details/test",
+            "Test Show",
+            "00",
+            "01",
+            track_playlist=False,
+            start_thread=False,
+            filename_episode_mappings=mappings,
+        )
+
+        mock_videos.assert_not_called()
+        self.assertEqual(
+            self.app.jobs[job_id].remaining_files,
+            ["Test Show S24E28 - Episode title"],
+        )
+
     @patch.object(YTToJellyfin, "_register_playlist")
     @patch("threading.Thread")
     def test_create_job_no_tracking(self, mock_thread, mock_register):

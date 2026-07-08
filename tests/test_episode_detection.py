@@ -69,6 +69,12 @@ def test_episode_detection_errors_when_missing_dates():
             "I Cheated With Three Strippers",
         ),
         (
+            "Season 01/The Jerry Springer Show - S01E03 - TBA.mp4",
+            1,
+            3,
+            "TBA",
+        ),
+        (
             "The Jerry Springer Show S28E010 Homewreckers Move In 😡",
             28,
             10,
@@ -128,3 +134,4 @@ def test_filename_detector_rejects_duplicate_episodes():
 
 def test_clean_episode_title_removes_emoji_and_extra_whitespace():
     assert clean_episode_title(" -  It's Over! 😡  ") == "It's Over!"
+    assert clean_episode_title("Season 01/Show title.mp4") == "Show title"
