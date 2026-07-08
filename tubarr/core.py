@@ -273,6 +273,7 @@ class YTToJellyfin:
         detection_profile: Optional[str] = None,
         destination_path: Optional[str] = None,
         destination_label: Optional[str] = None,
+        redownload: bool = False,
     ) -> str:
         return create_job(
             self,
@@ -291,6 +292,7 @@ class YTToJellyfin:
             detection_profile=detection_profile,
             destination_path=destination_path,
             destination_label=destination_label,
+            redownload=redownload,
         )
 
     def create_movie_job(
@@ -304,6 +306,7 @@ class YTToJellyfin:
         crf: Optional[int] = None,
         destination_path: Optional[str] = None,
         destination_label: Optional[str] = None,
+        redownload: bool = False,
     ) -> str:
         job_id = str(uuid.uuid4())
         job = DownloadJob(
@@ -319,6 +322,7 @@ class YTToJellyfin:
             crf_override=crf,
             destination_path=destination_path,
             destination_label=destination_label,
+            redownload=redownload,
         )
         with self.job_lock:
             self.jobs[job_id] = job
@@ -389,11 +393,13 @@ class YTToJellyfin:
             job.update(message=f"Created folder structure: {folder}")
             if job.playlist_start is not None:
                 dl_success = self.download_playlist(
-                    job.playlist_url, folder, job.season_num, job_id, job.playlist_start
+                    job.playlist_url, folder, job.season_num, job_id, job.playlist_start,
+                    redownload=job.redownload
                 )
             else:
                 dl_success = self.download_playlist(
-                    job.playlist_url, folder, job.season_num, job_id
+                    job.playlist_url, folder, job.season_num, job_id,
+                    redownload=job.redownload
                 )
             if job.status == "cancelled":
                 return
@@ -510,7 +516,9 @@ class YTToJellyfin:
                 job.movie_name, base_path=job.destination_path
             )
             job.update(message=f"Created folder structure: {folder}")
-            dl_success = self.download_playlist(job.playlist_url, folder, "01", job_id)
+            dl_success = self.download_playlist(
+                job.playlist_url, folder, "01", job_id, redownload=job.redownload
+            )
             if job.status == "cancelled":
                 return
             if not dl_success:
@@ -769,9 +777,10 @@ class YTToJellyfin:
         season_num: str,
         job_id: str,
         playlist_start: Optional[int] = None,
+        redownload: bool = False,
     ) -> bool:
         return download_playlist(
-            self, playlist_url, folder, season_num, job_id, playlist_start
+            self, playlist_url, folder, season_num, job_id, playlist_start, redownload
         )
 
     def process_metadata(
