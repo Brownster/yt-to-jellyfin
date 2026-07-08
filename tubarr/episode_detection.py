@@ -58,6 +58,10 @@ def clean_episode_title(value: str) -> str:
     """Remove emoji, control characters, separators, and excess whitespace."""
 
     value = _EMOJI.sub("", value or "")
+    value = re.split(r"[/\\]", value)[-1]
+    value = re.sub(
+        r"\.(?:avi|m4v|mkv|mov|mp4|mpeg|mpg|webm|wmv)$", "", value, flags=re.I
+    )
     value = "".join(
         char for char in value if not unicodedata.category(char).startswith("C")
     )

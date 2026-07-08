@@ -243,15 +243,27 @@ def create_job(
         ep_start_num = int(episode_start)
     except ValueError:
         ep_start_num = 1
-    try:
-        videos = app.get_playlist_videos(playlist_url)
+    if filename_episode_mappings:
         start_idx = playlist_start or 1
-        for i, entry in enumerate(videos[start_idx - 1 :], start=ep_start_num):
+        for mapping in sorted(filename_episode_mappings, key=lambda item: item["index"]):
+            if int(mapping["index"]) < start_idx:
+                continue
+            mapping_season = int(mapping["season"])
+            mapping_episode = int(mapping["episode"])
             job.remaining_files.append(
-                f"{entry.get('title', 'Video')} S{season_num}E{str(i).zfill(2)}"
+                f"{show_name} S{mapping_season:02d}E{mapping_episode:02d}"
+                f" - {mapping['title']}"
             )
-    except Exception as e:
-        logger.error(f"Failed to fetch playlist queue: {e}")
+    else:
+        try:
+            videos = app.get_playlist_videos(playlist_url)
+            start_idx = playlist_start or 1
+            for i, entry in enumerate(videos[start_idx - 1 :], start=ep_start_num):
+                job.remaining_files.append(
+                    f"{entry.get('title', 'Video')} S{season_num}E{str(i).zfill(2)}"
+                )
+        except Exception as e:
+            logger.error(f"Failed to fetch playlist queue: {e}")
 
     if track_playlist and app._is_playlist_url(playlist_url):
         added = app._register_playlist(

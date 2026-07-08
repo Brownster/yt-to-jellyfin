@@ -414,6 +414,19 @@ document.addEventListener('DOMContentLoaded', function() {
             return formData;
         }
 
+        async function readApiResponse(response) {
+            const body = await response.text();
+            let data;
+            try {
+                data = body ? JSON.parse(body) : {};
+            } catch (error) {
+                const status = `${response.status} ${response.statusText}`.trim();
+                throw new Error(`Server returned ${status || 'a non-JSON response'}. Check the container logs.`);
+            }
+            if (!response.ok) throw new Error(data.error || `Request failed (${response.status})`);
+            return data;
+        }
+
         async function createTvJob(mappings = []) {
             setTvSubmitLoading(true);
             try {
@@ -421,8 +434,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     method: 'POST',
                     body: buildTvJobFormData(mappings)
                 });
-                const data = await response.json();
-                if (!response.ok || !data.job_id) throw new Error(data.error || 'Failed to start download job');
+                const data = await readApiResponse(response);
+                if (!data.job_id) throw new Error(data.error || 'Failed to start download job');
                 showToast('Success', 'Download job started successfully');
                 document.querySelector('[data-section="jobs"]').click();
             } catch (error) {
@@ -503,8 +516,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({url: document.getElementById('playlist_url').value})
                 });
-                const data = await response.json();
-                if (!response.ok) throw new Error(data.error || 'Failed to inspect source titles');
+                const data = await readApiResponse(response);
                 if (data.unresolved > 0) {
                     showFilenameResolutionModal(data.entries);
                     return;
