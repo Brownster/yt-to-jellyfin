@@ -361,6 +361,13 @@
                                         </div>
                                         <input type="hidden" id="detection_profile" value="airdate">
                                     </div>
+                                    <div class="col-lg-5 d-flex align-items-end">
+                                        <div class="form-check form-switch mt-3">
+                                            <input class="form-check-input" type="checkbox" id="filename_episode_detection">
+                                            <label class="form-check-label" for="filename_episode_detection">Detect season and episode from titles</label>
+                                            <div class="form-text">Reads markers such as S24E28 before downloading.</div>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div class="mb-3">
@@ -407,7 +414,7 @@
                                 </div>
 
                                 <div class="text-end">
-                                    <button type="submit" class="btn btn-primary">Start Download</button>
+                                    <button type="submit" class="btn btn-primary" id="start-download-btn">Start Download</button>
                                 </div>
                             </form>
                         </div>
@@ -1385,6 +1392,32 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-primary" id="confirm-start-video">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Unresolved Filename Episodes Modal -->
+    <div class="modal fade" id="filenameEpisodeModal" tabindex="-1" aria-labelledby="filenameEpisodeModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title" id="filenameEpisodeModalLabel">Complete episode details</h5>
+                        <p class="mb-0 text-muted">Enter season and episode numbers for titles Tubarr could not detect.</p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning" role="alert">
+                        The download will start after every unresolved title has a valid season and episode.
+                    </div>
+                    <div id="filename-episode-errors" class="alert alert-danger d-none" role="alert"></div>
+                    <div id="filename-episode-rows" class="episode-resolution-list"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirm-filename-episodes">Start Download</button>
                 </div>
             </div>
         </div>

@@ -5,9 +5,15 @@ from flask import (
     jsonify,
     send_from_directory,
 )
+import json
 import os
 
 from .core import logger, YTToJellyfin
+from .episode_detection import (
+    EpisodeDetectionError,
+    FilenameEpisodeDetector,
+    preview_filename_episodes,
+)
 
 # Create Flask application for web interface
 # Determine the repository root so the web assets can be located correctly
@@ -64,6 +70,20 @@ def jobs():
         season_num = request.form.get("season_num")
         episode_start = request.form.get("episode_start")
         auto_detect = bool(_parse_optional_bool(request.form.get("auto_detect_episodes")))
+        filename_detect = bool(
+            _parse_optional_bool(request.form.get("filename_episode_detection"))
+        )
+        filename_mappings = []
+        if filename_detect:
+            try:
+                filename_mappings = json.loads(
+                    request.form.get("filename_episode_mappings") or "[]"
+                )
+                if not isinstance(filename_mappings, list) or not filename_mappings:
+                    raise ValueError("Filename episode mappings are required")
+                FilenameEpisodeDetector(filename_mappings)
+            except (json.JSONDecodeError, ValueError, EpisodeDetectionError) as exc:
+                return jsonify({"error": str(exc)}), 400
         detection_profile = request.form.get("detection_profile") or None
         playlist_start = request.form.get("playlist_start")
         track_playlist = request.form.get("track_playlist", "true").lower() != "false"
@@ -90,11 +110,13 @@ def jobs():
 
         if not playlist_url or not show_name:
             return jsonify({"error": "Missing required parameters"}), 400
-        if not auto_detect and (not season_num or not episode_start):
+        if auto_detect and filename_detect:
+            return jsonify({"error": "Choose one episode detection method"}), 400
+        if not auto_detect and not filename_detect and (not season_num or not episode_start):
             return jsonify({"error": "Season and episode start are required"}), 400
 
         # Validate episode_start is a valid integer
-        if not auto_detect and episode_start:
+        if not auto_detect and not filename_detect and episode_start:
             try:
                 episode_start_int = int(episode_start)
                 if episode_start_int < 0:
@@ -102,7 +124,7 @@ def jobs():
             except ValueError:
                 return jsonify({"error": "Episode start must be a valid integer"}), 400
 
-        if auto_detect:
+        if auto_detect or filename_detect:
             season_num = season_num or "00"
             episode_start = episode_start or "01"
 
@@ -119,6 +141,7 @@ def jobs():
                 use_h265=use_h265_override,
                 crf=crf_override,
                 auto_detect=auto_detect,
+                filename_episode_mappings=filename_mappings,
                 detection_profile=detection_profile,
                 destination_path=destination_path,
                 destination_label=destination_label,
@@ -136,6 +159,7 @@ def jobs():
                 use_h265=use_h265_override,
                 crf=crf_override,
                 auto_detect=auto_detect,
+                filename_episode_mappings=filename_mappings,
                 detection_profile=detection_profile,
                 destination_path=destination_path,
                 destination_label=destination_label,
@@ -388,6 +412,25 @@ def playlist_info():
     if not url:
         return jsonify({"error": "Missing url"}), 400
     return jsonify(ytj.get_playlist_videos(url))
+
+
+@app.route("/episode-detection/preview", methods=["POST"])
+def filename_episode_preview():
+    data = request.get_json(silent=True) or {}
+    url = data.get("url")
+    if not url:
+        return jsonify({"error": "Missing URL"}), 400
+    videos = ytj.get_playlist_videos(url)
+    if not videos:
+        return jsonify({"error": "No source items found"}), 422
+    entries = preview_filename_episodes(videos)
+    return jsonify(
+        {
+            "entries": entries,
+            "resolved": sum(1 for entry in entries if entry["resolved"]),
+            "unresolved": sum(1 for entry in entries if not entry["resolved"]),
+        }
+    )
 
 
 @app.route("/playlists/check", methods=["POST"])

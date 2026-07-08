@@ -55,6 +55,7 @@ class DownloadJob:
         use_h265_override: Optional[bool] = None,
         crf_override: Optional[int] = None,
         auto_detect_episodes: bool = False,
+        filename_episode_mappings: Optional[List[Dict[str, Any]]] = None,
         detection_profile: Optional[str] = None,
         destination_path: Optional[str] = None,
         destination_label: Optional[str] = None,
@@ -80,6 +81,7 @@ class DownloadJob:
         self.use_h265_override = use_h265_override
         self.crf_override = crf_override
         self.auto_detect_episodes = auto_detect_episodes
+        self.filename_episode_mappings = filename_episode_mappings or []
         self.detection_profile = detection_profile or "airdate"
         self.destination_path = destination_path
         self.destination_label = destination_label
@@ -187,6 +189,7 @@ class DownloadJob:
             "destination_path": self.destination_path,
             "destination_label": self.destination_label,
             "auto_detect_episodes": self.auto_detect_episodes,
+            "filename_episode_detection": bool(self.filename_episode_mappings),
             "detection_profile": self.detection_profile,
             "detected_seasons": self.detected_seasons,
         }
@@ -210,6 +213,7 @@ def create_job(
     use_h265: Optional[bool] = None,
     crf: Optional[int] = None,
     auto_detect: bool = False,
+    filename_episode_mappings: Optional[List[Dict[str, Any]]] = None,
     detection_profile: Optional[str] = None,
     destination_path: Optional[str] = None,
     destination_label: Optional[str] = None,
@@ -228,6 +232,7 @@ def create_job(
         use_h265_override=use_h265,
         crf_override=crf,
         auto_detect_episodes=auto_detect,
+        filename_episode_mappings=filename_episode_mappings,
         detection_profile=detection_profile,
         destination_path=destination_path,
         destination_label=destination_label,

@@ -391,6 +391,7 @@ def process_metadata(
                 upload_date=upload_date,
                 playlist_index=playlist_index,
                 base_path=base_file,
+                source_id=str(data.get("id")) if data.get("id") is not None else None,
             )
         )
 
@@ -442,7 +443,12 @@ def process_metadata(
 
         # Sonarr prefers simple naming: just show name, season, and episode number
         # Episode title is stored in the NFO file for metadata
-        base_name = f"{show_name} - S{season_padded}E{match.episode:02d}"
+        episode_code = f"S{season_padded}E{match.episode:02d}"
+        if episode_mapper and getattr(episode_mapper, "include_episode_title", False):
+            safe_title = sanitize_name(match.title) or f"Episode {match.episode}"
+            base_name = f"{show_name} {episode_code} - {safe_title}"
+        else:
+            base_name = f"{show_name} - {episode_code}"
 
         new_base = dest_folder / base_name
         clean_base = new_base

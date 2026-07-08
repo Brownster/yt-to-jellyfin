@@ -57,7 +57,7 @@ from .media import (
     get_playlist_videos,
     get_music_playlist_details,
 )
-from .episode_detection import AirdateEpisodeDetector
+from .episode_detection import AirdateEpisodeDetector, FilenameEpisodeDetector
 from .jellyfin import (
     copy_to_jellyfin,
     copy_movie_to_jellyfin,
@@ -269,6 +269,7 @@ class YTToJellyfin:
         use_h265: Optional[bool] = None,
         crf: Optional[int] = None,
         auto_detect: bool = False,
+        filename_episode_mappings: Optional[List[Dict]] = None,
         detection_profile: Optional[str] = None,
         destination_path: Optional[str] = None,
         destination_label: Optional[str] = None,
@@ -286,6 +287,7 @@ class YTToJellyfin:
             use_h265=use_h265,
             crf=crf,
             auto_detect=auto_detect,
+            filename_episode_mappings=filename_episode_mappings,
             detection_profile=detection_profile,
             destination_path=destination_path,
             destination_label=destination_label,
@@ -408,6 +410,8 @@ class YTToJellyfin:
                     )
                     return
                 mapper = AirdateEpisodeDetector(self.tvdb_client, job.show_name)
+            elif job.filename_episode_mappings:
+                mapper = FilenameEpisodeDetector(job.filename_episode_mappings)
 
             seasons_processed = self.process_metadata(
                 folder,

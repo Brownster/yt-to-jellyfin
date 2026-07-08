@@ -332,37 +332,46 @@ document.addEventListener('DOMContentLoaded', function() {
         const seasonInput = document.getElementById('season_num');
         const episodeInput = document.getElementById('episode_start');
         const autoDetectToggle = document.getElementById('auto_detect_episodes');
+        const filenameDetectToggle = document.getElementById('filename_episode_detection');
+        let filenameEpisodeMappings = [];
 
         function syncAutoDetectState() {
-            if (!autoDetectToggle || !seasonInput || !episodeInput) return;
-            if (autoDetectToggle.checked) {
-                seasonInput.disabled = true;
-                episodeInput.disabled = true;
-                seasonInput.required = false;
-                episodeInput.required = false;
-            } else {
-                seasonInput.disabled = false;
-                episodeInput.disabled = false;
-                seasonInput.required = true;
-                episodeInput.required = true;
-            }
+            if (!seasonInput || !episodeInput) return;
+            const detectionEnabled = (autoDetectToggle && autoDetectToggle.checked)
+                || (filenameDetectToggle && filenameDetectToggle.checked);
+            seasonInput.disabled = detectionEnabled;
+            episodeInput.disabled = detectionEnabled;
+            seasonInput.required = !detectionEnabled;
+            episodeInput.required = !detectionEnabled;
         }
 
         if (autoDetectToggle) {
-            autoDetectToggle.addEventListener('change', syncAutoDetectState);
-            syncAutoDetectState();
+            autoDetectToggle.addEventListener('change', function() {
+                if (autoDetectToggle.checked && filenameDetectToggle) filenameDetectToggle.checked = false;
+                syncAutoDetectState();
+            });
+        }
+        if (filenameDetectToggle) {
+            filenameDetectToggle.addEventListener('change', function() {
+                if (filenameDetectToggle.checked && autoDetectToggle) autoDetectToggle.checked = false;
+                filenameEpisodeMappings = [];
+                syncAutoDetectState();
+            });
+        }
+        syncAutoDetectState();
+
+        function setTvSubmitLoading(loading, label = 'Starting...') {
+            const startDownloadBtn = document.getElementById('start-download-btn');
+            if (startDownloadBtn) {
+                if (!startDownloadBtn.dataset.originalHtml) startDownloadBtn.dataset.originalHtml = startDownloadBtn.innerHTML;
+                startDownloadBtn.disabled = loading;
+                startDownloadBtn.innerHTML = loading
+                    ? `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> ${label}`
+                    : startDownloadBtn.dataset.originalHtml;
+            }
         }
 
-        newJobForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-
-            const startDownloadBtn = document.getElementById('start-download-btn');
-            const originalHTML = startDownloadBtn ? startDownloadBtn.innerHTML : '';
-            if (startDownloadBtn) {
-                startDownloadBtn.disabled = true;
-                startDownloadBtn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Starting...`;
-            }
-
+        function buildTvJobFormData(mappings = []) {
             const formData = new FormData();
             formData.append('playlist_url', document.getElementById('playlist_url').value);
             formData.append('show_name', document.getElementById('show_name').value);
@@ -373,6 +382,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (autoDetect) {
                 formData.append('auto_detect_episodes', autoDetect.checked ? 'true' : 'false');
             }
+            formData.append('filename_episode_detection', filenameDetectToggle && filenameDetectToggle.checked ? 'true' : 'false');
+            if (mappings.length) formData.append('filename_episode_mappings', JSON.stringify(mappings));
             if (detectionProfile) {
                 formData.append('detection_profile', detectionProfile.value || 'airdate');
             }
@@ -400,32 +411,111 @@ document.addEventListener('DOMContentLoaded', function() {
             if (redownload) {
                 formData.append('redownload', redownload.checked ? 'true' : 'false');
             }
+            return formData;
+        }
 
-            // Send request to create job
-            fetch('/jobs', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.job_id) {
-                    showToast('Success', 'Download job started successfully');
-                    // Navigate to jobs section
-                    document.querySelector('[data-section="jobs"]').click();
-                } else {
-                    showToast('Error', data.error || 'Failed to start download job');
-                }
-            })
-            .catch(error => {
+        async function createTvJob(mappings = []) {
+            setTvSubmitLoading(true);
+            try {
+                const response = await fetch('/jobs', {
+                    method: 'POST',
+                    body: buildTvJobFormData(mappings)
+                });
+                const data = await response.json();
+                if (!response.ok || !data.job_id) throw new Error(data.error || 'Failed to start download job');
+                showToast('Success', 'Download job started successfully');
+                document.querySelector('[data-section="jobs"]').click();
+            } catch (error) {
                 console.error('Error:', error);
-                showToast('Error', 'An error occurred while creating the job');
-            })
-            .finally(() => {
-                if (startDownloadBtn) {
-                    startDownloadBtn.disabled = false;
-                    startDownloadBtn.innerHTML = originalHTML;
-                }
+                showToast('Error', error.message || 'An error occurred while creating the job');
+            } finally {
+                setTvSubmitLoading(false);
+            }
+        }
+
+        function showFilenameResolutionModal(entries) {
+            filenameEpisodeMappings = entries;
+            const unresolved = entries.filter(entry => !entry.resolved);
+            const rows = document.getElementById('filename-episode-rows');
+            rows.innerHTML = '';
+            unresolved.forEach(entry => {
+                const row = document.createElement('div');
+                row.className = 'episode-resolution-row';
+                row.dataset.entryId = entry.id;
+                const title = document.createElement('div');
+                title.className = 'episode-resolution-title';
+                title.innerHTML = `<div class="small text-muted">Item ${entry.index}</div><div></div>`;
+                title.querySelector('div:last-child').textContent = entry.original_title;
+                row.appendChild(title);
+                row.insertAdjacentHTML('beforeend', `
+                    <label class="form-label mb-0">Season
+                        <input class="form-control filename-season" type="number" min="0" required aria-label="Season for item ${entry.index}">
+                    </label>
+                    <label class="form-label mb-0">Episode
+                        <input class="form-control filename-episode" type="number" min="1" required aria-label="Episode for item ${entry.index}">
+                    </label>`);
+                rows.appendChild(row);
             });
+            document.getElementById('filename-episode-errors').classList.add('d-none');
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('filenameEpisodeModal')).show();
+        }
+
+        document.getElementById('confirm-filename-episodes')?.addEventListener('click', async function() {
+            const errorBox = document.getElementById('filename-episode-errors');
+            const used = new Set();
+            for (const entry of filenameEpisodeMappings) {
+                if (!entry.resolved) {
+                    const row = document.querySelector(`.episode-resolution-row[data-entry-id="${CSS.escape(entry.id)}"]`);
+                    const season = Number(row.querySelector('.filename-season').value);
+                    const episode = Number(row.querySelector('.filename-episode').value);
+                    if (!Number.isInteger(season) || season < 0 || !Number.isInteger(episode) || episode < 1) {
+                        errorBox.textContent = 'Enter a valid season and episode for every title.';
+                        errorBox.classList.remove('d-none');
+                        return;
+                    }
+                    entry.season = season;
+                    entry.episode = episode;
+                    entry.resolved = true;
+                    entry.title = entry.title || `Episode ${episode}`;
+                }
+                const key = `${entry.season}:${entry.episode}`;
+                if (used.has(key)) {
+                    errorBox.textContent = `Duplicate mapping: S${String(entry.season).padStart(2, '0')}E${String(entry.episode).padStart(2, '0')}`;
+                    errorBox.classList.remove('d-none');
+                    return;
+                }
+                used.add(key);
+            }
+            bootstrap.Modal.getInstance(document.getElementById('filenameEpisodeModal')).hide();
+            await createTvJob(filenameEpisodeMappings);
+        });
+
+        newJobForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            if (!filenameDetectToggle || !filenameDetectToggle.checked) {
+                await createTvJob();
+                return;
+            }
+            setTvSubmitLoading(true, 'Checking titles...');
+            try {
+                const response = await fetch('/episode-detection/preview', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({url: document.getElementById('playlist_url').value})
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Failed to inspect source titles');
+                if (data.unresolved > 0) {
+                    showFilenameResolutionModal(data.entries);
+                    return;
+                }
+                await createTvJob(data.entries);
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Error', error.message || 'Failed to inspect source titles');
+            } finally {
+                setTvSubmitLoading(false);
+            }
         });
     }
 
