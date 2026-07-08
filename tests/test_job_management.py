@@ -156,6 +156,21 @@ class TestJobManagement(unittest.TestCase):
             ["Test Show S24E28 - Episode title"],
         )
 
+    @patch.object(YTToJellyfin, "get_playlist_videos", return_value=[])
+    @patch("threading.Thread")
+    def test_create_job_accepts_redownload(self, mock_thread, _mock_videos):
+        job_id = self.app.create_job(
+            "https://archive.org/details/test",
+            "Test Show",
+            "01",
+            "01",
+            track_playlist=False,
+            redownload=True,
+        )
+
+        self.assertTrue(self.app.jobs[job_id].redownload)
+        mock_thread.assert_called_once()
+
     @patch.object(YTToJellyfin, "_register_playlist")
     @patch("threading.Thread")
     def test_create_job_no_tracking(self, mock_thread, mock_register):

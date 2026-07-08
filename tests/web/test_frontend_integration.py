@@ -72,6 +72,7 @@ class FrontendIntegrationTests(unittest.TestCase):
         self.assertIsNone(kwargs["playlist_start"])
         self.assertTrue(kwargs["track_playlist"])
         self.assertEqual(kwargs["filename_episode_mappings"], [])
+        self.assertIsNone(kwargs["redownload"])
 
     def test_music_job_creation_errors_without_payload(self):
         response = self.client.post("/music/jobs", data="", content_type="application/json")

@@ -294,6 +294,7 @@ class TestMovieWorkflow(unittest.TestCase):
             os.path.join(self.temp_dir, "Test Movie"),
             "01",
             job_id,
+            redownload=False,
         )
         mock_metadata.assert_called_once()
         mock_convert.assert_called_once()
@@ -319,7 +320,7 @@ class TestMovieWorkflow(unittest.TestCase):
 
         mock_run.side_effect = run_side_effect
 
-        def fake_download(url, folder, season, job_id):
+        def fake_download(url, folder, season, job_id, redownload=False):
             os.makedirs(folder, exist_ok=True)
             Path(folder, "Test Movie.mp4").touch()
             return True
