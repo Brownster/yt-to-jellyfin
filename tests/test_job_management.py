@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
-from tubarr.episode_detection import EpisodeMatch
+from tubarr.episode_detection import EpisodeMatch, FilenameEpisodeDetector
 
 from tubarr.core import YTToJellyfin, DownloadJob
 
@@ -332,6 +332,50 @@ class TestJobManagement(unittest.TestCase):
         )
         self.assertTrue(target_file.exists())
         self.assertEqual(seasons, ["02"])
+
+    def test_process_metadata_filename_mapper_includes_clean_episode_title(self):
+        base_name = os.path.join(self.temp_dir, "S00E01")
+        with open(f"{base_name}.info.json", "w") as f:
+            json.dump(
+                {
+                    "id": "archive-item",
+                    "title": "The Jerry Springer Show S24E28 - Raw title 💔",
+                    "description": "Episode plot",
+                    "playlist_index": 1,
+                },
+                f,
+            )
+        Path(f"{base_name}.mp4").write_text("data")
+        mapper = FilenameEpisodeDetector(
+            [
+                {
+                    "id": "archive-item",
+                    "index": 1,
+                    "season": 24,
+                    "episode": 28,
+                    "title": "I Cheated With Three Strippers 💔",
+                }
+            ]
+        )
+        job_id = "filename-mapper-job"
+        self.app.jobs[job_id] = DownloadJob(job_id, "url", "The Jerry Springer Show", "00", "")
+
+        seasons = self.app.process_metadata(
+            self.temp_dir, "The Jerry Springer Show", "00", 1, job_id, mapper
+        )
+
+        target = (
+            Path(self.temp_dir)
+            / "The Jerry Springer Show"
+            / "Season 24"
+            / "The Jerry Springer Show S24E28 - I Cheated With Three Strippers"
+        )
+        self.assertTrue(target.with_suffix(".mp4").exists())
+        self.assertIn(
+            "<title>I Cheated With Three Strippers</title>",
+            target.with_suffix(".nfo").read_text(),
+        )
+        self.assertEqual(seasons, ["24"])
 
     def test_process_metadata_destination_path(self):
         """Files should remain in the destination path when provided."""

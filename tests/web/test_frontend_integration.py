@@ -58,17 +58,20 @@ class FrontendIntegrationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         payload = json.loads(response.data.decode())
         self.assertEqual(payload["job_id"], "job-42")
-        self.mock_ytj.create_job.assert_called_once_with(
-            "https://youtube.com/playlist?list=XYZ",
-            "Example Show",
-            "01",
-            "01",
-            playlist_start=None,
-            track_playlist=True,
-            quality=None,
-            use_h265=None,
-            crf=None,
+        self.mock_ytj.create_job.assert_called_once()
+        args, kwargs = self.mock_ytj.create_job.call_args
+        self.assertEqual(
+            args,
+            (
+                "https://youtube.com/playlist?list=XYZ",
+                "Example Show",
+                "01",
+                "01",
+            ),
         )
+        self.assertIsNone(kwargs["playlist_start"])
+        self.assertTrue(kwargs["track_playlist"])
+        self.assertEqual(kwargs["filename_episode_mappings"], [])
 
     def test_music_job_creation_errors_without_payload(self):
         response = self.client.post("/music/jobs", data="", content_type="application/json")

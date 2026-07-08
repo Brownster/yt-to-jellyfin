@@ -89,6 +89,41 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertTrue(any(job["job_id"] == "job1" for job in data))
         self.assertTrue(any(job["job_id"] == "job2" for job in data))
 
+    @patch.object(ytj, "get_playlist_videos")
+    def test_filename_episode_preview(self, mock_videos):
+        mock_videos.return_value = [
+            {"index": 1, "id": "one", "title": "Test Show S02E03 - A title"},
+            {"index": 2, "id": "two", "title": "Needs input 💔"},
+        ]
+        response = self.client.post(
+            "/episode-detection/preview", json={"url": "https://archive.org/details/test"}
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertEqual(data["resolved"], 1)
+        self.assertEqual(data["unresolved"], 1)
+        self.assertEqual(data["entries"][0]["title"], "A title")
+        self.assertEqual(data["entries"][1]["title"], "Needs input")
+
+    @patch("app.YTToJellyfin.create_job")
+    def test_create_job_with_filename_episode_mappings(self, mock_create_job):
+        mock_create_job.return_value = "filename-job"
+        mappings = [
+            {"id": "one", "index": 1, "season": 24, "episode": 28, "title": "Episode title"}
+        ]
+        response = self.client.post(
+            "/jobs",
+            data={
+                "playlist_url": "https://archive.org/details/test",
+                "show_name": "The Jerry Springer Show",
+                "filename_episode_detection": "true",
+                "filename_episode_mappings": json.dumps(mappings),
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        _, kwargs = mock_create_job.call_args
+        self.assertEqual(kwargs["filename_episode_mappings"], mappings)
+
     def test_get_job_detail(self):
         """Test getting details of a specific job"""
         # Add test job
