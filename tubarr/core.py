@@ -780,7 +780,13 @@ class YTToJellyfin:
         redownload: bool = False,
     ) -> bool:
         return download_playlist(
-            self, playlist_url, folder, season_num, job_id, playlist_start, redownload
+            self,
+            playlist_url,
+            folder,
+            season_num,
+            job_id,
+            playlist_start,
+            redownload=redownload,
         )
 
     def process_metadata(
