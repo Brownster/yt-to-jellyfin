@@ -123,6 +123,33 @@ class TestJellyfinIntegration(unittest.TestCase):
                 )
             )
 
+    def test_copy_to_jellyfin_skips_show_files_already_in_place(self):
+        self.app.config["jellyfin_tv_path"] = self.temp_dir
+
+        with patch("shutil.copy2") as mock_copy2, patch.object(
+            self.app, "trigger_jellyfin_scan"
+        ):
+            self.app.copy_to_jellyfin("Test Show", "01", "job1")
+
+        same_file_copies = [
+            call(
+                Path(self.temp_dir) / "Test Show" / "tvshow.nfo",
+                Path(self.temp_dir) / "Test Show" / "tvshow.nfo",
+            ),
+            call(
+                Path(self.temp_dir) / "Test Show" / "poster.jpg",
+                Path(self.temp_dir) / "Test Show" / "poster.jpg",
+            ),
+        ]
+        for same_file_copy in same_file_copies:
+            self.assertNotIn(same_file_copy, mock_copy2.call_args_list)
+        self.assertTrue(
+            any(
+                "Skipped tvshow.nfo - already in Jellyfin" in m["text"]
+                for m in self.job.messages
+            )
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -7,6 +7,13 @@ from .config import logger
 from .utils import log_job
 
 
+def _same_file(source: Path, dest: Path) -> bool:
+    try:
+        return source.exists() and dest.exists() and source.samefile(dest)
+    except OSError:
+        return False
+
+
 def copy_to_jellyfin(app, show_name: str, season_num: str, job_id: str) -> None:
     if not app.config.get("jellyfin_enabled", False):
         log_job(
@@ -137,6 +144,17 @@ def copy_to_jellyfin(app, show_name: str, season_num: str, job_id: str) -> None:
         ]
         for source, dest in show_files:
             if source.exists():
+                if _same_file(source, dest):
+                    log_job(
+                        job_id,
+                        logging.INFO,
+                        f"Skipping show file {source.name} - source and destination are the same",
+                    )
+                    if job:
+                        job.update(
+                            message=f"Skipped {source.name} - already in Jellyfin"
+                        )
+                    continue
                 shutil.copy2(source, dest)
                 log_job(
                     job_id,
